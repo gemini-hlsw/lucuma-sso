@@ -9,12 +9,19 @@ sealed abstract class Role(
   val elaboration: Option[String] = None
 ) extends Product with Serializable
 
+sealed abstract class AuthenticatedRole(
+  tpe:         Role.Type,
+  name:        String,
+  elaboration: Option[String] = None
+) extends Role(tpe, name, elaboration)
+
 object Role {
 
-  case object Pi                    extends Role(Type.Pi, "PI")
-  case class  Ngo(partner: Partner) extends Role(Type.Ngo, "NGO", Some(partner.name))
-  case object Staff                 extends Role(Type.Staff, "Staff")
-  case object Admin                 extends Role(Type.Admin, "Admin")
+  case object Guest                 extends Role(Type.Guest, "Guest")
+  case object Pi                    extends AuthenticatedRole(Type.Pi,    "PI")
+  case class  Ngo(partner: Partner) extends AuthenticatedRole(Type.Ngo,   "NGO", Some(partner.name))
+  case object Staff                 extends AuthenticatedRole(Type.Staff, "Staff")
+  case object Admin                 extends AuthenticatedRole(Type.Admin, "Admin")
 
   /** Roles are displayable. */
   implicit val DisplayRole: Display[Role] =
@@ -27,6 +34,7 @@ object Role {
   sealed abstract class Type(val tag: String) extends Product with Serializable
   object Type {
 
+    case object Guest extends Type("guest")
     case object Pi    extends Type("pi")
     case object Ngo   extends Type("ngo")
     case object Staff extends Type("staff")
@@ -34,7 +42,7 @@ object Role {
 
     implicit val EnumeratedType: Enumerated[Type] =
       new Enumerated[Type] {
-        def all: List[Type] = List(Pi, Ngo, Staff, Admin) // ordered by increasing power
+        def all: List[Type] = List(Guest, Pi, Ngo, Staff, Admin) // ordered by increasing power
         def tag(a: Type): String = a.tag
       }
 

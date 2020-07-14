@@ -46,3 +46,5 @@ out/
 
 # Vim
 *.swp
+*.worksheet.sc
+*Junk.scala
