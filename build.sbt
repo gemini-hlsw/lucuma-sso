@@ -31,7 +31,6 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-ember-client" % "0.21.6",
       "org.http4s" %% "http4s-circe"        % "0.21.6",
-      "org.http4s" %% "http4s-scala-xml"    % "0.21.6",
       "io.circe"   %% "circe-generic"       % "0.13.0",
       "io.circe"   %% "circe-parser"        % "0.13.0",
     ),
