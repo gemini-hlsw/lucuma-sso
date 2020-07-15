@@ -14,22 +14,22 @@ trait OrcidService[F[_]] {
   /**
    * Construct a URI for redirecting unauthenticated users to ORCID for authentication. ORCID will
    * redirect the user to `redirect` afterward, passing the authentication code on success or an
-   * error message on failure. On success, pass `redirect` and the code to `getAccessToken` to
-   * complete authentication.
+   * error message on failure, along with the `state` value, if any. On success, pass `redirect`
+   * and the code to `getAccessToken` to complete authentication.
    */
-  def authenticationUri(redirect: Uri): F[Uri]
+  def authenticationUri(redirect: Uri, state: Option[String] = None): F[Uri]
 
   /**
    * Given a redirect (the same one that was passed to `authenticationUri`) and a resulting
    * authentication code, request an ORCID access token. The resulting structure contains the
    * user's ORCID iD, name, access token, and other useful things.
    */
-  def getAccessToken(redirect: Uri, authenticationCode: String): F[AccessInfo]
+  def getAccessToken(redirect: Uri, authenticationCode: String): F[OrcidAccess]
 
   /**
-   * Retrieve information from the `person` record associated with the given `AccessInfo`.
+   * Retrieve information from the `person` record associated with the given `OrcidAccess`.
    */
-  def getPerson(accessInfo: AccessInfo): F[PersonInfo]
+  def getPerson(access: OrcidAccess): F[OrcidPerson]
 }
 
 object OrcidService {
@@ -41,7 +41,7 @@ object OrcidService {
   ): OrcidService[F] =
     new OrcidService[F] with Http4sClientDsl[F] {
 
-      def authenticationUri(redirect: Uri): F[Uri] =
+      def authenticationUri(redirect: Uri, state: Option[String]): F[Uri] =
         uri"https://orcid.org/oauth/authorize"
           .withQueryParams(Map(
             "client_id"     -> orcidClientId,
@@ -50,9 +50,11 @@ object OrcidService {
             "scope"         -> "/authenticate",
             "grant_type"    -> "authorization_code",
             "redirect_uri"  -> redirect.toString,
-          )).pure[F]
+          ) ++ state.foldMap(s => Map(
+            "state"         -> s
+          ))).pure[F]
 
-      def getAccessToken(redirect: Uri, authenticationCode: String): F[AccessInfo] =
+      def getAccessToken(redirect: Uri, authenticationCode: String): F[OrcidAccess] =
         httpClient.expect(
           Method.POST(
             UrlForm(
@@ -67,12 +69,12 @@ object OrcidService {
           )
         )
 
-      def getPerson(accessInfo: AccessInfo): F[PersonInfo] =
-        httpClient.expect[PersonInfo](
+      def getPerson(access: OrcidAccess): F[OrcidPerson] =
+        httpClient.expect[OrcidPerson](
           Method.GET(
-            Uri.unsafeFromString(s"https://pub.orcid.org/v3.0/${accessInfo.orcidId.value}/person"), // safe, heh-heh
-            Accept(new MediaType("application", "vnd.orcid+xml", true, false)),
-            Authorization(Credentials.Token(AuthScheme.Bearer, accessInfo.accessToken.toString))
+            Uri.unsafeFromString(s"https://pub.orcid.org/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
+            Accept(MediaType.application.json),
+            Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
           )
         )
 
