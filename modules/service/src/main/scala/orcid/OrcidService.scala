@@ -20,6 +20,13 @@ trait OrcidService[F[_]] {
   def authenticationUri(redirect: Uri, state: Option[String] = None): F[Uri]
 
   /**
+   * Construct a logout URI. Visiting this URI will remove the user's persistent ORCID cookie. If
+   * `script` is provided then the logout page will execute it, so this can be used for a
+   * client-side redirect after logout, for example. This is weird but it's what ORCID provides.
+   */
+  def logoutUri(script: Option[String]): F[Uri]
+
+  /**
    * Given a redirect (the same one that was passed to `authenticationUri`) and a resulting
    * authentication code, request an ORCID access token. The resulting structure contains the
    * user's ORCID iD, name, access token, and other useful things.
@@ -40,6 +47,13 @@ object OrcidService {
     httpClient:        Client[F],
   ): OrcidService[F] =
     new OrcidService[F] with Http4sClientDsl[F] {
+
+      def logoutUri(script: Option[String]): F[Uri] =
+        uri"https://orcid.org/userStatus.json"
+          .withQueryParams(
+            Map("logUserOut" -> "true") ++ script.foldMap(s =>
+            Map("callback"   -> s))
+          ).pure[F]
 
       def authenticationUri(redirect: Uri, state: Option[String]): F[Uri] =
         uri"https://orcid.org/oauth/authorize"
