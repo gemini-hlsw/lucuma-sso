@@ -23,7 +23,7 @@ import natchez.EntryPoint
 import natchez.jaeger.Jaeger
 import io.jaegertracing.Configuration.SamplerConfiguration
 import io.jaegertracing.Configuration.ReporterConfiguration
-import natchez.http4s.implicits._ // TODO: move this to Natchez!
+import natchez.http4s.implicits._
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -47,7 +47,7 @@ object FMain {
     object FDsl extends Http4sDsl[F]
     import FDsl._
     HttpRoutes.of[F] {
-      case GET -> Root / "api" / "v1" / "authAsGuest" =>
+      case POST -> Root / "api" / "v1" / "authAsGuest" =>
         pool.use(_.createGuestUser.flatMap(u => Ok(s"created $u")))
     }
   }

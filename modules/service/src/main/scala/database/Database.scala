@@ -40,7 +40,7 @@ object Database {
         s.unique(
           sql"""
             INSERT INTO gpp_user (user_type)
-            VALUES ('guestx')
+            VALUES ('guest')
             RETURNING user_id
           """.query(int4)
         ).map(n => GuestUser(GuestUser.Id(n)))
