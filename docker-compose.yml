@@ -1,0 +1,13 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:11
+    volumes:
+      - ./modules/service/src/main/resources/migration/:/docker-entrypoint-initdb.d/
+    ports:
+      - 5432:5432
+    environment:
+      # POSTGRES_USER:     jimmy
+      # POSTGRES_PASSWORD: banana
+      POSTGRES_DB:       gpp-sso
+

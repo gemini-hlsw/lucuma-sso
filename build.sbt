@@ -29,10 +29,14 @@ lazy val service = project
   .settings(
     name := "gpp-sso-service",
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-ember-client" % "0.21.6",
-      "org.http4s" %% "http4s-circe"        % "0.21.6",
-      "io.circe"   %% "circe-generic"       % "0.13.0",
-      "io.circe"   %% "circe-parser"        % "0.13.0",
-    ),
+      "io.circe"     %% "circe-generic"       % "0.13.0",
+      "io.circe"     %% "circe-parser"        % "0.13.0",
+      "org.http4s"   %% "http4s-circe"        % "0.21.6",
+      "org.http4s"   %% "http4s-dsl"          % "0.21.6",
+      "org.http4s"   %% "http4s-ember-client" % "0.21.6",
+      "org.http4s"   %% "http4s-ember-server" % "0.21.6",
+      "org.slf4j"    %  "slf4j-simple"        % "1.7.28",
+      "org.tpolecat" %% "skunk-core"          % "0.0.15",
+    )
   )
 

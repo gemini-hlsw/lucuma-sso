@@ -4,7 +4,6 @@
 package gpp.sso.model
 
 import gem.util.Enumerated
-import gem.util.Display
 
 sealed abstract class Partner(
   val tag:         String,
@@ -27,12 +26,6 @@ case object Partner {
     new Enumerated[Partner] {
       def all: List[Partner] = List(Ar, Br, Ca, Cl, Gt, Kr, Lp, Uh, Us)
       def tag(a: Partner): String = a.tag
-    }
-
-  implicit val DisplayPartner: Display[Partner] =
-    new Display[Partner] {
-      def name(a: Partner): String = a.name
-      def elaboration(a: Partner): Option[String] = None
     }
 
 }
