@@ -37,6 +37,7 @@ lazy val service = project
       "org.http4s"   %% "http4s-ember-server" % "0.21.6",
       "org.slf4j"    %  "slf4j-simple"        % "1.7.28",
       "org.tpolecat" %% "skunk-core"          % "0.0.15",
+      "org.tpolecat" %% "natchez-jaeger"      % "0.0.11",
     )
   )
 
