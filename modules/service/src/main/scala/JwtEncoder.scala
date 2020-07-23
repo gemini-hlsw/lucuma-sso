@@ -14,11 +14,13 @@ trait JwtEncoder[F[_]] {
 
 object JwtEncoder {
 
+  def apply[F[_]](implicit ev: JwtEncoder[F]): ev.type = ev
+
   /**
    * Construct a `JwtEncoder` that will encode claims and produce signed tokens using the provided
    * JCA `PrivateKey` and asymmetric key algorithm.
    */
-  def withPublicKey[F[_]: ApplicativeError[*[_], Throwable]](
+  def withPrivateKey[F[_]: ApplicativeError[*[_], Throwable]](
     sec: PrivateKey,
     algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS512
   ): JwtEncoder[F] =

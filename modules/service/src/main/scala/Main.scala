@@ -28,10 +28,9 @@ import gpp.ssp.service.config.DatabaseConfig
 import gpp.sso.service.config.Config
 import gpp.sso.client.Keys
 import org.http4s.server.middleware.Logger
-import pdi.jwt.JwtClaim
-import java.time.Instant
 import scala.concurrent.duration._
 import gpp.sso.service.JwtEncoder
+import gpp.sso.service.JwtFactory
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -53,30 +52,22 @@ object FMain {
     )
 
   def routes[F[_]: Concurrent: Trace](
-    pool: Resource[F, Database[F]],
-    jwtEncoder: JwtEncoder[F]
+    pool:       Resource[F, Database[F]],
+    jwtEncoder: JwtEncoder[F],
+    jwtFactory: JwtFactory[F]
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
     HttpRoutes.of[F] {
 
-      // API route that
+      // Create and return a new user
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
         pool.use { db =>
           for {
             gu  <- db.createGuestUser
-            now <- Sync[F].delay(Instant.now)
-            clm  = JwtClaim(
-              content    = "{}",
-              issuer     = Some("gpp-sso"),
-              subject    = Some(gu.id.value.toString()),
-              audience   = Some(Set("gpp")),
-              expiration = Some(now.plusSeconds(JwtLifetime.toMillis).toEpochMilli),
-              notBefore  = Some(now.toEpochMilli),
-              issuedAt   = Some(now.toEpochMilli),
-            )
+            clm <- jwtFactory.newClaimForUser(gu)
             jwt <- jwtEncoder.encode(clm)
-            r   <- Ok(s"created $gu")
+            r   <- Created(s"created $gu")
           } yield r.addCookie(Keys.JwtCookie, jwt)
         }
 
@@ -118,7 +109,13 @@ object FMain {
 
   def routesResource[F[_]: Concurrent: ContextShift: Trace](config: Config) =
     poolResource[F](config.database)
-      .map(p => routes(p.map(Database.fromSession(_)), JwtEncoder.withPublicKey[F](config.privateKey)))
+      .map { p =>
+        routes(
+          pool = p.map(Database.fromSession(_)),
+          jwtEncoder = JwtEncoder.withPrivateKey[F](config.privateKey),
+          jwtFactory = JwtFactory.withTimeout(JwtLifetime)
+        )
+      }
       .map(natchezMiddleware(_))
       .map(Logger.httpRoutes(
         logBody    = true,

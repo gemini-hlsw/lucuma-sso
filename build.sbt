@@ -15,6 +15,7 @@ lazy val model = crossProject(JVMPlatform, JSPlatform)
     name := "gpp-sso-model",
     libraryDependencies ++= Seq(
       "edu.gemini" %%% "gsp-core-model" % "0.1.7",
+      "io.circe"   %%% "circe-generic"  % "0.13.0",
     )
   )
   .jvmConfigure(_.enablePlugins(AutomateHeaderPlugin))
@@ -38,7 +39,6 @@ lazy val service = project
   .settings(
     name := "gpp-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"         %% "circe-generic"       % "0.13.0",
       "io.circe"         %% "circe-parser"        % "0.13.0",
       "is.cir"           %% "ciris"               % "1.1.1",
       "org.http4s"       %% "http4s-circe"        % "0.21.6",
