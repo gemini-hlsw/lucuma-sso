@@ -26,6 +26,12 @@ import io.jaegertracing.Configuration.ReporterConfiguration
 import natchez.http4s.implicits._
 import gpp.ssp.service.config.DatabaseConfig
 import gpp.sso.service.config.Config
+import gpp.sso.client.Keys
+import org.http4s.server.middleware.Logger
+import pdi.jwt.JwtClaim
+import java.time.Instant
+import scala.concurrent.duration._
+import gpp.sso.service.JwtEncoder
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -35,6 +41,7 @@ object Main extends IOApp {
 object FMain {
 
   val MaxConnections = 10 // max db connections
+  val JwtLifetime = 10.minutes
 
   def poolResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
@@ -46,7 +53,8 @@ object FMain {
     )
 
   def routes[F[_]: Concurrent: Trace](
-    pool: Resource[F, Database[F]]
+    pool: Resource[F, Database[F]],
+    jwtEncoder: JwtEncoder[F]
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -56,9 +64,20 @@ object FMain {
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
         pool.use { db =>
           for {
-            gu <- db.createGuestUser
-            r  <- Ok(s"created $gu")
-          } yield r.addCookie("X-GPP-SSO-JWT", "woozle")
+            gu  <- db.createGuestUser
+            now <- Sync[F].delay(Instant.now)
+            clm  = JwtClaim(
+              content    = "{}",
+              issuer     = Some("gpp-sso"),
+              subject    = Some(gu.id.value.toString()),
+              audience   = Some(Set("gpp")),
+              expiration = Some(now.plusSeconds(JwtLifetime.toMillis).toEpochMilli),
+              notBefore  = Some(now.toEpochMilli),
+              issuedAt   = Some(now.toEpochMilli),
+            )
+            jwt <- jwtEncoder.encode(clm)
+            r   <- Ok(s"created $gu")
+          } yield r.addCookie(Keys.JwtCookie, jwt)
         }
 
     }
@@ -97,16 +116,21 @@ object FMain {
     }
   }
 
-  def routesResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig) =
-    poolResource[F](config)
-      .map(p => routes(p.map(Database.fromSession(_))))
+  def routesResource[F[_]: Concurrent: ContextShift: Trace](config: Config) =
+    poolResource[F](config.database)
+      .map(p => routes(p.map(Database.fromSession(_)), JwtEncoder.withPublicKey[F](config.privateKey)))
       .map(natchezMiddleware(_))
+      .map(Logger.httpRoutes(
+        logBody    = true,
+        logHeaders = true,
+        redactHeadersWhen = _ => false
+      ))
 
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {
       c  <- Resource.liftF(Config.config.load[F])
       ep <- entryPoint
-      rs <- ep.liftR(routesResource(c.database))
+      rs <- ep.liftR(routesResource(c))
       ap  = app(rs)
       _  <- server(8080, ap)
     } yield ExitCode.Success

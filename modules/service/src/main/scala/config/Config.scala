@@ -26,7 +26,7 @@ object Config {
     // issued here because they have no way to get the public key. It may end up being better to use
     // a constant well-known key but of course if that makes it into production all is lost. So we
     // will err on the side of safety for the moment.
-    val keyGen  = KeyPairGenerator.getInstance("DSA", "SUN")
+    val keyGen  = KeyPairGenerator.getInstance("RSA", "SunRsaSign")
     val random  = SecureRandom.getInstance("SHA1PRNG", "SUN")
     val keyPair = { keyGen.initialize(1024, random); keyGen.generateKeyPair }
 
