@@ -24,6 +24,8 @@ import natchez.jaeger.Jaeger
 import io.jaegertracing.Configuration.SamplerConfiguration
 import io.jaegertracing.Configuration.ReporterConfiguration
 import natchez.http4s.implicits._
+import gpp.ssp.service.config.DatabaseConfig
+import gpp.sso.service.config.Config
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -32,13 +34,15 @@ object Main extends IOApp {
 
 object FMain {
 
-  def poolResource[F[_]: Concurrent: ContextShift: Trace]: Resource[F, Resource[F, Session[F]]] =
+  val MaxConnections = 10 // max db connections
+
+  def poolResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
-      host     = "localhost",
-      port     = 5432,
-      user     = "postgres",
-      database = "gpp-sso",
-      max      = 10,
+      host     = config.host,
+      port     = config.port,
+      user     = config.user,
+      database = config.database,
+      max      = MaxConnections,
     )
 
   def routes[F[_]: Concurrent: Trace](
@@ -47,8 +51,16 @@ object FMain {
     object FDsl extends Http4sDsl[F]
     import FDsl._
     HttpRoutes.of[F] {
+
+      // API route that
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
-        pool.use(_.createGuestUser.flatMap(u => Ok(s"created $u")))
+        pool.use { db =>
+          for {
+            gu <- db.createGuestUser
+            r  <- Ok(s"created $gu")
+          } yield r.addCookie("X-GPP-SSO-JWT", "woozle")
+        }
+
     }
   }
 
@@ -85,15 +97,16 @@ object FMain {
     }
   }
 
-  def routesResource[F[_]: Concurrent: ContextShift: Trace] =
-    poolResource[F]
+  def routesResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig) =
+    poolResource[F](config)
       .map(p => routes(p.map(Database.fromSession(_))))
       .map(natchezMiddleware(_))
 
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {
+      c  <- Resource.liftF(Config.config.load[F])
       ep <- entryPoint
-      rs <- ep.liftR(routesResource)
+      rs <- ep.liftR(routesResource(c.database))
       ap  = app(rs)
       _  <- server(8080, ap)
     } yield ExitCode.Success
