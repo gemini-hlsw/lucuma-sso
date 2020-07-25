@@ -1,7 +1,7 @@
-package gpp.ssp.service.config
+package gpp.sso.service.config
 
 import java.net.URI
-import ciris.ConfigDecoder
+import ciris._
 import cats.Show
 
 case class DatabaseConfig(
@@ -36,9 +36,14 @@ object DatabaseConfig {
       case _ => None
     }
 
-  private implicit val ShowURI: Show[URI] = Show.fromToString
+  private implicit val ShowURI: Show[URI] =
+    Show.fromToString
 
-  implicit val ConfigDecoderDatabaseConfig: ConfigDecoder[URI, DatabaseConfig] =
+  private implicit val ConfigDecoderDatabaseConfig: ConfigDecoder[URI, DatabaseConfig] =
     ConfigDecoder[URI].mapOption("DatabaseConfig")(fromHerokuUri)
+
+  val config: ConfigValue[DatabaseConfig] =
+    env("DATABASE_URL").as[URI].as[DatabaseConfig]
+
 
 }

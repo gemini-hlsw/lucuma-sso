@@ -1,36 +1,31 @@
-package gpp.sso
+package gpp.sso.service
 
-import cats.effect._
 import cats._
+import cats.effect._
 import cats.implicits._
-import org.http4s.HttpRoutes
-import org.http4s.dsl.Http4sDsl
-import org.http4s.server.Router
-import org.http4s.implicits._
-import org.http4s.HttpApp
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Server
-import skunk.Session
-import natchez.Trace
 import cats.Monad
+import gpp.sso.client._
+import gpp.sso.model._
+import gpp.sso.service.config._
+import gpp.sso.service.config.Environment._
 import gpp.sso.service.database.Database
-import org.http4s.Response
-import org.http4s.Status
-import org.http4s.EntityEncoder
-import java.io.StringWriter
-import java.io.PrintWriter
-import natchez.EntryPoint
-import natchez.jaeger.Jaeger
-import io.jaegertracing.Configuration.SamplerConfiguration
-import io.jaegertracing.Configuration.ReporterConfiguration
+import gpp.sso.service.orcid.OrcidService
+import io.circe.syntax._
+import io.jaegertracing.Configuration.{ ReporterConfiguration, SamplerConfiguration }
+import java.io.{ PrintWriter, StringWriter }
+import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
-import gpp.ssp.service.config.DatabaseConfig
-import gpp.sso.service.config.Config
-import gpp.sso.client.Keys
+import natchez.jaeger.Jaeger
+import org.http4s._
+import org.http4s.dsl.Http4sDsl
+import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.headers.Location
+import org.http4s.implicits._
+import org.http4s.server._
 import org.http4s.server.middleware.Logger
 import scala.concurrent.duration._
-import gpp.sso.service.JwtEncoder
-import gpp.sso.service.JwtFactory
+import skunk.Session
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -39,25 +34,28 @@ object Main extends IOApp {
 
 object FMain {
 
-  val MaxConnections = 10 // max db connections
-  val JwtLifetime = 10.minutes
+  val MaxConnections = 10
+  val JwtLifetime    = 10.minutes
 
-  def poolResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig): Resource[F, Resource[F, Session[F]]] =
-    Session.pooled(
-      host     = config.host,
-      port     = config.port,
-      user     = config.user,
-      database = config.database,
-      max      = MaxConnections,
-    )
 
-  def routes[F[_]: Concurrent: Trace](
+  // This is the main event. Here are the routes we're serving.
+  def routes[F[_]: Defer: Bracket[*[_], Throwable]](
     pool:       Resource[F, Database[F]],
+    orcid:      OrcidService[F],
+    jwtDecoder: GppJwtDecoder[F],
     jwtEncoder: JwtEncoder[F],
     jwtFactory: JwtFactory[F]
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
+
+    // TODO: parameterize the host!
+    val Stage2Uri = uri"https://sso.gpp.gemini.edu/auth/stage2"
+
+    // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
+    object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
+    object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
+
     HttpRoutes.of[F] {
 
       // Create and return a new user
@@ -67,12 +65,68 @@ object FMain {
             gu  <- db.createGuestUser
             clm <- jwtFactory.newClaimForUser(gu)
             jwt <- jwtEncoder.encode(clm)
-            r   <- Created(s"created $gu")
+            r   <- Created((gu:User).asJson.spaces2)
           } yield r.addCookie(Keys.JwtCookie, jwt)
         }
 
+      // Athentication Stage 1. If the user is logged in as a non-guest we're done, otherwise we
+      // redirect to ORCID, and on success the user will be redirected back for stage 2.
+      case r@(GET -> Root / "auth" / "stage1" :? RedirectUri(redirectUrl)) =>
+        r.cookies
+          .find(_.name == Keys.JwtCookie)
+          .map(_.content)
+          .traverse(jwtDecoder.decode)
+          .flatMap {
+
+            // If there is no JWT cookie or it's a guest, redirect to ORCID.
+            case None | Some(GuestUser(_)) =>
+              orcid
+                .authenticationUri(Stage2Uri, Some(redirectUrl.toString))
+                .flatMap(uri => MovedPermanently(Location(uri)))
+
+            // If it's a service or standard user, we're done.
+            case Some(ServiceUser(_, _) | StandardUser(_, _, _, _)) =>
+              MovedPermanently(Location(redirectUrl))
+
+          }
+
+      // https://localhost:8080/auth/stage2?code=7y6UQH&state=http://www.google.com
+
+      case GET -> Root / "auth" / "stage2" :? OrcidCode(code) +& RedirectUri(_) =>
+        for {
+          access <- orcid.getAccessToken(Stage2Uri, code) // when this fails we get a 400 back so we need to handle that case somehow
+          person <- orcid.getPerson(access)
+          // if user exists
+          //  update profile
+          //  logged in as guest?
+          //    change ownership of objects
+          //    delete user
+          //  else
+          //    upgrade guest user
+          //  endif
+          // else
+          //  logged in as guest?
+          //    upgrade user
+          //  else
+          //    create user
+          // endif
+          // set jwt
+          // redirect to success
+          //
+          r <- Ok(s"person is $person")
+        } yield r
+
     }
   }
+
+  def poolResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig): Resource[F, Resource[F, Session[F]]] =
+    Session.pooled(
+      host     = config.host,
+      port     = config.port,
+      user     = config.user,
+      database = config.database,
+      max      = MaxConnections,
+    )
 
   def app[F[_]: Monad](routes: HttpRoutes[F]): HttpApp[F] =
     Router("/" -> routes).orNotFound
@@ -107,21 +161,38 @@ object FMain {
     }
   }
 
-  def routesResource[F[_]: Concurrent: ContextShift: Trace](config: Config) =
-    poolResource[F](config.database)
-      .map { p =>
+  def loggingMiddleware[F[_]: Concurrent: ContextShift](
+    env: Environment
+  ): HttpRoutes[F] => HttpRoutes[F] =
+    Logger.httpRoutes[F](
+        logHeaders = true,
+        logBody    = env == Local,
+        redactHeadersWhen = { h =>
+          env match {
+            case Local             => false
+            case Test | Production => Headers.SensitiveHeaders.contains(h)
+          }
+        }
+      )
+
+  def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift](config: OrcidConfig) =
+    EmberClientBuilder.default[F].build.map { client =>
+      OrcidService(config.clientId, config.clientSecret, client)
+    }
+
+  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer](config: Config) =
+    (poolResource[F](config.database), orcidServiceResource(config.orcid))
+      .mapN { (pool, orcid) =>
         routes(
-          pool = p.map(Database.fromSession(_)),
+          pool       = pool.map(Database.fromSession(_)),
+          orcid      = orcid,
+          jwtDecoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey[F](config.publicKey)),
           jwtEncoder = JwtEncoder.withPrivateKey[F](config.privateKey),
-          jwtFactory = JwtFactory.withTimeout(JwtLifetime)
+          jwtFactory = JwtFactory.withTimeout(JwtLifetime),
         )
       }
       .map(natchezMiddleware(_))
-      .map(Logger.httpRoutes(
-        logBody    = true,
-        logHeaders = true,
-        redactHeadersWhen = _ => false
-      ))
+      .map(loggingMiddleware(config.environment))
 
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {

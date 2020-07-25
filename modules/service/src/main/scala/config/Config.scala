@@ -1,9 +1,8 @@
 package gpp.sso.service.config
 
 import cats.effect._
+import cats.implicits._
 import ciris._
-import gpp.ssp.service.config.DatabaseConfig
-import java.net.URI
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
@@ -12,6 +11,7 @@ import java.security.SecureRandom
 final case class Config(
   environment: Environment,
   database:    DatabaseConfig,
+  orcid:       OrcidConfig,
   publicKey:   PublicKey,
   privateKey:  PrivateKey,
   httpPort:    Int,
@@ -34,6 +34,7 @@ object Config {
     Config(
       Environment.Local,
       DatabaseConfig.Local,
+      OrcidConfig.Local,
       keyPair.getPublic,
       keyPair.getPrivate,
       8080
@@ -47,15 +48,18 @@ object Config {
       case Environment.Local =>
         ConfigValue.default(Local)
 
-      case envi =>
+      case envi => (
+        env("PORT").as[Int],
+        DatabaseConfig.config,
+        OrcidConfig.config,
+        env("GPG_SSO_PUBLIC_KEY").as[PublicKey],
+        env("GPG_SSO_PRIVATE_KEY"),
+        env("GPG_SSO_PASSPHRASE").as[String],
+      ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass) =>
         for {
-          port <- env("PORT").as[Int]
-          dbc  <- env("DATABASE_URL").as[URI].as[DatabaseConfig]
-          pkey <- env("GPG_SSO_PUBLIC_KEY").as[PublicKey]
-          text <- env("GPG_SSO_PRIVATE_KEY")
-          pass <- env("GPG_SSO_PASSPHRASE").as[String]
           skey <- default(text).as[PrivateKey](privateKey(pass))
-        } yield Config(envi, dbc, pkey, skey, port)
+        } yield Config(envi, dbc, orc, pkey, skey, port)
+      }
 
     }
 

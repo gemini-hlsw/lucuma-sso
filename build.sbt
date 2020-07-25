@@ -4,6 +4,11 @@ import sbtcrossproject.CrossType
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/gpp-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
+  libraryDependencies ++= Seq(
+    "com.disneystreaming" %% "weaver-framework"  % "0.4.2-RC1" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.4.2-RC1" % Test,
+  ),
+  testFrameworks += new TestFramework("weaver.framework.TestFramework"),
 ) ++ gspPublishSettings)
 
 skip in publish := true
@@ -48,6 +53,7 @@ lazy val service = project
       "org.slf4j"        %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"     %% "natchez-jaeger"      % "0.0.12",
       "org.tpolecat"     %% "skunk-core"          % "0.0.15",
-    )
+    ),
+
   )
 
