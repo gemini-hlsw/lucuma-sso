@@ -73,7 +73,6 @@ object OrcidSimulator {
       val httpRoutes: HttpRoutes[F] = {
         HttpRoutes.of[F] {
 
-          // This route turns an auth code (associated with a user) into an access token.
           case r@(POST -> Root / "oauth" / "token") =>
             for {
               data  <- r.as[UrlForm]
@@ -82,6 +81,16 @@ object OrcidSimulator {
               oacc  <- (redir, code).tupled.traverse(exchangeToken)
               r     <- oacc.fold(Forbidden())(Ok(_))
             } yield r
+
+          case GET -> Root / "v3.0" / who / "person" =>
+            Orcid.fromString(who) match {
+              case Some(orcid) =>
+                people.get.map(_.get(orcid)).flatMap {
+                  case Some(person) => Ok(person)
+                  case None         => NotFound()
+                }
+              case None => NotFound()
+            }
 
           case r =>
             Sync[F].delay(println(s"--> OrcidSimulator can't handle $r")) *> NotFound()

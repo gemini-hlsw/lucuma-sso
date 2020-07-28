@@ -18,7 +18,7 @@ import gpp.sso.service.orcid.OrcidService
 object SsoSimulator {
 
   // The exact same routes used by SSO, but with a fake database and ORCID back end
-  def httpRoutes[F[_]: Sync](sim: OrcidSimulator[F]): F[HttpRoutes[F]] =
+  private def httpRoutes[F[_]: Sync](sim: OrcidSimulator[F]): F[HttpRoutes[F]] =
     DatabaseSimulator.pool[F].map { pool =>
       val keyGen  = KeyPairGenerator.getInstance("RSA", "SunRsaSign")
       val random  = SecureRandom.getInstance("SHA1PRNG", "SUN")
@@ -32,7 +32,7 @@ object SsoSimulator {
       )
     }
 
-  def client[F[_]: Sync](sim: OrcidSimulator[F]): F[Client[F]] =
+  def apply[F[_]: Sync](sim: OrcidSimulator[F]): F[Client[F]] =
     httpRoutes[F](sim).map(routes => Client.fromHttpApp(Router("/" -> routes).orNotFound))
 
 }
