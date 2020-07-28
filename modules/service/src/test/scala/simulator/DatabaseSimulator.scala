@@ -8,18 +8,13 @@ import gpp.sso.service.database.Database
 
 object DatabaseSimulator {
 
-  val userId: Ref[IO, Int] =
-    Ref[IO].of(1).unsafeRunSync
-
-  val database: Database[IO] =
-
-    new Database[IO] {
-      def createGuestUser: IO[GuestUser] =
-        userId.modify(n => (n + 1, GuestUser(GuestUser.Id(n))))
+  def pool[F[_]: Sync]: F[Resource[F, Database[F]]] =
+    Ref[F].of(1).map { userId =>
+      new Database[F] {
+        def createGuestUser: F[GuestUser] =
+          userId.modify(n => (n + 1, GuestUser(GuestUser.Id(n))))
+      } .pure[Resource[F, ?]]
     }
 
-  def pool: Resource[IO, Database[IO]] =
-    Resource.liftF(database.pure[IO])
-
-}
+ }
 

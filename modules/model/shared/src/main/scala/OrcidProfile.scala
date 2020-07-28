@@ -13,8 +13,19 @@ final case class OrcidProfile(
   primaryEmail: String,
 ) {
 
-  def displayName: String = (
+  def displayName: String =
+    OrcidProfile.displayName(givenName, familyName, creditName).getOrElse(orcid.value)
+
+}
+
+object OrcidProfile {
+
+  // N.B. this is reused by OrcidPerson, otherwise it would be inlined above
+  def displayName(
+    givenName:    Option[String],
+    familyName:   Option[String],
+    creditName:   Option[String],
+  ): Option[String] =
     creditName <+> (givenName, familyName).mapN((g, f) => s"$g $f") <+> familyName <+> givenName
-  ).getOrElse(orcid.value)
 
 }
