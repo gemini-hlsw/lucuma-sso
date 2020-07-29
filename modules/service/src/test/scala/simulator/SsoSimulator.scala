@@ -2,7 +2,6 @@ package gpp.sso.service
 package simulator
 
 import cats.effect._
-import cats.implicits._
 import scala.concurrent.duration._
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
@@ -13,26 +12,33 @@ import org.http4s.implicits._
 import org.http4s.client.Client
 import org.http4s.server.Router
 import gpp.sso.service.orcid.OrcidService
+import gpp.sso.service.config.Config
+import natchez.Trace.Implicits.noop
+import gpp.sso.service.database.Database
 
-/** An SSO server with simulated database and ORCID back end. */
 object SsoSimulator {
 
-  // The exact same routes used by SSO, but with a fake database and ORCID back end
-  private def httpRoutes[F[_]: Sync](sim: OrcidSimulator[F]): F[HttpRoutes[F]] =
-    DatabaseSimulator.pool[F].map { pool =>
+  // The exact same routes and database used by SSO, but a fake ORCID back end
+  private def httpRoutes[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], HttpRoutes[F])] =
+    Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
+    FMain.poolResource[F](Config.Local.database).map { pool =>
       val keyGen  = KeyPairGenerator.getInstance("RSA", "SunRsaSign")
       val random  = SecureRandom.getInstance("SHA1PRNG", "SUN")
       val keyPair = { keyGen.initialize(1024, random); keyGen.generateKeyPair }
-      FMain.routes[F](
-        pool       = pool,
+      (sim, FMain.routes[F](
+        pool       = pool.map(Database.fromSession(_)),
         orcid      = OrcidService("unused", "unused", sim.client),
         jwtDecoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey(keyPair.getPublic)),
         jwtEncoder = JwtEncoder.withPrivateKey(keyPair.getPrivate),
         jwtFactory = JwtFactory.withTimeout(10.minutes)
-      )
+      ))
     }
+  }
 
-  def apply[F[_]: Sync](sim: OrcidSimulator[F]): F[Client[F]] =
-    httpRoutes[F](sim).map(routes => Client.fromHttpApp(Router("/" -> routes).orNotFound))
+  /** An Http client that hits an SSO server backed by a simulated ORCID server. */
+  def apply[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], Client[F])] =
+    httpRoutes[F].map { case (sim, routes) =>
+      (sim, Client.fromHttpApp(Router("/" -> routes).orNotFound))
+    }
 
 }

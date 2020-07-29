@@ -9,7 +9,12 @@ import org.http4s.circe._
 case class OrcidPerson(
   name:   OrcidName,
   emails: List[OrcidEmail]
-)
+) {
+
+  def primaryEmail: Option[OrcidEmail] =
+    emails.find(_.primary)
+
+}
 
 object OrcidPerson {
 

@@ -26,6 +26,7 @@ import org.http4s.server._
 import org.http4s.server.middleware.Logger
 import scala.concurrent.duration._
 import skunk.Session
+import _root_.gpp.sso.service.database.RoleRequest
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -39,7 +40,7 @@ object FMain {
 
 
   // This is the main event. Here are the routes we're serving.
-  def routes[F[_]: Defer: Bracket[*[_], Throwable]](
+  def routes[F[_]: Sync](
     pool:       Resource[F, Database[F]],
     orcid:      OrcidService[F],
     jwtDecoder: GppJwtDecoder[F],
@@ -56,9 +57,20 @@ object FMain {
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
 
+    def notImplemented[A]: F[A] =
+      Sync[F].raiseError(new RuntimeException("Not implemented."))
+
+    // user from jwt, if any
+    def jwtUser(re: Request[F]): F[Option[User]] =
+      re.cookies
+        .find(_.name == Keys.JwtCookie)
+        .map(_.content)
+        .traverse(jwtDecoder.decode)
+
     HttpRoutes.of[F] {
 
       // Create and return a new user
+      // TODO: should we no-op if the user is already logged in (as anyone)?
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
         pool.use { db =>
           for {
@@ -72,11 +84,7 @@ object FMain {
       // Athentication Stage 1. If the user is logged in as a non-guest we're done, otherwise we
       // redirect to ORCID, and on success the user will be redirected back for stage 2.
       case r@(GET -> Root / "auth" / "stage1" :? RedirectUri(redirectUrl)) =>
-        r.cookies
-          .find(_.name == Keys.JwtCookie)
-          .map(_.content)
-          .traverse(jwtDecoder.decode)
-          .flatMap {
+        jwtUser(r).flatMap {
 
             // If there is no JWT cookie or it's a guest, redirect to ORCID.
             case None | Some(GuestUser(_)) =>
@@ -90,31 +98,21 @@ object FMain {
 
           }
 
-      // https://localhost:8080/auth/stage2?code=7y6UQH&state=http://www.google.com
+      case r@(GET -> Root / "auth" / "stage2" :? OrcidCode(code) +& RedirectUri(_)) =>
+        pool.use { db =>
+          for {
+            access   <- orcid.getAccessToken(Stage2Uri, code) // when this fails we get a 400 back so we need to handle that case somehow
+            person   <- orcid.getPerson(access)
+            oguestId <- jwtUser(r).map(_.collect { case GuestUser(id) => id })
 
-      case GET -> Root / "auth" / "stage2" :? OrcidCode(code) +& RedirectUri(_) =>
-        for {
-          access <- orcid.getAccessToken(Stage2Uri, code) // when this fails we get a 400 back so we need to handle that case somehow
-          person <- orcid.getPerson(access)
-          // if user exists
-          //  update profile
-          //  logged in as guest?
-          //    change ownership of objects
-          //    delete user
-          //  else
-          //    upgrade guest user
-          //  endif
-          // else
-          //  logged in as guest?
-          //    upgrade user
-          //  else
-          //    create user
-          // endif
-          // set jwt
-          // redirect to success
-          //
-          r <- Ok(s"person is $person")
-        } yield r
+            user <- db.upsertOrPromoteUser(access, person, oguestId, RoleRequest.Pi)
+
+            // chown and delete guest if needed
+            // set jwt
+            // redirect to success
+            r <- Ok(s"user is $user")
+          } yield r
+        }
 
     }
   }

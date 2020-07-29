@@ -5,7 +5,6 @@ import gpp.sso.model.User
 import cats.implicits._
 import cats.MonadError
 import io.circe.parser._
-import io.circe.Decoder
 
 /** JWTs issued by SSO contain a User. */
 trait GppJwtDecoder[F[_]] {
@@ -13,8 +12,6 @@ trait GppJwtDecoder[F[_]] {
 }
 
 object GppJwtDecoder {
-
-  implicit def x: Decoder[User] = ???
 
   def fromJwtDecoder[F[_]: MonadError[*[_], Throwable]](jwtDecoder: JwtDecoder[F]): GppJwtDecoder[F] =
     new GppJwtDecoder[F] {

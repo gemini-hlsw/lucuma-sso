@@ -8,6 +8,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
 import org.http4s.implicits._
 import org.http4s.headers.Authorization
+import gpp.sso.model.OrcidProfile
 
 trait OrcidService[F[_]] {
 
@@ -37,6 +38,7 @@ trait OrcidService[F[_]] {
    * Retrieve information from the `person` record associated with the given `OrcidAccess`.
    */
   def getPerson(access: OrcidAccess): F[OrcidPerson]
+
 }
 
 object OrcidService {
