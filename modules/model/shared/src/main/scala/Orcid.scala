@@ -5,6 +5,7 @@ package gpp.sso.model
 
 import cats.Eq
 import cats.implicits._
+import io.circe._
 
 sealed abstract case class Orcid(value: String)
 object Orcid {
@@ -16,5 +17,11 @@ object Orcid {
 
   implicit val EqOrcid: Eq[Orcid] =
     Eq.by(_.value)
+
+  implicit val encoder: Encoder[Orcid] =
+    Encoder[String].contramap(_.value)
+
+  implicit val decoder: Decoder[Orcid] =
+    Decoder[String].emap(s => fromString(s).toRight(s"Invalid ORCID iD: $s"))
 
 }

@@ -4,6 +4,8 @@
 package gpp.sso.model
 
 import cats.implicits._
+import io.circe._
+import io.circe.generic.semiauto._
 
 final case class OrcidProfile(
   orcid:        Orcid,
@@ -27,5 +29,8 @@ object OrcidProfile {
     creditName:   Option[String],
   ): Option[String] =
     creditName <+> (givenName, familyName).mapN((g, f) => s"$g $f") <+> familyName <+> givenName
+
+  implicit val encoder: Encoder[OrcidProfile] = deriveEncoder
+  implicit val decoder: Decoder[OrcidProfile] = deriveDecoder
 
 }

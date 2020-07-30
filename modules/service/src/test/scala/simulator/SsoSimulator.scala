@@ -25,7 +25,7 @@ object SsoSimulator {
       val keyGen  = KeyPairGenerator.getInstance("RSA", "SunRsaSign")
       val random  = SecureRandom.getInstance("SHA1PRNG", "SUN")
       val keyPair = { keyGen.initialize(1024, random); keyGen.generateKeyPair }
-      (sim, FMain.routes[F](
+      (sim, Routes[F](
         pool       = pool.map(Database.fromSession(_)),
         orcid      = OrcidService("unused", "unused", sim.client),
         jwtDecoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey(keyPair.getPublic)),

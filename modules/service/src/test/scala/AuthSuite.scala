@@ -7,9 +7,10 @@ import cats.effect._
 import cats.implicits._
 import weaver._
 import org.http4s.headers.Location
-import gpp.sso.service.orcid.OrcidPerson
-import gpp.sso.service.orcid.OrcidName
-import gpp.sso.service.orcid.OrcidEmail
+import gpp.sso.service.orcid._
+import org.http4s.circe.CirceEntityDecoder._
+import io.circe.Json
+import gpp.sso.client.Keys
 
 object AuthSuite extends SimpleIOSuite {
 
@@ -32,8 +33,8 @@ object AuthSuite extends SimpleIOSuite {
       )
     )
 
-  override def simpleTest(name: String)(run: => IO[Expectations]): Unit =
-    super.simpleTest(name)(run.onError { case t => IO(t.printStackTrace) })
+  // override def simpleTest(name: String)(run: => IO[Expectations]): Unit =
+  //   super.simpleTest(name)(run.onError { case t => IO(t.printStackTrace) })
 
   simpleTest("Authentication with no cookie.") {
     SsoSimulator[IO].use { case (sim, sso) =>
@@ -48,8 +49,13 @@ object AuthSuite extends SimpleIOSuite {
         st2 <- sim.authenticate(loc.get, Bob, None)
         // stage2 auth should yield a redirect with an auth cookie that we should be able to decode,
         // with Bob in it
-        res <- sso.get(st2)(_.as[String])
-        _   <- IO(println(res))
+        _   <- sso.get(st2) { res =>
+                  for {
+                    u <- res.as[Json]
+                    _ <- IO(println(s"body is $u"))
+                    _ <- IO(println(s"cookie is ${res.cookies.find(_.name == Keys.JwtCookie)}"))
+                  } yield ()
+               }
       } yield success
     }
   }

@@ -5,11 +5,11 @@ import gpp.sso.model._
 import skunk._
 import skunk.implicits._
 import skunk.codec.all._
-import cats.effect.Bracket
 import gpp.sso.service.orcid.OrcidAccess
 import gpp.sso.service.orcid.OrcidPerson
 import cats.data.OptionT
-import skunk.data.Type
+import skunk.data.Completion.Delete
+import cats.effect.Sync
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
 trait Database[F[_]] {
@@ -28,38 +28,27 @@ trait Database[F[_]] {
    *
    * Note that `role` is used only when creating a new user or promoting a guest user. It is
    * ignored for existing users.
-   *
-   * Note that if `promotion` specifies a non-existent or non-guest user then the behavior will
-   * be the same as if `None` were specified. In practice it would be difficult to do this
-   * unintentionally.
    */
   def upsertOrPromoteUser(
     access:    OrcidAccess,
     person:    OrcidPerson,
-    promotion: Option[GuestUser.Id],
+    promotion: Option[User.Id],
     role:      RoleRequest
   ) : F[(StandardUser, Boolean)]
 
+  def deleteUser(id: User.Id): F[Boolean]
   // // Read
-  // def readGuestUser(id: GuestUser.Id): F[GuestUser]
+  // def readGuestUser(id: User.Id): F[GuestUser]
   // def readUser(orcid: Orcid): F[StandardUser]
 
   // // Promote
-  // def promoteUser(id: GuestUser.Id, profile: OrcidProfile, role: RoleRequest): F[StandardUser]
+  // def promoteUser(id: User.Id, profile: OrcidProfile, role: RoleRequest): F[StandardUser]
 
 }
 
-sealed trait RoleRequest
-object RoleRequest {
-  final case object Pi extends RoleRequest
-  final case class  Ngo(partner: Partner) extends RoleRequest
-  final case object Staff extends RoleRequest
-  final case object Admin extends RoleRequest
-}
+object Database extends Codecs {
 
-object Database {
-
-  def fromSession[F[_]: Bracket[*[_], Throwable]](s: Session[F]): Database[F] =
+  def fromSession[F[_]: Sync](s: Session[F]): Database[F] =
     new Database[F] {
 
       def createGuestUser: F[GuestUser] =
@@ -68,19 +57,30 @@ object Database {
       def upsertOrPromoteUser(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: Option[GuestUser.Id],
+        promotion: Option[User.Id],
         role:      RoleRequest
       ): F[(StandardUser, Boolean)] =
         s.transaction.use { _ =>
+          // we need to validate that promotion is in fact a guest user, and ignore it otherwise
           OptionT(updateProfile(access, person)).tupleRight(true).getOrElseF {
             promotion match {
               case Some(guestId) => promoteGuest(access, person, guestId, role).tupleRight(false)
-              case None          => createStandardUser(access, person /*, role */).tupleRight(false)
+              case None          => createStandardUser(access, person, role).tupleRight(false)
             }
           }
         }
 
-      /** Update the specified ORCID profile and yield the associated `StandardUser`, if any. */
+      def deleteUser(id: User.Id): F[Boolean] =
+        s.prepare(DeleteUser).use { pq =>
+          pq.execute(id).map {
+            case Delete(c) => c > 0
+            case _         => sys.error("unpossible")
+          }
+        }
+
+      /// HELPERS
+
+      // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
       def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[StandardUser]] =
         s.prepare(UpdateProfile).use { pq =>
           OptionT(pq.option(access ~ person))
@@ -91,45 +91,60 @@ object Database {
       def promoteGuest(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: GuestUser.Id,
+        promotion: User.Id,
         role:      RoleRequest
       ): F[StandardUser] = ???
 
       def createStandardUser(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        // role:      RoleRequest
+        role:      RoleRequest
       ): F[StandardUser] =
         s.prepare(CreateStandardUser).use { pq =>
-          pq.unique(access ~ person).flatMap(readStandardUser)
+          for {
+            userId <- pq.unique(access ~ person)
+            _      <- addRole(userId, role, true) // we know there will be no conflict
+            user   <- readStandardUser(userId)
+          } yield user
         }
 
+      // will raise a constraint failure if it's not a standard user id
+      def addRole(user: User.Id, role: RoleRequest, makeActive: Boolean): F[StandardRole.Id] =
+        for {
+          roleId <- s.prepare(AddRole).use(_.unique(user ~ role))
+          _      <- s.prepare(SetDefaultRole).use(_.execute(roleId ~ user)).whenA(makeActive)
+        } yield roleId
+
       def readStandardUser(
-        id: StandardUser.Id
+        id: User.Id
       ): F[StandardUser] =
+        // need to read roles too!
         s.prepare(ReadStandardUser).use { pq =>
-          pq.unique(id)
+          pq.stream(id, 64).compile.toList flatMap {
+            case Nil => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
+            case all @ ((roleId ~ user ~ _) :: _) =>
+              val roles = all.map(_._2)
+              roles.find(_.id === roleId) match {
+                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: no active role for user: $id"))
+                case Some(activeRole) =>
+                  user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId)).pure[F]
+              }
+          }
         }
 
   }
-
-  // Some codecs we will use locally
-  val orcid: Codec[Orcid] = Codec.simple[Orcid](_.value, Orcid.fromString(_).toRight("Invalid ORCID iD"), Type.varchar)
-  val standard_user_id: Codec[StandardUser.Id] = int4.gimap
-  val guest_user_id: Codec[GuestUser.Id] = int4.gimap
-  val guest_user: Codec[GuestUser] = guest_user_id.gimap
 
   val CreateGuestUser: Query[Void, GuestUser] =
     sql"""
       INSERT INTO gpp_user (user_type)
       VALUES ('guest')
       RETURNING user_id
-    """.query(guest_user)
+    """.query(user_id.map(GuestUser(_)))
 
-  val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, StandardUser.Id] =
+  val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       UPDATE gpp_user
-      SET orcid_access_token     = $varchar,
+      SET orcid_access_token     = $uuid,
        -- orcid_token_expiration -- TODO
           orcid_given_name       = ${varchar.opt},
           orcid_credit_name      = ${varchar.opt},
@@ -138,10 +153,10 @@ object Database {
       WHERE orcid_id = $orcid
       RETURNING (user_id)
     """
-      .query(standard_user_id)
+      .query(user_id)
       .contramap[OrcidAccess ~ OrcidPerson] {
         case access ~ person =>
-          access.accessToken.toString      ~ // TODO
+          access.accessToken               ~ // TODO: expiration
           person.name.givenName            ~
           person.name.creditName           ~
           person.name.familyName           ~
@@ -150,7 +165,7 @@ object Database {
       }
 
 
-  val CreateStandardUser: Query[OrcidAccess ~ OrcidPerson, StandardUser.Id] =
+  val CreateStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       INSERT INTO gpp_user (
         user_type,
@@ -165,7 +180,7 @@ object Database {
       VALUES (
         'standard',
         $orcid,
-        $varchar,
+        $uuid,
         ${varchar.opt},
         ${varchar.opt},
         ${varchar.opt},
@@ -173,39 +188,82 @@ object Database {
       )
       RETURNING (user_id)
     """
-      .query(standard_user_id)
+      .query(user_id)
       .contramap[OrcidAccess ~ OrcidPerson] {
         case access ~ person =>
           access.orcidId                   ~
-          access.accessToken.toString      ~ // TODO
+          access.accessToken               ~ // TODO: epiration
           person.name.givenName            ~
           person.name.creditName           ~
           person.name.familyName           ~
           person.primaryEmail.map(_.email)
       }
 
-  val ReadStandardUser =
+  // N.B. role is null and otherRoles is Nil
+  val ReadStandardUser: Query[User.Id, StandardRole.Id ~ StandardUser ~ StandardRole] =
     sql"""
-      SELECT user_id, orcid_id, orcid_given_name, orcid_credit_name, orcid_family_name, orcid_email
-      FROM   gpp_user
-      WHERE  user_id   = $standard_user_id
-      AND    user_type = 'standard' -- sanity check
+      SELECT u.user_id,
+             u.role_id,
+             u.orcid_id,
+             u.orcid_given_name,
+             u.orcid_credit_name,
+             u.orcid_family_name,
+             u.orcid_email,
+             r.role_id,
+             r.role_type,
+             r.role_ngo
+      FROM   gpp_user u
+      JOIN   gpp_role r
+      ON     u.user_id = r.user_id
+      WHERE  u.user_id = $user_id
+      AND    u.user_type = 'standard' -- sanity check
     """
-      .query(standard_user_id ~ orcid ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt)
-      .map { case id ~ orcid ~ givenName ~ creditName ~ familyName ~ email =>
-        StandardUser(
-          id = id,
-          role = null, // TODO
-          otherRoles = Nil, // TODO
-          profile = OrcidProfile(
-            orcid = orcid,
-            givenName = givenName,
-            creditName = creditName,
-            familyName = familyName,
-            primaryEmail = email.getOrElse("<none>") // TODO
+      .query(
+        (user_id ~ role_id ~ orcid ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
+          case id ~ roleId ~ orcid ~ givenName ~ creditName ~ familyName ~ email =>
+          roleId ~
+          StandardUser(
+            id = id,
+            role = null, // TODO
+            otherRoles = Nil, // TODO
+            profile = OrcidProfile(
+              orcid = orcid,
+              givenName = givenName,
+              creditName = creditName,
+              familyName = familyName,
+              primaryEmail = email.getOrElse("<none>") // TODO
+            )
           )
-        )
-      }
+        } ~
+        (role_id ~ role_type ~ partner.opt).map {
+          // we really need emap here
+          case id ~ RoleType.Admin ~ None => StandardRole.Admin(id)
+          case id ~ RoleType.Staff ~ None => StandardRole.Staff(id)
+          case id ~ RoleType.Ngo ~ Some(p) => StandardRole.Ngo(id, p)
+          case id ~ RoleType.Pi ~ None => StandardRole.Pi(id)
+          case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
+        }
+      )
 
+  val DeleteUser: Command[User.Id] =
+    sql"""
+      DELETE FROM gpp_user WHERE user_id = $user_id
+    """.command
 
- }
+  val AddRole: Query[User.Id ~RoleRequest, StandardRole.Id] =
+    sql"""
+      INSERT INTO gpp_role (user_id, role_type, role_ngo)
+      VALUES ($user_id, $role_type, ${partner.opt})
+      RETURNING role_id
+    """
+      .query(role_id)
+      .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
+
+  val SetDefaultRole: Command[StandardRole.Id ~ User.Id] =
+    sql"""
+      UPDATE gpp_user
+      SET    role_id = $role_id
+      WHERE  user_id = $user_id
+    """.command
+
+}

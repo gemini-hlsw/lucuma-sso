@@ -13,17 +13,24 @@ CREATE TYPE gpp_ngo AS ENUM ('ar', 'br', 'ca', 'cl', 'gt', 'kr', 'lp', 'uh', 'us
 -- ORCID iD has a format we should validate
 CREATE DOMAIN gpp_orcid_id AS character varying; -- TODO format check
 
+-- user id has a format we should validate
+CREATE DOMAIN gpp_user_id AS character varying; -- TODO format check
+
+-- role id has a format we should validate
+CREATE DOMAIN gpp_role_id AS character varying; -- TODO format check
+
 -- every user has one row here
+CREATE SEQUENCE gpp_user_id_seq START WITH 256; -- three hex digits
 CREATE TABLE gpp_user (
 
-  user_id                SERIAL PRIMARY KEY,
+  user_id                gpp_user_id NOT NULL PRIMARY KEY DEFAULT 'u-' || to_hex(nextval('gpp_user_id_seq')),
   user_enabled           BOOLEAN NOT NULL DEFAULT true,
   user_type              gpp_user_type NOT NULL,
   service_name           VARCHAR, -- non-null iff user_type = 'service'
-  role_id       INTEGER, -- BUT WAIT LET'S MAKE IT NON-NULL AND MAKE THE FK CONSTRAINT DEFERRABLE
+  role_id                gpp_role_id, -- TODO: non-null iff user_type = 'standard'
 
   orcid_id               gpp_orcid_id UNIQUE,
-  orcid_access_token     VARCHAR,
+  orcid_access_token     UUID,
   orcid_token_expiration TIMESTAMP,
   orcid_given_name       VARCHAR,
   orcid_credit_name      VARCHAR,
@@ -47,11 +54,12 @@ CREATE TABLE gpp_user (
 );
 
 -- every standard user has zero to 12 rows here: pi, staff, admin, and one for each of 9 NGOs
+CREATE SEQUENCE gpp_role_id_seq START WITH 256; -- three hex digits
 CREATE TABLE gpp_role (
 
-  role_id       SERIAL            PRIMARY KEY,
-  user_id       INTEGER           NOT NULL,
-  user_type     gpp_user_type     NOT NULL,
+  role_id       gpp_role_id   NOT NULL PRIMARY KEY DEFAULT 'r-' || to_hex(nextval('gpp_role_id_seq'::regclass)),
+  user_id       gpp_user_id   NOT NULL,
+  user_type     gpp_user_type NOT NULL DEFAULT 'standard',
   role_type     gpp_role_type NOT NULL,
   role_ngo      gpp_ngo,
 

@@ -5,13 +5,9 @@ package gpp.sso.model
 
 import cats.ApplicativeError
 import cats.implicits._
-import java.security.AccessControlException
-import io.circe.Encoder
-import io.circe.Json
+import io.circe._
 import io.circe.syntax._
-import io.circe.generic.semiauto._
-import io.circe.Decoder
-import io.circe.DecodingFailure
+import java.security.AccessControlException
 
 /** A user has [at least] an identity and a role. */
 sealed trait User extends Product with Serializable {
@@ -36,10 +32,11 @@ sealed trait User extends Product with Serializable {
 
 object User {
 
-
-  trait Id {
-    def value: Int
-    final override def toString = value.toString
+  case class Id(value: Long) {
+    override def toString = this.show
+  }
+  object Id {
+    implicit val GidUserGid: Gid[Id] = Gid.instance('u', _.value, apply)
   }
 
   implicit val EncoderUser: Encoder[User] =
@@ -55,10 +52,13 @@ object User {
           "id"   -> id.asJson,
           "name" -> name.asJson,
         )
-      case StandardUser(id, _, _, _) => // TODO
+      case StandardUser(id, role, otherRoles, profile) =>
         Json.obj(
-          "type" -> "standard".asJson,
-          "id"   -> id.asJson,
+          "type"       -> "standard".asJson,
+          "id"         -> id.asJson,
+          "role"       -> role.asJson,
+          "otherRoles" -> otherRoles.asJson,
+          "profile"    -> profile.asJson,
         )
 
     }
@@ -68,7 +68,7 @@ object User {
 
       case "guest" =>
         for {
-          id <- hc.downField("id").as[GuestUser.Id]
+          id <- hc.downField("id").as[User.Id]
         } yield GuestUser(id)
 
       // TODO: others
@@ -84,51 +84,28 @@ object User {
 /**
  * Guest users have the lowest access and no identifying information.
  */
-final case class GuestUser(id: GuestUser.Id) extends User {
+final case class GuestUser(id: User.Id) extends User {
   val role = GuestRole
   val displayName = "Guest User"
 }
-object GuestUser {
-  final case class Id(value: Int) extends User.Id
-  object Id {
-    implicit val encoder: Encoder[Id] = deriveEncoder
-    implicit val decoder: Decoder[Id] = deriveDecoder
-  }
-}
-
 
 /**
  * Service users have the highest access and represent services themselves.
  */
-final case class ServiceUser(id: ServiceUser.Id, name: String) extends User {
+final case class ServiceUser(id: User.Id, name: String) extends User {
   val role = ServiceRole(name)
   val displayName = s"Service User ($name)"
 }
-object ServiceUser {
-  final case class Id(value: Int) extends User.Id
-  object Id {
-    implicit val encoder: Encoder[Id] = deriveEncoder
-    implicit val decoder: Decoder[Id] = deriveDecoder
-  }
-}
-
 
 /**
  * Standard users are authenticated and have a profile, as well as a set of other roles they can
  * assume.
  */
 final case class StandardUser(
-  id:         StandardUser.Id,
+  id:         User.Id,
   role:       StandardRole,
   otherRoles: List[StandardRole],
   profile:    OrcidProfile
 ) extends User {
   val displayName = profile.displayName
-}
-object StandardUser {
-  final case class Id(value: Int) extends User.Id
-  object Id {
-    implicit val encoder: Encoder[Id] = deriveEncoder
-    implicit val decoder: Decoder[Id] = deriveDecoder
-  }
 }
