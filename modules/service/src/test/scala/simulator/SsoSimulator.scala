@@ -19,26 +19,27 @@ import gpp.sso.service.database.Database
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
-  private def httpRoutes[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], HttpRoutes[F])] =
+  private def httpRoutes[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], HttpRoutes[F], GppJwtDecoder[F])] =
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
     FMain.poolResource[F](Config.Local.database).map { pool =>
       val keyGen  = KeyPairGenerator.getInstance("RSA", "SunRsaSign")
       val random  = SecureRandom.getInstance("SHA1PRNG", "SUN")
       val keyPair = { keyGen.initialize(1024, random); keyGen.generateKeyPair }
+      val decoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey(keyPair.getPublic))
       (sim, Routes[F](
         pool       = pool.map(Database.fromSession(_)),
         orcid      = OrcidService("unused", "unused", sim.client),
-        jwtDecoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey(keyPair.getPublic)),
+        jwtDecoder = decoder,
         jwtEncoder = JwtEncoder.withPrivateKey(keyPair.getPrivate),
         jwtFactory = JwtFactory.withTimeout(10.minutes)
-      ))
+      ), decoder)
     }
   }
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */
-  def apply[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], Client[F])] =
-    httpRoutes[F].map { case (sim, routes) =>
-      (sim, Client.fromHttpApp(Router("/" -> routes).orNotFound))
+  def apply[F[_]: Concurrent: ContextShift]: Resource[F, (OrcidSimulator[F], Client[F], GppJwtDecoder[F])] =
+    httpRoutes[F].map { case (sim, routes, decoder) =>
+      (sim, Client.fromHttpApp(Router("/" -> routes).orNotFound), decoder)
     }
 
 }

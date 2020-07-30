@@ -69,11 +69,11 @@ object Routes {
             case None | Some(GuestUser(_)) =>
               orcid
                 .authenticationUri(Stage2Uri, Some(redirectUrl.toString))
-                .flatMap(uri => MovedPermanently(Location(uri)))
+                .flatMap(uri => SeeOther(Location(uri)))
 
             // If it's a service or standard user, we're done.
             case Some(ServiceUser(_, _) | StandardUser(_, _, _, _)) =>
-              MovedPermanently(Location(redirectUrl))
+              SeeOther(Location(redirectUrl))
 
           }
 
@@ -92,7 +92,7 @@ object Routes {
                         } .whenA(chown)
             clm      <- jwtFactory.newClaimForUser(user)
             jwt      <- jwtEncoder.encode(clm)
-            r <- MovedPermanently(Location(redir), (user:User).asJson.spaces2)
+            r <- SeeOther(Location(redir), (user:User).asJson.spaces2)
           } yield r.addCookie(Keys.JwtCookie, jwt)
         }
 

@@ -71,7 +71,13 @@ object User {
           id <- hc.downField("id").as[User.Id]
         } yield GuestUser(id)
 
-      // TODO: others
+      case "standard" =>
+        for {
+          id <- hc.downField("id").as[User.Id]
+          role <- hc.downField("role").as[StandardRole]
+          otherRoles <- hc.downField("otherRoles").as[List[StandardRole]]
+          profile <- hc.downField("profile").as[OrcidProfile]
+        } yield StandardUser(id, role, otherRoles, profile)
 
       case tag  =>
         Left(DecodingFailure(s"Unknown user type: $tag", Nil))

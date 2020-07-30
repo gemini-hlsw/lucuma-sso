@@ -28,7 +28,7 @@ object StandardRole {
   final case class Admin(id: StandardRole.Id) extends StandardRole(Access.Admin)
 
   case class Id(value: Long) {
-    override def toString = value.show
+    override def toString = this.show
   }
   object Id {
     implicit val GidId: Gid[Id] = Gid.instance('r', _.value, apply)

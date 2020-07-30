@@ -33,29 +33,36 @@ object AuthSuite extends SimpleIOSuite {
       )
     )
 
-  // override def simpleTest(name: String)(run: => IO[Expectations]): Unit =
-  //   super.simpleTest(name)(run.onError { case t => IO(t.printStackTrace) })
-
   simpleTest("Authentication with no cookie.") {
-    SsoSimulator[IO].use { case (sim, sso) =>
-      val st1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
+    SsoSimulator[IO].use { case (sim, sso, decoder) =>
+      val stage1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
       for {
+
         // stage1 auth should redirect
-        res <- sso.get(st1)(_.pure[IO])
-        _   <- expect(res.status == Status.MovedPermanently).failFast
+        res <- sso.get(stage1)(_.pure[IO])
+        _   <- expect(res.status == Status.SeeOther).failFast
         loc  = res.headers.get(Location).map(_.uri)
         _   <- expect(loc.isDefined).failFast
+
         // simulate the user authenticating as Bob, who is a new user
-        st2 <- sim.authenticate(loc.get, Bob, None)
+        stage2 <- sim.authenticate(loc.get, Bob, None)
+
         // stage2 auth should yield a redirect with an auth cookie that we should be able to decode,
         // with Bob in it
-        _   <- sso.get(st2) { res =>
-                  for {
-                    u <- res.as[Json]
-                    _ <- IO(println(s"body is $u"))
-                    _ <- IO(println(s"cookie is ${res.cookies.find(_.name == Keys.JwtCookie)}"))
-                  } yield ()
-               }
+        _   <- sso.get(stage2) { res =>
+          for {
+            // curl-like output
+            u <- res.as[Json]
+            _ <- IO(println(s"${res.httpVersion} ${res.status}"))
+            _ <- res.headers.toList.traverse(h => IO(println(h)))
+            _ <- IO(println())
+            _ <- IO(println(s"$u"))
+
+            u <- decoder.decode(res.cookies.find(_.name == Keys.JwtCookie).get.content)
+            _  <- IO(println(s"JWT user is $u"))
+          } yield ()
+        }
+
       } yield success
     }
   }
