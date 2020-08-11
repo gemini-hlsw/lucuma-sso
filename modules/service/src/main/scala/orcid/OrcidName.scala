@@ -16,15 +16,15 @@ object OrcidName {
 
   implicit val DecoderOrcidName: Decoder[OrcidName] = c =>
     for {
-      g <- c.downField("given-names").downField("value").as[Option[String]]
       f <- c.downField("family-name").downField("value").as[Option[String]]
+      g <- c.downField("given-names").downField("value").as[Option[String]]
       c <- c.downField("credit-name").downField("value").as[Option[String]]
-    } yield OrcidName(g, f, c)
+    } yield OrcidName(f,g,c)
 
   implicit val EncoderOrcidName: Encoder[OrcidName] = n =>
     Json.obj(
-      "given-names" -> Json.obj("value" -> n.givenName.asJson),
       "family-name" -> Json.obj("value" -> n.familyName.asJson),
+      "given-names" -> Json.obj("value" -> n.givenName.asJson),
       "credit-name" -> Json.obj("value" -> n.creditName.asJson),
     )
 

@@ -31,13 +31,11 @@ object Routes {
 
     // TODO: parameterize the host!
     val Stage2Uri = uri"https://sso.gpp.gemini.edu/auth/stage2"
+    val GppDomain = "gpp.gemini.edu"
 
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
-
-    // def notImplemented[A]: F[A] =
-    //   Sync[F].raiseError(new RuntimeException("Not implemented."))
 
     // user from jwt, if any
     def jwtUser(re: Request[F]): F[Option[User]] =
@@ -46,18 +44,30 @@ object Routes {
         .map(_.content)
         .traverse(jwtDecoder.decode)
 
+    def jwtCookie(user: User): F[ResponseCookie] =
+      for {
+        clm <- jwtFactory.newClaimForUser(user)
+        jwt <- jwtEncoder.encode(clm)
+      } yield ResponseCookie(
+        name     = Keys.JwtCookie,
+        content  = jwt,
+        domain   = Some(GppDomain),
+        sameSite = SameSite.None,
+        secure   = true,
+        httpOnly = true,
+      )
+
     HttpRoutes.of[F] {
 
-      // Create and return a new user
+      // Create and return a new guest user
       // TODO: should we no-op if the user is already logged in (as anyone)?
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
         pool.use { db =>
           for {
             gu  <- db.createGuestUser
-            clm <- jwtFactory.newClaimForUser(gu)
-            jwt <- jwtEncoder.encode(clm)
+            c   <- jwtCookie(gu)
             r   <- Created((gu:User).asJson.spaces2)
-          } yield r.addCookie(Keys.JwtCookie, jwt)
+          } yield r.addCookie(c)
         }
 
       // Athentication Stage 1. If the user is logged in as a non-guest we're done, otherwise we
@@ -90,10 +100,9 @@ object Routes {
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            clm      <- jwtFactory.newClaimForUser(user)
-            jwt      <- jwtEncoder.encode(clm)
-            r <- SeeOther(Location(redir), (user:User).asJson.spaces2)
-          } yield r.addCookie(Keys.JwtCookie, jwt)
+            cookie   <- jwtCookie(user)
+            res      <- SeeOther(Location(redir), (user:User).asJson.spaces2)
+          } yield res.addCookie(cookie)
         }
 
     }

@@ -41,6 +41,7 @@ object FMain {
       database = config.database,
       max      = MaxConnections,
       strategy = Strategy.SearchPath,
+      // debug = true
     )
 
   def app[F[_]: Monad](routes: HttpRoutes[F]): HttpApp[F] =
