@@ -115,7 +115,7 @@ object FMain {
       rs <- ep.liftR(routesResource(c))
       ap  = app(rs)
       _  <- Resource.liftF(Sync[F].delay(println(s"Starting Ember on ${c.httpPort}.")))
-      _  <- server(8080, ap)
+      _  <- server(c.httpPort, ap)
     } yield ExitCode.Success
 
   def main[F[_]: Concurrent: ContextShift: Timer]: F[ExitCode] =
