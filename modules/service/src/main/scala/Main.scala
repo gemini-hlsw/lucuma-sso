@@ -114,6 +114,7 @@ object FMain {
       ep <- entryPoint
       rs <- ep.liftR(routesResource(c))
       ap  = app(rs)
+      _  <- Resource.liftF(Sync[F].delay(println(s"Starting Ember on ${c.httpPort}.")))
       _  <- server(8080, ap)
     } yield ExitCode.Success
 
