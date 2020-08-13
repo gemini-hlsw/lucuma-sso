@@ -12,9 +12,9 @@ object Environment {
 
   implicit val ConfigDecoderEnvironment: ConfigDecoder[String, Environment] =
     ConfigDecoder[String].map(_.toLowerCase).collect("Environment") {
-      case "Local" => Local
-      case "Test"  => Test
-      case "Production" => Production
+      case "local" => Local
+      case "test"  => Test
+      case "production" => Production
     }
 
 }
