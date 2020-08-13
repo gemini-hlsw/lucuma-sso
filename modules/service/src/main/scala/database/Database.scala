@@ -52,7 +52,7 @@ object Database extends Codecs {
     new Database[F] {
 
       def createGuestUser: F[GuestUser] =
-        s.unique(CreateGuestUser)
+        s.unique(InsertGuestUser)
 
       def upsertOrPromoteUser(
         access:    OrcidAccess,
@@ -100,7 +100,7 @@ object Database extends Codecs {
         person:    OrcidPerson,
         role:      RoleRequest
       ): F[StandardUser] =
-        s.prepare(CreateStandardUser).use { pq =>
+        s.prepare(InsertStandardUser).use { pq =>
           for {
             userId <- pq.unique(access ~ person)
             _      <- addRole(userId, role, true) // we know there will be no conflict
@@ -111,30 +111,37 @@ object Database extends Codecs {
       // will raise a constraint failure if it's not a standard user id
       def addRole(user: User.Id, role: RoleRequest, makeActive: Boolean): F[StandardRole.Id] =
         for {
-          roleId <- s.prepare(AddRole).use(_.unique(user ~ role))
-          _      <- s.prepare(SetDefaultRole).use(_.execute(roleId ~ user)).whenA(makeActive)
+          roleId <- s.prepare(InsertRole).use(_.unique(user ~ role))
+          _      <- s.prepare(UpdateActiveRole).use(_.execute(roleId ~ user)).whenA(makeActive)
         } yield roleId
 
-      def readStandardUser(
+      def findStandardUser(
         id: User.Id
-      ): F[StandardUser] =
-        // need to read roles too!
-        s.prepare(ReadStandardUser).use { pq =>
+      ): F[Option[StandardUser]] =
+        s.prepare(SelectStandardUser).use { pq =>
           pq.stream(id, 64).compile.toList flatMap {
-            case Nil => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
+            case Nil => none[StandardUser].pure[F]
             case all @ ((roleId ~ user ~ _) :: _) =>
               val roles = all.map(_._2)
               roles.find(_.id === roleId) match {
-                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: no active role for user: $id"))
+                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
                 case Some(activeRole) =>
-                  user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId)).pure[F]
+                  (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
               }
           }
         }
 
+      def readStandardUser(
+        id: User.Id
+      ): F[StandardUser] =
+        findStandardUser(id).flatMap {
+          case None => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
+          case Some(u) => u.pure[F]
+        }
+
   }
 
-  val CreateGuestUser: Query[Void, GuestUser] =
+  val InsertGuestUser: Query[Void, GuestUser] =
     sql"""
       INSERT INTO gpp_user (user_type)
       VALUES ('guest')
@@ -165,7 +172,7 @@ object Database extends Codecs {
       }
 
 
-  val CreateStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
+  val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       INSERT INTO gpp_user (
         user_type,
@@ -199,8 +206,13 @@ object Database extends Codecs {
           person.primaryEmail.map(_.email)
       }
 
-  // N.B. role is null and otherRoles is Nil
-  val ReadStandardUser: Query[User.Id, StandardRole.Id ~ StandardUser ~ StandardRole] =
+
+  /**
+   * Query that reads a single standard user as a list of triples. The first two values are
+   * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
+   * role, from which the active and other roles must be selected.
+   */
+  val SelectStandardUser: Query[User.Id, StandardRole.Id ~ StandardUser ~ StandardRole] =
     sql"""
       SELECT u.user_id,
              u.role_id,
@@ -237,10 +249,10 @@ object Database extends Codecs {
         } ~
         (role_id ~ role_type ~ partner.opt).map {
           // we really need emap here
-          case id ~ RoleType.Admin ~ None => StandardRole.Admin(id)
-          case id ~ RoleType.Staff ~ None => StandardRole.Staff(id)
-          case id ~ RoleType.Ngo ~ Some(p) => StandardRole.Ngo(id, p)
-          case id ~ RoleType.Pi ~ None => StandardRole.Pi(id)
+          case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id)
+          case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id)
+          case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p)
+          case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id)
           case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
         }
       )
@@ -250,7 +262,7 @@ object Database extends Codecs {
       DELETE FROM gpp_user WHERE user_id = $user_id
     """.command
 
-  val AddRole: Query[User.Id ~RoleRequest, StandardRole.Id] =
+  val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
     sql"""
       INSERT INTO gpp_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})
@@ -259,7 +271,7 @@ object Database extends Codecs {
       .query(role_id)
       .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
 
-  val SetDefaultRole: Command[StandardRole.Id ~ User.Id] =
+  val UpdateActiveRole: Command[StandardRole.Id ~ User.Id] =
     sql"""
       UPDATE gpp_user
       SET    role_id = $role_id

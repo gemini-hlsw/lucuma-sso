@@ -35,6 +35,7 @@ lazy val client = project
       "com.pauldijou"    %% "jwt-circe"           % "4.2.0",
       "com.pauldijou"    %% "jwt-core"            % "4.2.0",
       "org.bouncycastle" %  "bcpg-jdk15on"        % "1.66",
+      "org.http4s"       %% "http4s-circe"        % "0.21.6",
     )
   )
 
@@ -46,7 +47,6 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "io.circe"         %% "circe-parser"        % "0.13.0",
       "is.cir"           %% "ciris"               % "1.1.1",
-      "org.http4s"       %% "http4s-circe"        % "0.21.6",
       "org.http4s"       %% "http4s-dsl"          % "0.21.6",
       "org.http4s"       %% "http4s-ember-client" % "0.21.6",
       "org.http4s"       %% "http4s-ember-server" % "0.21.6",

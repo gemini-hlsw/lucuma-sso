@@ -4,7 +4,6 @@ import cats._
 import cats.effect._
 import cats.implicits._
 import cats.Monad
-import gpp.sso.client._
 import gpp.sso.service.config._
 import gpp.sso.service.config.Environment._
 import gpp.sso.service.database.Database
@@ -20,7 +19,6 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
 import org.http4s.server.middleware.Logger
-import scala.concurrent.duration._
 import skunk._
 
 object Main extends IOApp {
@@ -30,10 +28,12 @@ object Main extends IOApp {
 
 object FMain {
 
+  // TODO: put this in the config
   val MaxConnections = 10
-  val JwtLifetime    = 10.minutes
 
-  def poolResource[F[_]: Concurrent: ContextShift: Trace](config: DatabaseConfig): Resource[F, Resource[F, Session[F]]] =
+  def poolResource[F[_]: Concurrent: ContextShift: Trace](
+    config: DatabaseConfig
+  ): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
       host     = config.host,
       port     = config.port,
@@ -97,18 +97,16 @@ object FMain {
     }
 
   def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer](config: Config) =
-    (poolResource[F](config.database), orcidServiceResource(config.orcid))
-      .mapN { (pool, orcid) =>
-        Routes[F](
-          pool       = pool.map(Database.fromSession(_)),
-          orcid      = orcid,
-          jwtDecoder = GppJwtDecoder.fromJwtDecoder(JwtDecoder.withPublicKey[F](config.publicKey)),
-          jwtEncoder = JwtEncoder.withPrivateKey[F](config.privateKey),
-          jwtFactory = JwtFactory.withTimeout(JwtLifetime),
-        )
-      }
-      .map(natchezMiddleware(_))
-      .map(loggingMiddleware(config.environment))
+    (poolResource[F](config.database), orcidServiceResource(config.orcid)).mapN { (pool, orcid) =>
+      Routes[F](
+        dbPool       = pool.map(Database.fromSession(_)),
+        orcid        = orcid,
+        cookieReader = config.cookieReader,
+        cookieWriter = config.cookieWriter,
+      )
+    }
+    .map(natchezMiddleware(_))
+    .map(loggingMiddleware(config.environment))
 
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {

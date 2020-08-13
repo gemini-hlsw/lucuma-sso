@@ -1,4 +1,4 @@
-package gpp.sso.service
+package gpp.sso.service.util
 
 import cats.ApplicativeError
 import cats.implicits._

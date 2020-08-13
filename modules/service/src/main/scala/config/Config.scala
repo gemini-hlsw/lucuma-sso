@@ -7,6 +7,12 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
+import gpp.sso.client.SsoCookieReader
+import gpp.sso.service.SsoCookieWriter
+import gpp.sso.client.util.JwtDecoder
+import gpp.sso.service.util.JwtEncoder
+import cats.MonadError
+import scala.concurrent.duration._
 
 final case class Config(
   environment: Environment,
@@ -16,7 +22,18 @@ final case class Config(
   privateKey:  PrivateKey,
   httpPort:    Int,
   // tracing: jaeger, honeycomb, log, no-op
-)
+) {
+
+  // TODO: parameterize
+  val JwtLifetime    = 10.minutes
+
+  def cookieReader[F[_]: MonadError[?[_], Throwable]] =
+    SsoCookieReader(JwtDecoder.withPublicKey[F](publicKey))
+
+  def cookieWriter[F[_]: Sync] =
+    SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime)
+
+}
 
 object Config {
 

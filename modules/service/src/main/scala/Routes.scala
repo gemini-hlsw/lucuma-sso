@@ -15,57 +15,32 @@ import org.http4s.implicits._
 
 object Routes {
 
-  // val MaxConnections = 10
-  // val JwtLifetime    = 10.minutes
-
   // This is the main event. Here are the routes we're serving.
-  def apply[F[_]: Sync](
-    pool:       Resource[F, Database[F]],
-    orcid:      OrcidService[F],
-    jwtDecoder: GppJwtDecoder[F],
-    jwtEncoder: JwtEncoder[F],
-    jwtFactory: JwtFactory[F]
+  def apply[F[_]: Sync: Timer](
+    dbPool:       Resource[F, Database[F]],
+    orcid:        OrcidService[F],
+    cookieReader: SsoCookieReader[F],
+    cookieWriter: SsoCookieWriter[F],
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
 
     // TODO: parameterize the host!
     val Stage2Uri = uri"https://sso.gpp.gemini.edu/auth/stage2"
-    val GppDomain = "gpp.gemini.edu"
 
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
-
-    // user from jwt, if any
-    def jwtUser(re: Request[F]): F[Option[User]] =
-      re.cookies
-        .find(_.name == Keys.JwtCookie)
-        .map(_.content)
-        .traverse(jwtDecoder.decode)
-
-    def jwtCookie(user: User): F[ResponseCookie] =
-      for {
-        clm <- jwtFactory.newClaimForUser(user)
-        jwt <- jwtEncoder.encode(clm)
-      } yield ResponseCookie(
-        name     = Keys.JwtCookie,
-        content  = jwt,
-        domain   = Some(GppDomain),
-        sameSite = SameSite.None,
-        secure   = true,
-        httpOnly = true,
-      )
 
     HttpRoutes.of[F] {
 
       // Create and return a new guest user
       // TODO: should we no-op if the user is already logged in (as anyone)?
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
-        pool.use { db =>
+        dbPool.use { db =>
           for {
             gu  <- db.createGuestUser
-            c   <- jwtCookie(gu)
+            c   <- cookieWriter.newCookie(gu)
             r   <- Created((gu:User).asJson.spaces2)
           } yield r.addCookie(c)
         }
@@ -73,7 +48,7 @@ object Routes {
       // Athentication Stage 1. If the user is logged in as a non-guest we're done, otherwise we
       // redirect to ORCID, and on success the user will be redirected back for stage 2.
       case r@(GET -> Root / "auth" / "stage1" :? RedirectUri(redirectUrl)) =>
-        jwtUser(r).flatMap {
+        cookieReader.findUser(r).flatMap {
 
             // If there is no JWT cookie or it's a guest, redirect to ORCID.
             case None | Some(GuestUser(_)) =>
@@ -89,18 +64,18 @@ object Routes {
 
       // Authentication Stage 2.
       case r@(GET -> Root / "auth" / "stage2" :? OrcidCode(code) +& RedirectUri(redir)) =>
-        pool.use { db =>
+        dbPool.use { db =>
           for {
             access   <- orcid.getAccessToken(Stage2Uri, code) // when this fails we get a 400 back so we need to handle that case somehow
             person   <- orcid.getPerson(access)
-            oguestId <- jwtUser(r).map(_.collect { case GuestUser(id) => id })
+            oguestId <- cookieReader.findUser(r).map(_.collect { case GuestUser(id) => id})
             pair     <- db.upsertOrPromoteUser(access, person, oguestId, RoleRequest.Pi)
             (user, chown) = pair
             _        <- oguestId.traverse { guestId =>
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            cookie   <- jwtCookie(user)
+            cookie   <- cookieWriter.newCookie(user)
             res      <- SeeOther(Location(redir), (user:User).asJson.spaces2)
           } yield res.addCookie(cookie)
         }

@@ -2,7 +2,6 @@ package gpp.sso.service
 
 import cats.effect._
 import cats.implicits._
-import gpp.sso.client.Keys
 import gpp.sso.model.User
 import gpp.sso.service.simulator.SsoSimulator
 import org.http4s._
@@ -13,7 +12,7 @@ import weaver._
 object NewUserSuite extends SimpleIOSuite with Fixture {
 
   simpleTest("Bob logs in via ORCID as a new GPP user.") {
-    SsoSimulator[IO].use { case (sim, sso, decoder) =>
+    SsoSimulator[IO].use { case (sim, sso, reader) =>
       val stage1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
@@ -31,7 +30,7 @@ object NewUserSuite extends SimpleIOSuite with Fixture {
           for {
 
             // cookie should exist and JWT body should be a StandardUser for Bob, as a PI
-            cu <- decoder.decode(res.cookies.find(_.name == Keys.JwtCookie).get.content)
+            cu <- reader.findUser(res).flatMap(_.toRight(new RuntimeException("No user.")).liftTo[IO])
             _  <- expectLoggedInAsPi(Bob, cu)
 
             // the response body should contain the exact same user!
