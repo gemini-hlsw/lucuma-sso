@@ -42,6 +42,7 @@ lazy val client = project
 lazy val service = project
   .in(file("modules/service"))
   .dependsOn(model.jvm, client)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "gpp-sso-service",
     libraryDependencies ++= Seq(
