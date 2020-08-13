@@ -53,7 +53,7 @@ object FMain {
   ): Resource[F, Server[F]] =
     EmberServerBuilder
       .default[F]
-      // .withHost("0.0.0.0")
+      .withHost("0.0.0.0")
       .withHttpApp(app)
       .withPort(port)
       .withOnError { t =>
