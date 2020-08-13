@@ -1,6 +1,6 @@
 package gpp.sso.service.orcid
 
-import io.circe.Decoder
+import io.circe._
 import io.circe.generic.semiauto._
 
 case class OrcidEmail(
@@ -13,5 +13,8 @@ object OrcidEmail {
 
   implicit def DecoderOrcidEmail: Decoder[OrcidEmail] =
     deriveDecoder
+
+  implicit def EncoderOrcidEmail: Encoder[OrcidEmail] =
+    deriveEncoder
 
 }

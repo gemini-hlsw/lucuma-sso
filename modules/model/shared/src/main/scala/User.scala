@@ -3,50 +3,115 @@
 
 package gpp.sso.model
 
+import cats.ApplicativeError
 import cats.implicits._
-import java.util.UUID
+import io.circe._
+import io.circe.syntax._
+import java.security.AccessControlException
 
-sealed abstract class User {
-  def uuid:        UUID
+/** A user has [at least] an identity and a role. */
+sealed trait User extends Product with Serializable {
+
+  def id:   User.Id
+  def role: Role
+
+  /**
+   * A name to display in interfaces. This is never empty, and respects users' formatting preferences
+   * as given in their ORCID record.
+   */
   def displayName: String
-  def currentRole: Role
+
+  /** Verity that this user has access greater than or equal to `access`. */
+  final def verifyAccess[F[_]](access: Access)(
+    implicit ev: ApplicativeError[F, Throwable]
+  ): F[Unit] =
+    ev.raiseError(new AccessControlException(s"$displayName (User ${id.value}, $role) does not have required access $access."))
+      .whenA(role.access < access)
+
 }
 
 object User {
 
-  final case class Guest(uuid: UUID) extends User {
-    val currentRole = Role.Guest
-    val otherRoles  = Nil
-    val displayName = "Anonymous Guest"
+  case class Id(value: Long) {
+    override def toString = this.show
+  }
+  object Id {
+    implicit val GidUserGid: Gid[Id] = Gid.instance('u', _.value, apply)
   }
 
-  final case class Authenticated(
-    uuid:         UUID,
-    orcid:        Orcid,
-    givenName:    Option[String],
-    familyName:   Option[String],
-    creditName:   Option[String],
-    primaryEmail: String,
-    currentRole:  AuthenticatedRole,
-    otherRoles:   List[AuthenticatedRole]
-  ) extends User {
+  implicit val EncoderUser: Encoder[User] =
+    Encoder.instance {
+      case GuestUser(id) =>
+        Json.obj(
+          "type" -> "guest".asJson,
+          "id"   -> id.asJson
+        )
+      case ServiceUser(id, name) =>
+        Json.obj(
+          "type" -> "service".asJson,
+          "id"   -> id.asJson,
+          "name" -> name.asJson,
+        )
+      case StandardUser(id, role, otherRoles, profile) =>
+        Json.obj(
+          "type"       -> "standard".asJson,
+          "id"         -> id.asJson,
+          "role"       -> role.asJson,
+          "otherRoles" -> otherRoles.asJson,
+          "profile"    -> profile.asJson,
+        )
 
-    /** Given name followed by family name, if both are known. */
-    def givenAndFamilyNames: Option[String] =
-      (givenName, familyName).mapN((g, f) => s"$g $f")
+    }
 
-    /**
-     * Display name, which is always defined: credit name if known; otherwise given name followed by
-     * family name if both are known; otherwise given or family name if either is known; otherwise
-     * the ORCID iD.
-     */
-    def displayName: String = (
-      creditName          <+>
-      givenAndFamilyNames <+>
-      givenName           <+>
-      familyName
-    ).getOrElse(orcid.value)
+  implicit val DecodeUser: Decoder[User] = hc =>
+    hc.downField("type").as[String].flatMap {
 
-  }
+      case "guest" =>
+        for {
+          id <- hc.downField("id").as[User.Id]
+        } yield GuestUser(id)
 
+      case "standard" =>
+        for {
+          id <- hc.downField("id").as[User.Id]
+          role <- hc.downField("role").as[StandardRole]
+          otherRoles <- hc.downField("otherRoles").as[List[StandardRole]]
+          profile <- hc.downField("profile").as[OrcidProfile]
+        } yield StandardUser(id, role, otherRoles, profile)
+
+      case tag  =>
+        Left(DecodingFailure(s"Unknown user type: $tag", Nil))
+
+    }
+
+}
+
+
+/**
+ * Guest users have the lowest access and no identifying information.
+ */
+final case class GuestUser(id: User.Id) extends User {
+  val role = GuestRole
+  val displayName = "Guest User"
+}
+
+/**
+ * Service users have the highest access and represent services themselves.
+ */
+final case class ServiceUser(id: User.Id, name: String) extends User {
+  val role = ServiceRole(name)
+  val displayName = s"Service User ($name)"
+}
+
+/**
+ * Standard users are authenticated and have a profile, as well as a set of other roles they can
+ * assume.
+ */
+final case class StandardUser(
+  id:         User.Id,
+  role:       StandardRole,
+  otherRoles: List[StandardRole],
+  profile:    OrcidProfile
+) extends User {
+  val displayName = profile.displayName
 }

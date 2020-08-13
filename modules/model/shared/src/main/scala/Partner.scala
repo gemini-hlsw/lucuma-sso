@@ -4,7 +4,7 @@
 package gpp.sso.model
 
 import gem.util.Enumerated
-import gem.util.Display
+import io.circe._
 
 sealed abstract class Partner(
   val tag:         String,
@@ -29,10 +29,10 @@ case object Partner {
       def tag(a: Partner): String = a.tag
     }
 
-  implicit val DisplayPartner: Display[Partner] =
-    new Display[Partner] {
-      def name(a: Partner): String = a.name
-      def elaboration(a: Partner): Option[String] = None
-    }
+  implicit val EncoderPartner: Encoder[Partner] =
+    Encoder[String].contramap(EnumeratedPartner.tag)
+
+  implicit val DecoderPartner: Decoder[Partner] =
+    Decoder[String].emap(s => EnumeratedPartner.fromTag(s).toRight(s"Invalid partner: $s"))
 
 }

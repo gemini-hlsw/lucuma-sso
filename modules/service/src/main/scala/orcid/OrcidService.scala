@@ -37,6 +37,7 @@ trait OrcidService[F[_]] {
    * Retrieve information from the `person` record associated with the given `OrcidAccess`.
    */
   def getPerson(access: OrcidAccess): F[OrcidPerson]
+
 }
 
 object OrcidService {
