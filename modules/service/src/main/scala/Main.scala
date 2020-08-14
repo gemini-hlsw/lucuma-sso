@@ -20,6 +20,7 @@ import org.http4s.implicits._
 import org.http4s.server._
 import org.http4s.server.middleware.Logger
 import skunk._
+import org.flywaydb.core.Flyway
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
@@ -38,11 +39,22 @@ object FMain {
       host     = config.host,
       port     = config.port,
       user     = config.user,
+      password = config.password,
       database = config.database,
+      ssl      = SSL.Trusted.withFallback(true),
       max      = MaxConnections,
       strategy = Strategy.SearchPath,
-      // debug = true
+      // debug    = true
     )
+
+  // Run flyway migrations
+  def migrate[F[_]: Sync](config: DatabaseConfig): F[Int] =
+    Sync[F].delay {
+      val flyway = new Flyway()
+      flyway.setDataSource(config.jdbcUrl, config.user, config.password.orEmpty);
+      flyway.setBaselineOnMigrate(true)
+      flyway.migrate()
+    }
 
   def app[F[_]: Monad](routes: HttpRoutes[F]): HttpApp[F] =
     Router("/" -> routes).orNotFound
@@ -111,6 +123,7 @@ object FMain {
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {
       c  <- Resource.liftF(Config.config.load[F])
+      _  <- Resource.liftF(migrate[F](c.database))
       ep <- entryPoint
       rs <- ep.liftR(routesResource(c))
       ap  = app(rs)

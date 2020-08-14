@@ -10,7 +10,13 @@ case class DatabaseConfig(
   database: String,
   user: String,
   password: Option[String]
-)
+) {
+
+  // We use Flyway (which uses JDBC) to perform schema migrations. Savor the irony.
+  def jdbcUrl: String =
+    s"jdbc:postgresql://${host}:${port}/${database}?sslmode=require"
+
+}
 
 object DatabaseConfig {
 
@@ -18,8 +24,8 @@ object DatabaseConfig {
     host     = "localhost",
     port     = 5432,
     database = "gpp-sso",
-    user     = "postgres",
-    password = None,
+    user     = "jimmy",
+    password = Some("banana"),
   )
 
   // postgres://username:password@host:port/database name
