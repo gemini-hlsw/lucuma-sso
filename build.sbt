@@ -54,6 +54,11 @@ lazy val service = project
       "org.slf4j"        %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"     %% "natchez-jaeger"      % "0.0.12",
       "org.tpolecat"     %% "skunk-core"          % "0.0.15",
+      "co.fs2"           %% "fs2-core"            % "2.5.0-SNAPSHOT", // TODO: remove once skunk is updated
+      "co.fs2"           %% "fs2-io"              % "2.5.0-SNAPSHOT", // TODO: remove once skunk is updated
+      // We use JDBC to do migrations
+      "org.flywaydb"     % "flyway-core"          % "5.0.7",
+      "org.postgresql"   % "postgresql"           % "42.2.14",
     ),
 
   )
