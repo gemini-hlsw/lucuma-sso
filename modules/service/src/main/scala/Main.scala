@@ -97,8 +97,8 @@ object FMain {
         logBody    = env == Local,
         redactHeadersWhen = { h =>
           env match {
-            case Local             => false
-            case Test | Production => Headers.SensitiveHeaders.contains(h)
+            case Local                => false
+            case Staging | Production => Headers.SensitiveHeaders.contains(h)
           }
         }
       )
