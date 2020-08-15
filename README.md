@@ -52,15 +52,15 @@ When the database is **created** the container will run all the migrations in `m
 
 ### Connecting to the Database
 
-You can connect to youe dev database with locally-installed tools like `pgAdmin` and `psql` as follows. Note that it's important to explicitly specify `localhost` as the host, for example `psql -h localhost -d gpp-sso -U postgres`.
+You can connect to youe dev database with locally-installed tools like `pgAdmin` and `psql` as follows. Note that it's important to explicitly specify `localhost` as the host, for example `psql -h localhost -d gpp-sso -U jimmy`.
 
 | Parameter | Value       |
 |-----------|-------------|
 | host      | `localhost` |
 | port      | `5432`      |
 | database  | `gpp-sso`   |
-| user      | `postgres`  |
-| password  | (none)      |
+| user      | `jimmy`     |
+| password  | `banana`    |
 
 
 

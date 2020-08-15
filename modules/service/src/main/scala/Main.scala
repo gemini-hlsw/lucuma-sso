@@ -120,14 +120,26 @@ object FMain {
     .map(natchezMiddleware(_))
     .map(loggingMiddleware(config.environment))
 
+  def banner[F[_]: Sync](config: Config): F[Unit] =
+    Sync[F].delay{
+      // https://manytools.org/hacker-tools/ascii-banner/ .. font here is Calvin S
+      Console.err.println(
+        s"""|╔═╗╔═╗╔═╗   ╔═╗╔═╗╔═╗
+            |║ ╦╠═╝╠═╝───╚═╗╚═╗║ ║
+            |╚═╝╩  ╩     ╚═╝╚═╝╚═╝
+            |v${BuildInfo.version} (${config.environment})
+            |""".stripMargin
+      )
+    }
+
   def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
     for {
       c  <- Resource.liftF(Config.config.load[F])
+      _  <- Resource.liftF(banner[F](c))
       _  <- Resource.liftF(migrate[F](c.database))
       ep <- entryPoint
       rs <- ep.liftR(routesResource(c))
       ap  = app(rs)
-      _  <- Resource.liftF(Sync[F].delay(println(s"Starting Ember on ${c.httpPort}.")))
       _  <- server(c.httpPort, ap)
     } yield ExitCode.Success
 

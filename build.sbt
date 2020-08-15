@@ -43,8 +43,11 @@ lazy val service = project
   .in(file("modules/service"))
   .dependsOn(model.jvm, client)
   .enablePlugins(JavaAppPackaging)
+  .enablePlugins(BuildInfoPlugin)
   .settings(
     name := "gpp-sso-service",
+    buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion),
+    buildInfoPackage := "gpp.sso.service",
     libraryDependencies ++= Seq(
       "io.circe"         %% "circe-parser"        % "0.13.0",
       "is.cir"           %% "ciris"               % "1.1.1",
@@ -53,9 +56,7 @@ lazy val service = project
       "org.http4s"       %% "http4s-ember-server" % "0.21.6",
       "org.slf4j"        %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"     %% "natchez-jaeger"      % "0.0.12",
-      "org.tpolecat"     %% "skunk-core"          % "0.0.15",
-      "co.fs2"           %% "fs2-core"            % "2.5.0-SNAPSHOT", // TODO: remove once skunk is updated
-      "co.fs2"           %% "fs2-io"              % "2.5.0-SNAPSHOT", // TODO: remove once skunk is updated
+      "org.tpolecat"     %% "skunk-core"          % "0.0.17",
       // We use JDBC to do migrations
       "org.flywaydb"     % "flyway-core"          % "5.0.7",
       "org.postgresql"   % "postgresql"           % "42.2.14",
