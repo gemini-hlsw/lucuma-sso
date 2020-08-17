@@ -3,10 +3,10 @@ import sbtcrossproject.CrossType
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/gpp-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-framework"  % "0.4.2-RC1" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.4.2-RC1" % Test,
+    "com.disneystreaming" %% "weaver-framework"  % "0.4.3" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.4.3" % Test,
   ),
   testFrameworks += new TestFramework("weaver.framework.TestFramework"),
 ) ++ gspPublishSettings)
@@ -19,7 +19,7 @@ lazy val model = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "gpp-sso-model",
     libraryDependencies ++= Seq(
-      "edu.gemini" %%% "gsp-core-model" % "0.1.7",
+      "edu.gemini" %%% "gsp-core-model" % "0.2.8",
       "io.circe"   %%% "circe-generic"  % "0.13.0",
     )
   )
@@ -32,8 +32,8 @@ lazy val client = project
   .settings(
     name := "gpp-sso-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"    %% "jwt-circe"           % "4.2.0",
-      "com.pauldijou"    %% "jwt-core"            % "4.2.0",
+      "com.pauldijou"    %% "jwt-circe"           % "4.3.0",
+      "com.pauldijou"    %% "jwt-core"            % "4.3.0",
       "org.bouncycastle" %  "bcpg-jdk15on"        % "1.66",
       "org.http4s"       %% "http4s-circe"        % "0.21.6",
     )
@@ -45,21 +45,22 @@ lazy val service = project
   .enablePlugins(JavaAppPackaging)
   .enablePlugins(BuildInfoPlugin)
   .settings(
+    publish / skip := true,
     name := "gpp-sso-service",
     buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion),
     buildInfoPackage := "gpp.sso.service",
     libraryDependencies ++= Seq(
       "io.circe"         %% "circe-parser"        % "0.13.0",
-      "is.cir"           %% "ciris"               % "1.1.1",
-      "org.http4s"       %% "http4s-dsl"          % "0.21.6",
-      "org.http4s"       %% "http4s-ember-client" % "0.21.6",
-      "org.http4s"       %% "http4s-ember-server" % "0.21.6",
+      "is.cir"           %% "ciris"               % "1.1.2",
+      "org.http4s"       %% "http4s-dsl"          % "0.21.7",
+      "org.http4s"       %% "http4s-ember-client" % "0.21.7",
+      "org.http4s"       %% "http4s-ember-server" % "0.21.7",
       "org.slf4j"        %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"     %% "natchez-jaeger"      % "0.0.12",
       "org.tpolecat"     %% "skunk-core"          % "0.0.17",
       // We use JDBC to do migrations
       "org.flywaydb"     % "flyway-core"          % "6.5.4",
-      "org.postgresql"   % "postgresql"           % "42.2.14",
+      "org.postgresql"   % "postgresql"           % "42.2.15",
     ),
 
   )
