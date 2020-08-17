@@ -43,12 +43,9 @@ lazy val service = project
   .in(file("modules/service"))
   .dependsOn(model.jvm, client)
   .enablePlugins(JavaAppPackaging)
-  .enablePlugins(BuildInfoPlugin)
   .settings(
     publish / skip := true,
     name := "gpp-sso-service",
-    buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion),
-    buildInfoPackage := "gpp.sso.service",
     libraryDependencies ++= Seq(
       "io.circe"         %% "circe-parser"        % "0.13.0",
       "is.cir"           %% "ciris"               % "1.1.2",
