@@ -3,7 +3,6 @@
 
 package gpp.sso.service
 
-import cats._
 import cats.effect._
 import cats.implicits._
 import cats.Monad
