@@ -131,7 +131,7 @@ object FMain {
         s"""|╔═╗╔═╗╔═╗   ╔═╗╔═╗╔═╗
             |║ ╦╠═╝╠═╝───╚═╗╚═╗║ ║
             |╚═╝╩  ╩     ╚═╝╚═╝╚═╝
-            |v${BuildInfo.version} (${config.environment})
+            |${config.environment} Environment
             |""".stripMargin
       )
     }
