@@ -50,10 +50,12 @@ object FMain {
   // Run flyway migrations
   def migrate[F[_]: Sync](config: DatabaseConfig): F[Int] =
     Sync[F].delay {
-      val flyway = new Flyway()
-      flyway.setDataSource(config.jdbcUrl, config.user, config.password.orEmpty);
-      flyway.setBaselineOnMigrate(true)
-      flyway.migrate()
+      Flyway
+        .configure()
+        .dataSource(config.jdbcUrl, config.user, config.password.orEmpty)
+        .baselineOnMigrate(true)
+        .load()
+        .migrate()
     }
 
   def app[F[_]: Monad](routes: HttpRoutes[F]): HttpApp[F] =
