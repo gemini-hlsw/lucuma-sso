@@ -75,6 +75,7 @@ object FMain {
       .withOnError { t =>
         // for now let's include the stacktrace in the message body
         val sw = new StringWriter
+        t.printStackTrace()
         t.printStackTrace(new PrintWriter(sw))
         Response[F](
           status = Status.InternalServerError,
@@ -108,17 +109,22 @@ object FMain {
       )
 
   def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift](config: OrcidConfig) =
-    EmberClientBuilder.default[F].build.map { client =>
+    EmberClientBuilder.default[F].build.map(org.http4s.client.middleware.Logger[F](
+      logHeaders = true,
+      logBody = true,
+    )).map { client =>
       OrcidService(config.clientId, config.clientSecret, client)
     }
 
-  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer](config: Config) =
+  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer](config: Config): Resource[F, HttpRoutes[F]] =
     (poolResource[F](config.database), orcidServiceResource(config.orcid)).mapN { (pool, orcid) =>
       Routes[F](
         dbPool       = pool.map(Database.fromSession(_)),
         orcid        = orcid,
         cookieReader = config.cookieReader,
         cookieWriter = config.cookieWriter,
+        scheme       = config.scheme,
+        authority    = config.authority,
       )
     }
     .map(natchezMiddleware(_))
@@ -128,9 +134,9 @@ object FMain {
     Sync[F].delay{
       // https://manytools.org/hacker-tools/ascii-banner/ .. font here is Calvin S
       Console.err.println(
-        s"""|╔═╗╔═╗╔═╗   ╔═╗╔═╗╔═╗
-            |║ ╦╠═╝╠═╝───╚═╗╚═╗║ ║
-            |╚═╝╩  ╩     ╚═╝╚═╝╚═╝
+        s"""|╦  ╦ ╦╔═╗╦ ╦╔╦╗╔═╗   ╔═╗╔═╗╔═╗
+            |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
+            |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
             |${config.environment} Environment
             |""".stripMargin
       )

@@ -14,7 +14,7 @@ import io.circe.Json
 import io.circe.syntax._
 import scala.concurrent.duration.FiniteDuration
 import gpp.sso.service.util.JwtEncoder
-import org.http4s.SameSite
+import org.http4s.HttpDate
 
 trait SsoCookieWriter[F[_]] {
 
@@ -23,8 +23,9 @@ trait SsoCookieWriter[F[_]] {
   def renewedClaim(claim: JwtClaim): F[JwtClaim]
 
   // Cookies
-  def newCookie(claim: JwtClaim): F[ResponseCookie]
-  def newCookie(user: User): F[ResponseCookie]
+  def newCookie(claim: JwtClaim, secure: Boolean): F[ResponseCookie]
+  def newCookie(user: User, secure: Boolean): F[ResponseCookie]
+  def removeCookie: F[ResponseCookie]
 
 }
 
@@ -32,11 +33,14 @@ object SsoCookieWriter {
 
   private val JwtCookie = SsoCookieReader.JwtCookie
   private val GppUser   = SsoCookieReader.GppUser
-  private val GppDomain = "gpp.gemini.edu"
+
+  val HttpOnly = true // JS can't see the cookie
+  val SameSite = org.http4s.SameSite.None // We don't care
 
   def apply[F[_]: Sync](
     jwtEncoder: JwtEncoder[F],
     jwtTimeout: FiniteDuration,
+    domain:     Option[String]
   ): SsoCookieWriter[F] =
     new SsoCookieWriter[F] {
 
@@ -69,20 +73,34 @@ object SsoCookieWriter {
           )
         }
 
-      def newCookie(clm: JwtClaim): F[ResponseCookie] =
+      def newCookie(clm: JwtClaim, secure: Boolean): F[ResponseCookie] =
         jwtEncoder.encode(clm).map { jwt =>
           ResponseCookie(
             name     = JwtCookie,
             content  = jwt,
-            domain   = Some(GppDomain),
-            sameSite = SameSite.None,
-            secure   = true,
-            httpOnly = true,
+            domain   = domain,
+            sameSite = SameSite,
+            secure   = secure,
+            httpOnly = HttpOnly,
+            path = Some("/"),
           )
         }
 
-      def newCookie(user: User): F[ResponseCookie] =
-        newClaim(user).flatMap(newCookie)
+      def removeCookie: F[ResponseCookie] =
+        ResponseCookie(
+          name     = JwtCookie,
+          content  = "",
+          domain   = domain,
+          sameSite = SameSite,
+          secure   = false,
+          httpOnly = HttpOnly,
+          path = Some("/"),
+          expires = Some(HttpDate.Epoch),
+          maxAge = Some(0L)
+        ).pure[F]
+
+      def newCookie(user: User, secure: Boolean): F[ResponseCookie] =
+        newClaim(user).flatMap(newCookie(_, secure))
 
     }
 

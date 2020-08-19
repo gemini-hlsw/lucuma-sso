@@ -11,6 +11,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
 import org.http4s.implicits._
 import org.http4s.headers.Authorization
+import orcid.gpp.sso.service.orcid.OrcidException
 
 trait OrcidService[F[_]] {
 
@@ -61,19 +62,18 @@ object OrcidService {
 
       def authenticationUri(redirect: Uri, state: Option[String]): F[Uri] =
         uri"https://orcid.org/oauth/authorize"
-          .withQueryParams(Map(
+          .withQueryParams(
+            state.foldMap(s => Map(
+              "state"         -> s
+            )) ++ Map(
             "client_id"     -> orcidClientId,
             "response_type" -> "code",
-            "client_secret" -> orcidClientSecret,
             "scope"         -> "/authenticate",
-            "grant_type"    -> "authorization_code",
             "redirect_uri"  -> redirect.toString,
-          ) ++ state.foldMap(s => Map(
-            "state"         -> s
-          ))).pure[F]
+          )).pure[F]
 
       def getAccessToken(redirect: Uri, authenticationCode: String): F[OrcidAccess] =
-        httpClient.expect(
+        httpClient.expectOr(
           Method.POST(
             UrlForm(
               "client_id"     -> orcidClientId,
@@ -85,16 +85,16 @@ object OrcidService {
             uri"https://orcid.org/oauth/token",
             Accept(MediaType.application.json)
           )
-        )
+        )(_.as[OrcidException].widen)
 
       def getPerson(access: OrcidAccess): F[OrcidPerson] =
-        httpClient.expect[OrcidPerson](
+        httpClient.expectOr[OrcidPerson](
           Method.GET(
             Uri.unsafeFromString(s"https://pub.orcid.org/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
             Accept(MediaType.application.json),
             Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
           )
-        )
+        )(_.as[OrcidException].widen)
 
     }
 

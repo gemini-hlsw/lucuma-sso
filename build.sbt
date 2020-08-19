@@ -35,7 +35,7 @@ lazy val client = project
       "com.pauldijou"    %% "jwt-circe"           % "4.3.0",
       "com.pauldijou"    %% "jwt-core"            % "4.3.0",
       "org.bouncycastle" %  "bcpg-jdk15on"        % "1.66",
-      "org.http4s"       %% "http4s-circe"        % "0.21.6",
+      "org.http4s"       %% "http4s-circe"        % "0.21.6+51-e21622b2-SNAPSHOT",
     )
   )
 
@@ -47,17 +47,18 @@ lazy val service = project
     publish / skip := true,
     name := "gpp-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"         %% "circe-parser"        % "0.13.0",
-      "is.cir"           %% "ciris"               % "1.1.2",
-      "org.http4s"       %% "http4s-dsl"          % "0.21.7",
-      "org.http4s"       %% "http4s-ember-client" % "0.21.7",
-      "org.http4s"       %% "http4s-ember-server" % "0.21.7",
-      "org.slf4j"        %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat"     %% "natchez-jaeger"      % "0.0.12",
-      "org.tpolecat"     %% "skunk-core"          % "0.0.17",
+      "io.circe"               %% "circe-parser"        % "0.13.0",
+      "is.cir"                 %% "ciris"               % "1.1.2",
+      "org.http4s"             %% "http4s-dsl"          % "0.21.6+51-e21622b2-SNAPSHOT",
+      "org.http4s"             %% "http4s-ember-client" % "0.21.6+51-e21622b2-SNAPSHOT",
+      "org.http4s"             %% "http4s-ember-server" % "0.21.6+51-e21622b2-SNAPSHOT",
+      "org.http4s"             %% "http4s-scala-xml"    % "0.21.6+51-e21622b2-SNAPSHOT",
+      "org.slf4j"              %  "slf4j-simple"        % "1.7.30",
+      "org.tpolecat"           %% "natchez-jaeger"      % "0.0.12",
+      "org.tpolecat"           %% "skunk-core"          % "0.0.17",
       // We use JDBC to do migrations
-      "org.flywaydb"     % "flyway-core"          % "6.5.4",
-      "org.postgresql"   % "postgresql"           % "42.2.15",
+      "org.flywaydb"           % "flyway-core"          % "6.5.4",
+      "org.postgresql"         % "postgresql"           % "42.2.15",
     ),
 
   )

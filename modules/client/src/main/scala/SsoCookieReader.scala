@@ -14,6 +14,7 @@ import pdi.jwt.JwtClaim
 import org.http4s.RequestCookie
 import org.http4s.Response
 import org.http4s.ResponseCookie
+import pdi.jwt.exceptions.JwtException
 
 trait SsoCookieReader[F[_]] {
 
@@ -26,6 +27,10 @@ trait SsoCookieReader[F[_]] {
   def findCookie(req: Request[F]): F[Option[RequestCookie]]
   def findClaim(req: Request[F]): F[Option[JwtClaim]]
   def findUser(req: Request[F]): F[Option[User]]
+
+  // request, with more info
+  def attemptFindClaim(req: Request[F]): F[Option[Either[JwtException, JwtClaim]]]
+  def attemptFindUser(req: Request[F]): F[Option[Either[JwtException, User]]]
 
   // response
   def findCookie(res: Response[F]): F[Option[ResponseCookie]]
@@ -42,12 +47,25 @@ object SsoCookieReader {
   def apply[F[_]: MonadError[?[_], Throwable]](jwtDecoder: JwtDecoder[F]): SsoCookieReader[F] =
     new SsoCookieReader[F] {
 
+      def attemptFindClaim(req: Request[F]): F[Option[Either[JwtException, JwtClaim]]] =
+        findCookie(req).flatMap {
+          case None    => none.pure[F]
+          case Some(c) => jwtDecoder.attemptDecode(c.content).map(_.some)
+        }
+
+      def attemptFindUser(req: Request[F]): F[Option[Either[JwtException, User]]] =
+        attemptFindClaim(req).flatMap {
+          case None           => none.pure[F]
+          case Some(Left(e))  => e.asLeft.some.pure[F]
+          case Some(Right(c)) => decodeUser(c).map(u => u.asRight.some)
+        }
+
       def findCookie(req: Request[F]): F[Option[RequestCookie]]  =
         req.cookies.find(_.name == JwtCookie).pure[F]
 
       def findClaim(req: Request[F]): F[Option[JwtClaim]] =
         OptionT(findCookie(req))
-          .semiflatMap(c => jwtDecoder.decode(c.content))
+          .flatMapF(c => jwtDecoder.decodeOption(c.content))
           .value
 
       def findUser(req: Request[F]): F[Option[User]] =

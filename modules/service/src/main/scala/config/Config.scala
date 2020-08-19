@@ -16,16 +16,26 @@ import gpp.sso.client.util.JwtDecoder
 import gpp.sso.service.util.JwtEncoder
 import cats.MonadError
 import scala.concurrent.duration._
+import org.http4s.Uri
+import org.http4s.Uri.RegName
 
 final case class Config(
-  environment: Environment,
-  database:    DatabaseConfig,
-  orcid:       OrcidConfig,
-  publicKey:   PublicKey,
-  privateKey:  PrivateKey,
-  httpPort:    Int,
-  // tracing: jaeger, honeycomb, log, no-op
+  environment:  Environment,
+  database:     DatabaseConfig,
+  orcid:        OrcidConfig,
+  publicKey:    PublicKey,
+  privateKey:   PrivateKey,
+  httpPort:     Int,
+  cookieDomain: Option[String],
+  scheme:       Uri.Scheme,
+  hostname:     String,
 ) {
+
+  val authority: Uri.Authority =
+    Uri.Authority(
+      host = RegName(hostname),
+      port = Some(httpPort)
+    )
 
   // TODO: parameterize
   val JwtLifetime    = 10.minutes
@@ -34,7 +44,7 @@ final case class Config(
     SsoCookieReader(JwtDecoder.withPublicKey[F](publicKey))
 
   def cookieWriter[F[_]: Sync] =
-    SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime)
+    SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime, cookieDomain)
 
 }
 
@@ -57,7 +67,10 @@ object Config {
       OrcidConfig.Local,
       keyPair.getPublic,
       keyPair.getPrivate,
-      8080
+      8080,
+      None,
+      Uri.Scheme.http,
+      "localhost",
     )
 
   }
@@ -73,12 +86,14 @@ object Config {
         DatabaseConfig.config,
         OrcidConfig.config,
         env("GPG_SSO_PUBLIC_KEY").as[PublicKey],
-        env("GPG_SSO_PRIVATE_KEY"),
-        env("GPG_SSO_PASSPHRASE").as[String],
-      ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass) =>
+        env("GPG_SSO_PRIVATE_KEY").redacted,
+        env("GPG_SSO_PASSPHRASE").redacted,
+        env("GPG_SSO_COOKIE_DOMAIN").option,
+        env("GPG_SSO_HOSTNAME"),
+      ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
         for {
           skey <- default(text).as[PrivateKey](privateKey(pass))
-        } yield Config(envi, dbc, orc, pkey, skey, port)
+        } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
       }
 
     }
