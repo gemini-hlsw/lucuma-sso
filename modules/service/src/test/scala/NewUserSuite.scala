@@ -7,9 +7,8 @@ import gpp.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.Location
-import weaver._
 
-object NewUserSuite extends SimpleIOSuite with Fixture {
+object NewUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Bob logs in via ORCID as a new GPP user.") {
     SsoSimulator[IO].use { case (sim, sso, reader) =>
@@ -18,7 +17,7 @@ object NewUserSuite extends SimpleIOSuite with Fixture {
 
         // stage1 auth should redirect
         res <- sso.get(stage1)(_.pure[IO])
-        _   <- expect(res.status == Status.SeeOther).failFast
+        _   <- expect(res.status == Status.Found).failFast
         loc  = res.headers.get(Location).map(_.uri)
         _   <- expect(loc.isDefined).failFast
 

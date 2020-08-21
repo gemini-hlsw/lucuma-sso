@@ -70,7 +70,7 @@ object HomePage {
               {
                 u match {
                   case GuestUser(_) =>
-                    <li>Authenticate via ORCID.</li>
+                    <li><a href={ s"/auth/stage1?state=${URLEncoder.encode("http://localhost:8080/", "UTF-8")}" }>Authenticate via ORCID.</a></li>
                   case ServiceUser(_, _) =>
                   case StandardUser(_, _, _, p) =>
                     <li>
@@ -80,6 +80,7 @@ object HomePage {
                     </li>
                 }
               }
+              <li><a href="/api/v1/whoami">whoami</a></li>
               <li><a href="javascript:logout()">Log out.</a></li>
             </ul>
 

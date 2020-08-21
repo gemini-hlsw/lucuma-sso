@@ -3,7 +3,7 @@
 
 package gpp.sso.client.util
 
-import cats.MonadError
+import cats._
 import cats.implicits._
 import java.security.PublicKey
 import pdi.jwt.{ Jwt, JwtClaim }
@@ -26,7 +26,7 @@ import pdi.jwt.exceptions.JwtNonStringSetOrStringException
 import pdi.jwt.exceptions.JwtNonNumberException
 
 /** Service for a JWT client that needs to verify tokens. */
-trait JwtDecoder[F[_]] {
+trait JwtDecoder[F[_]] { outer =>
 
   /** Attept to decode the given token. */
   def attemptDecode(token: String): F[Either[JwtException, JwtClaim]]
@@ -84,6 +84,5 @@ object JwtDecoder {
         }
 
     }
-
 
 }

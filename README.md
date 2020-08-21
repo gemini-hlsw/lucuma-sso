@@ -46,9 +46,12 @@ Use `docker-compose` to wrangle a dev database. It's way easier than dealing wit
 | `docker-compose stop`                                                 | stop the test database                       |
 | `docker-compose down`                                                 | destroy the database                         |
 
+
 ### Working on the Schema
 
-When the database is **created** the container will run all the migrations in `modules/service/src/main/resources/migration/` in alphabetic order. This means you need to do `down` and then `up` if you make a schema change. It's helpful to run `up` in the foreground (i.e., without `-d`) when you're messing with the schema because an error will cause the database to fail to come up (in which case you need to do `down` and then `up` again).
+When the database is **created** the container will run all the migrations in `modules/service/src/main/resources/db/migration/` in alphabetic order. This means you need to do `down` and then `up` if you make a schema change. It's helpful to run `up` in the foreground (i.e., without `-d`) when you're messing with the schema because an error will cause the database to fail to come up (in which case you need to do `down` and then `up` again).
+
+The app runs these migrations on startup as well, so you don't need to do the down/up dance if you're running the app.
 
 ### Connecting to the Database
 
@@ -62,7 +65,29 @@ You can connect to youe dev database with locally-installed tools like `pgAdmin`
 | user      | `jimmy`     |
 | password  | `banana`    |
 
+### Setting up ORCID Credentials
 
 
+If you try to run `Main` you will find that it barfs because it needs some ORCID configuration. To set this up, sign into [ORCID](http://orcid.org) as yourself, go to **Developer Tools** under the name menu and create an API key with redirect URL `http://localhost:8080/auth/stage2`. This will allow you to test ORCID authentication locally.
 
+You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` either as environment variables or system properties when you run `Main`. To do this in VS-Code you can hit F5 and then set up a run configuration as follows after which hitting F5 again should run SSO locally. Output will be in the Debug Console window.
 
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type"       : "scala",
+      "request"    : "launch",
+      "name"       : "Lucuma SSO",
+      "mainClass"  : "gpp.sso.service.Main",
+      "args"       : [],
+      "buildTarget": "service",
+      "jvmOptions" : [
+        "-DGPP_ORCID_CLIENT_ID=...",
+        "-DGPP_ORCID_CLIENT_SECRET=..."
+      ],
+    }
+  ]
+}
+```

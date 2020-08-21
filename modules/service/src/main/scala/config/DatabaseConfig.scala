@@ -52,7 +52,7 @@ object DatabaseConfig {
     ConfigDecoder[URI].mapOption("DatabaseConfig")(fromHerokuUri)
 
   val config: ConfigValue[DatabaseConfig] =
-    env("DATABASE_URL").as[URI].as[DatabaseConfig]
+    envOrProp("DATABASE_URL").as[URI].as[DatabaseConfig]
 
 
 }

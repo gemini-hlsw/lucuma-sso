@@ -35,7 +35,7 @@ object SsoCookieWriter {
   private val GppUser   = SsoCookieReader.GppUser
 
   val HttpOnly = true // JS can't see the cookie
-  val SameSite = org.http4s.SameSite.None // We don't care
+  val SameSite = org.http4s.SameSite.Lax // We don't care
 
   def apply[F[_]: Sync](
     jwtEncoder: JwtEncoder[F],
@@ -93,7 +93,7 @@ object SsoCookieWriter {
           domain   = domain,
           sameSite = SameSite,
           secure   = false,
-          httpOnly = HttpOnly,
+          httpOnly = false,
           path = Some("/"),
           expires = Some(HttpDate.Epoch),
           maxAge = Some(0L)

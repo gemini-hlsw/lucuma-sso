@@ -7,9 +7,8 @@ import gpp.sso.service.simulator.SsoSimulator
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.Location
 import org.http4s.Request
-import weaver._
 
-object ExistingUserSuite extends SimpleIOSuite with Fixture {
+object ExistingUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Bob logs in via ORCID as a new GPP user, then logs in again.") {
     SsoSimulator[IO].use { case (sim, sso, _) =>

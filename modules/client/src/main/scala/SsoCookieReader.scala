@@ -16,7 +16,7 @@ import org.http4s.Response
 import org.http4s.ResponseCookie
 import pdi.jwt.exceptions.JwtException
 
-trait SsoCookieReader[F[_]] {
+trait SsoCookieReader[F[_]] { outer =>
 
   // N.B. there is no existing way to abstract over request and response cookies and I'm not going
   //      to bother introducing a typeclass (it would take two actually since you also need to

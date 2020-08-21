@@ -43,8 +43,14 @@ out/
 # Bloop/Metals
 .bloop/
 .metals/
+metals.sbt
 
 # Vim
 *.swp
+
+# Worksheets and junk sources
 *.worksheet.sc
 *Junk.scala
+
+# vs-code
+.vscode/

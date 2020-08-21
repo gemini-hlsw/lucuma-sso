@@ -26,17 +26,17 @@ object Routes {
     cookieReader: SsoCookieReader[F],
     cookieWriter: SsoCookieWriter[F],
     scheme:       Uri.Scheme,
-    authority:    Uri.Authority
+    authority:    Uri.Authority,
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
 
-    // We compute the stage 2 URI based on whatever the incoming request's URI was. So we get the
-    // scheme, host, and port for free.
+    // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
+    // a URL that makes sense to the user's browser!
     val Stage2Uri: Uri =
       Uri(
-        scheme    = Some(scheme),
-        authority = Some(authority),
+        scheme    = Some(scheme),     // http[s]
+        authority = Some(authority),  // host[:port]
         path      = "/auth/stage2"
       )
 

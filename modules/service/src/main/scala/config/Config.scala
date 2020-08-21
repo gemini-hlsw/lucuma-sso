@@ -50,7 +50,7 @@ final case class Config(
 
 object Config {
 
-  val Local: Config = {
+  def local(orcid: OrcidConfig): Config = {
 
     // Generate a random key pair. This basically means nobody is going to be able to validate keys
     // issued here because they have no way to get the public key. It may end up being better to use
@@ -64,7 +64,7 @@ object Config {
     Config(
       Environment.Local,
       DatabaseConfig.Local,
-      OrcidConfig.Local,
+      orcid,
       keyPair.getPublic,
       keyPair.getPrivate,
       8080,
@@ -76,20 +76,20 @@ object Config {
   }
 
   def config: ConfigValue[Config] =
-    env("GPP_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
+    envOrProp("GPP_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
 
       case Environment.Local =>
-        ConfigValue.default(Local)
+        OrcidConfig.config.map(local)
 
       case envi => (
-        env("PORT").as[Int],
+        envOrProp("PORT").as[Int],
         DatabaseConfig.config,
         OrcidConfig.config,
-        env("GPG_SSO_PUBLIC_KEY").as[PublicKey],
-        env("GPG_SSO_PRIVATE_KEY").redacted,
-        env("GPG_SSO_PASSPHRASE").redacted,
-        env("GPG_SSO_COOKIE_DOMAIN").option,
-        env("GPG_SSO_HOSTNAME"),
+        envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
+        envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
+        envOrProp("GPG_SSO_PASSPHRASE").redacted,
+        envOrProp("GPG_SSO_COOKIE_DOMAIN").option,
+        envOrProp("GPG_SSO_HOSTNAME"),
       ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
         for {
           skey <- default(text).as[PrivateKey](privateKey(pass))
