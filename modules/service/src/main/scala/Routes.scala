@@ -16,6 +16,8 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import org.http4s.scalaxml._
 import org.http4s.headers.`Content-Type`
+import java.security.PublicKey
+import gpp.sso.client.util.GpgPublicKeyReader
 
 object Routes {
 
@@ -23,6 +25,7 @@ object Routes {
   def apply[F[_]: Sync: Timer](
     dbPool:       Resource[F, Database[F]],
     orcid:        OrcidService[F],
+    publicKey:    PublicKey,
     cookieReader: SsoCookieReader[F],
     cookieWriter: SsoCookieWriter[F],
     scheme:       Uri.Scheme,
@@ -70,6 +73,13 @@ object Routes {
           case None    => Forbidden("Not logged in.")
         }
 
+      case GET -> Root / "api" / "v1" / "publicKey" =>
+        // TODO: only do this once
+        for {
+          text <- GpgPublicKeyReader.armorText(publicKey).liftTo[F]
+          r    <- Ok(text)
+        } yield r
+
       // Log out. TODO: If it's a guest user, delete that user.
       case POST -> Root / "api" / "v1" / "logout" =>
         cookieWriter.removeCookie.flatMap(c => Ok("Logged out").map(_.removeCookie(c)))
@@ -108,10 +118,6 @@ object Routes {
             res      <- Found(Location(redir), (user:User).asJson.spaces2)
           } yield res.addCookie(cookie)
         }
-
-      // TODO: the default `.orNotFound` combinator inclues `Connection: keep-alive` for some reason,
-      // which prevents the browser from ever responding.
-      case _ => NotFound("Not found.")
 
     }
   }

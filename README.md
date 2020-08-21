@@ -2,22 +2,50 @@
 
 Single sign-on service and support libries for GPP.
 
+## API
+
+There is currently no GraphQL interface. This is pending.
+
+### Authentication
+
+- `GET /auth/stage1?state=APP_URI` authenticates a user via [ORCID](https://orcid.org) and returns them to `APP_URI` in possession of a standard user JWT cookie.
+  - If a JWT cookie already exists:
+    - Standard and service users are alredy authenticated so this is a no-op.
+    - Guest users will be redirected to ORCID for authentication.
+      - If the ORCID profile exists, the guest user's data will be transferred (TODO) and the guest user will be deleted.
+      - If the ORCID profile is new, the guest user is upgraded to standard.
+  - If a JWT cookie does not already exists:
+    - The user is redirected to ORCID for authentication.
+    - A standard user corresponding with the ORCID profile will be created if necessary.
+  - A JWT cookie is issued and the user is redirected to `APP_URI`.
+
+### Queries
+
+- `GET /api/v1/whoami` returns 403 if the user is not logged in, otherwise a JSON-encoded `gpp.sso.model.User`.
+- `GET /api/v1/publicKey` returns the server's ASCII-armored public key (BCPG), readable by `gpp.sso.client.util.GpgPublicKeyReader`. Services will read this value on startup and use it to validate JWTs.
+
+### Mutations
+
+- `POST /api/v1/authAsGuest` issues a JWT cookie authenticating the user as a guest, and returns the guest as a JSON-encoded `gpp.sso.model.User`.
+- `POST /api/v1/logout` removes the JWT cookie, if any, and returns nothing of interest.
+
+- TODO `POST /api/v1/setRole` with `role=ROLE_ID` as a form parameter will set the current user's role to `ROLE_ID`. Returns 403 if the user is not logged in, not a standard user, or does not own the specified role; otherwise issues a new JWT cookie and returns the updated JSON-encoded `gpp.sso.model.User`.
+
 ## Web Client Workflow
 
 This is speculative, not fully implemented yet.
 
 Applications should follow this workflow when loaded into the user's browser.
 
-1. Make a one-shot `GET` request to `https://sso.gpp.gemini.edu/api/v1/publicKey` with accept content-type `application/octet-stream` to receive a blob containing the SSO server's public key. Do not cache this value, it may change at any time.
-2. Check for the presence of a cookie named `edu.gemini.gpp.sso_jwt`. If it is present, validate it using the SSO public key. The content is a JSON object with a field called `gpp-user` whose body is an object that can be decoded as a `gpp.sso.model.User` using the provided Circe `Decoder` instance.
-3. If the cookie is not present or is invalid (expired, failed signature validation) there are up to two possible options.
-    - _Continue as Guest_ (only if allowed by the application). If the user selects this option, make a `POST` request to `https://sso.gpp.gemini.edu/api/v1/authAsGuest` to receive a valid cookie containing a new guest user, and return to (2) above.
-    - _Log in via ORCID_. If the user selects this option, send the user to `https://sso.gpp.gemini.edu/auth/stage1?state=[url of this appplication]`. On successful authentication the user will return to (1) above with a valid user cookie.
-4. If the user has insufficient privileges to view the application, there are three possibilities:
-    - _Log in via ORCID_. Present this if the user is currently a Guest, with the same link as above, to allow the user to upgrade their guest account. Continue at (2) above.
-    - _Change Role_. If the user has other roles that _are_ sufficient (via the `otherRoles` member on `StandardUser`) provide a menu that allows the user to select one of these roles and make an `POST` call to `https://sso.gpp.gemini.edu/api/v1/setActiveRole?user=[user_id]&role=[role_id]` to receive an upgraded JWT. Continue at (2) above.
-    - _Change User_. Offer the option to log out and log back in as someone else. To do this you must hit `https://sso.gpp.gemini.edu/api/v1/logout` _and_ `https://orcid.org/userStatus.json?logUserOut=true` and then continue with (2) above.
-5. Continue with application startup.
+1. `GET /api/v1/whoami` to see if the user is logged in.
+1. If not, there are up to two possible options.
+    - _Continue as Guest_ (only if allowed by the application). If the user selects this option, `POST /api/v1/authAsGuest` to receive a valid cookie containing a new guest user, and return to (1) above.
+    - _Log in via ORCID_. If the user selects this option, do a client-sider redirect to `/auth/stage1?state=APP_URI`. On successful authentication the user will return to (1) above with a valid user cookie.
+1. If the user has insufficient privileges to view the application, there are three possibilities:
+    - _Log in via ORCID_. Present this if the user is currently a Guest, with the same link as above, to allow the user to upgrade their guest account. Continue at (1) above.
+    - _Change Role_. If the user has other roles that _are_ sufficient (via the `otherRoles` member on `StandardUser`) provide a menu that allows the user to select one of these roles and make an `POST` call to `/api/v1/setRole` to receive an upgraded JWT. Continue at (1) above.
+    - _Change User_. Offer the option to log out and log back in as someone else. To do this you must hit `https://sso.gpp.gemini.edu/api/v1/logout` _and_ `https://orcid.org/userStatus.json?logUserOut=true` and then continue with (1) above.
+1. Continue with application startup.
 
 Applications should provide a user menu displaying the user's `displayName`, providing the following options:
 

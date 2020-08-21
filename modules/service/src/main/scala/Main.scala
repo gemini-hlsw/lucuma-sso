@@ -107,6 +107,7 @@ object FMain {
         Routes[F](
           dbPool       = pool.map(Database.fromSession(_)),
           orcid        = orcid,
+          publicKey    = config.publicKey,
           cookieReader = config.cookieReader,
           cookieWriter = config.cookieWriter,
           scheme       = config.scheme,
