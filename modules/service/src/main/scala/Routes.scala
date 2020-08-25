@@ -1,15 +1,15 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import gpp.sso.client._
-import gpp.sso.model._
-import gpp.sso.service.database.Database
-import gpp.sso.service.database.RoleRequest
-import gpp.sso.service.orcid.OrcidService
+import lucuma.sso.client._
+import lucuma.sso.model._
+import lucuma.sso.service.database.Database
+import lucuma.sso.service.database.RoleRequest
+import lucuma.sso.service.orcid.OrcidService
 import io.circe.syntax._
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
@@ -17,7 +17,7 @@ import org.http4s.headers.Location
 import org.http4s.scalaxml._
 import org.http4s.headers.`Content-Type`
 import java.security.PublicKey
-import gpp.sso.client.util.GpgPublicKeyReader
+import lucuma.sso.client.util.GpgPublicKeyReader
 
 object Routes {
 

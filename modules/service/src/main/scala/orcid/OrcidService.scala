@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.orcid
+package lucuma.sso.service.orcid
 
 import cats.effect.Sync
 import cats.implicits._
@@ -11,7 +11,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
 import org.http4s.implicits._
 import org.http4s.headers.Authorization
-import orcid.gpp.sso.service.orcid.OrcidException
+import orcid.lucuma.sso.service.orcid.OrcidException
 
 trait OrcidService[F[_]] {
 

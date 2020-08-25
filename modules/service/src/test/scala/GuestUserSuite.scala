@@ -1,9 +1,9 @@
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import gpp.sso.model.User
-import gpp.sso.service.simulator.SsoSimulator
+import lucuma.sso.model.User
+import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
 

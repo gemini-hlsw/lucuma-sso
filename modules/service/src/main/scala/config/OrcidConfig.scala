@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.config
+package lucuma.sso.service.config
 
 import ciris._
 import cats.implicits._
@@ -17,8 +17,8 @@ object OrcidConfig {
   // the project README for information on setting this up.
 
   val config: ConfigValue[OrcidConfig] = (
-    envOrProp("GPP_ORCID_CLIENT_ID"),
-    envOrProp("GPP_ORCID_CLIENT_SECRET")
+    envOrProp("lucuma_ORCID_CLIENT_ID"),
+    envOrProp("lucuma_ORCID_CLIENT_SECRET")
   ).parMapN(apply(_, _))
 
 }

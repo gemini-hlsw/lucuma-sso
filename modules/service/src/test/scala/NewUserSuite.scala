@@ -1,16 +1,16 @@
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import gpp.sso.model.User
-import gpp.sso.service.simulator.SsoSimulator
+import lucuma.sso.model.User
+import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.Location
 
 object NewUserSuite extends SsoSuite with Fixture {
 
-  simpleTest("Bob logs in via ORCID as a new GPP user.") {
+  simpleTest("Bob logs in via ORCID as a new lucuma user.") {
     SsoSimulator[IO].use { case (sim, sso, reader) =>
       val stage1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
       for {

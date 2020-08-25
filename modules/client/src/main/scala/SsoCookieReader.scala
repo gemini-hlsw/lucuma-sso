@@ -1,13 +1,13 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.client
+package lucuma.sso.client
 
 import cats.data.OptionT
 import cats.implicits._
 import cats.MonadError
-import gpp.sso.client.util.JwtDecoder
-import gpp.sso.model.User
+import lucuma.sso.client.util.JwtDecoder
+import lucuma.sso.model.User
 import io.circe.parser.parse
 import org.http4s.Request
 import pdi.jwt.JwtClaim
@@ -41,8 +41,8 @@ trait SsoCookieReader[F[_]] { outer =>
 
 object SsoCookieReader {
 
-  private[sso] val JwtCookie = "edu.gemini.gpp.sso_jwt"
-  private[sso] val GppUser   = "gpp-user"
+  private[sso] val JwtCookie = "edu.gemini.lucuma.sso_jwt"
+  private[sso] val lucumaUser   = "lucuma-user"
 
   def apply[F[_]: MonadError[?[_], Throwable]](jwtDecoder: JwtDecoder[F]): SsoCookieReader[F] =
     new SsoCookieReader[F] {
@@ -85,7 +85,7 @@ object SsoCookieReader {
       def decodeUser(claim: JwtClaim): F[User] =
         for {
           json  <- parse(claim.content).liftTo[F]
-          user  <- json.hcursor.downField(GppUser).as[User].liftTo[F]
+          user  <- json.hcursor.downField(lucumaUser).as[User].liftTo[F]
         } yield user
 
     }

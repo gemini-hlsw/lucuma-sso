@@ -2,7 +2,7 @@ import sbtcrossproject.crossProject
 import sbtcrossproject.CrossType
 
 inThisBuild(Seq(
-  homepage := Some(url("https://github.com/gemini-hlsw/gpp-sso")),
+  homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
     "com.disneystreaming" %% "weaver-framework"  % "0.4.3" % Test,
@@ -17,7 +17,7 @@ lazy val model = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
   .in(file("modules/model"))
   .settings(
-    name := "gpp-sso-model",
+    name := "lucuma-sso-model",
     libraryDependencies ++= Seq(
       "edu.gemini" %%% "gsp-core-model" % "0.2.8",
       "io.circe"   %%% "circe-generic"  % "0.13.0",
@@ -30,7 +30,7 @@ lazy val client = project
   .in(file("modules/client"))
   .dependsOn(model.jvm)
   .settings(
-    name := "gpp-sso-client",
+    name := "lucuma-sso-client",
     libraryDependencies ++= Seq(
       "com.pauldijou"    %% "jwt-circe"           % "4.3.0",
       "com.pauldijou"    %% "jwt-core"            % "4.3.0",
@@ -45,7 +45,7 @@ lazy val service = project
   .enablePlugins(JavaAppPackaging)
   .settings(
     publish / skip := true,
-    name := "gpp-sso-service",
+    name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
       "io.circe"               %% "circe-parser"        % "0.13.0",
       "is.cir"                 %% "ciris"               % "1.1.2",

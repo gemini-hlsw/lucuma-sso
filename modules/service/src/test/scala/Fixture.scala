@@ -1,17 +1,17 @@
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.implicits._
 import org.http4s.implicits._
-import gpp.sso.service.orcid._
-import gpp.sso.model._
-import gpp.sso.model.StandardRole._
+import lucuma.sso.service.orcid._
+import lucuma.sso.model._
+import lucuma.sso.model.StandardRole._
 import weaver.SimpleMutableIOSuite
 import cats.effect.IO
 
 trait Fixture { self: SimpleMutableIOSuite =>
 
-  val SsoRoot     = uri"https://sso.gpp.gemini.edu"
-  val ExploreRoot = uri"https://explore.gpp.gemini.edu"
+  val SsoRoot     = uri"https://sso.lucuma.gemini.edu"
+  val ExploreRoot = uri"https://explore.lucuma.gemini.edu"
 
   val Bob: OrcidPerson =
     OrcidPerson(

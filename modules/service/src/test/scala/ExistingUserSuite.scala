@@ -1,16 +1,16 @@
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import gpp.sso.model._
-import gpp.sso.service.simulator.SsoSimulator
+import lucuma.sso.model._
+import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.Location
 import org.http4s.Request
 
 object ExistingUserSuite extends SsoSuite with Fixture {
 
-  simpleTest("Bob logs in via ORCID as a new GPP user, then logs in again.") {
+  simpleTest("Bob logs in via ORCID as a new lucuma user, then logs in again.") {
     SsoSimulator[IO].use { case (sim, sso, _) =>
       val stage1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
       for {
@@ -21,7 +21,7 @@ object ExistingUserSuite extends SsoSuite with Fixture {
         // Log into ORCID as Bob, who is new.
         stage2 <- sim.authenticate(redir, Bob, None)
 
-        // Stage 2 will create the user in GPP and return it
+        // Stage 2 will create the user in lucuma and return it
         user1  <- sso.fetchAs[User](Request[IO](uri =stage2))
 
         // Log into ORCID as Bob, who is now an existing user.

@@ -1,17 +1,17 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service
+package lucuma.sso.service
 
 import scala.xml.Elem
-import gpp.sso.model.User
+import lucuma.sso.model.User
 import io.circe.syntax._
 import pdi.jwt.exceptions.JwtException
 import pdi.jwt.exceptions.JwtExpirationException
 import pdi.jwt.exceptions.JwtValidationException
-import gpp.sso.model.GuestUser
-import gpp.sso.model.ServiceUser
-import gpp.sso.model.StandardUser
+import lucuma.sso.model.GuestUser
+import lucuma.sso.model.ServiceUser
+import lucuma.sso.model.StandardUser
 import java.net.URLEncoder
 
 
@@ -41,7 +41,7 @@ object HomePage {
   def apply(ou: Option[Either[JwtException, User]]): Elem =
     <html>
       <script>{ script }</script>
-      <h2>GPP-SSO</h2>
+      <h2>lucuma-SSO</h2>
       {
         ou match {
           case None =>

@@ -1,11 +1,11 @@
-package gpp.sso.service.simulator
+package lucuma.sso.service.simulator
 
 import cats.data.OptionT
 import cats.effect._
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import gpp.sso.model.Orcid
-import gpp.sso.service.orcid._
+import lucuma.sso.model.Orcid
+import lucuma.sso.service.orcid._
 import java.time.Duration
 import java.util.UUID
 import org.http4s._
