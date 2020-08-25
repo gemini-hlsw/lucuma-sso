@@ -14,24 +14,27 @@ import gpp.sso.client.SsoCookieReader
 import org.http4s.Uri
 import org.http4s.Uri.RegName
 import io.chrisdavenport.log4cats.Logger
+import gpp.sso.service.config.OrcidConfig
 
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
   private def httpRoutes[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (OrcidSimulator[F], HttpRoutes[F], SsoCookieReader[F])] =
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
-    FMain.databasePoolResource[F](Config.Local.database).map { pool =>
-      (sim, Routes[F](
-        dbPool       = pool.map(Database.fromSession(_)),
-        orcid        = OrcidService("unused", "unused", sim.client),
-        cookieReader = Config.Local.cookieReader,
-        cookieWriter = Config.Local.cookieWriter,
-        scheme       = Uri.Scheme.https,
-        authority    = Uri.Authority(
-          host = RegName("sso.gemini.edu"),
-          port = Some(80),
-        )
-      ), Config.Local.cookieReader)
+      val config = Config.local(OrcidConfig("bogus", "bogus"))
+      FMain.databasePoolResource[F](config.database).map { pool =>
+        (sim, Routes[F](
+          dbPool       = pool.map(Database.fromSession(_)),
+          orcid        = OrcidService("unused", "unused", sim.client),
+          publicKey    = config.publicKey,
+          cookieReader = config.cookieReader,
+          cookieWriter = config.cookieWriter,
+          scheme       = Uri.Scheme.https,
+          authority    = Uri.Authority(
+            host = RegName("sso.gemini.edu"),
+            port = Some(80),
+          ),
+        ), config.cookieReader)
     }
   }
 
