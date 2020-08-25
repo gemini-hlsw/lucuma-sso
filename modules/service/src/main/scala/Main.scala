@@ -3,11 +3,10 @@
 
 package gpp.sso.service
 
+import cats._
 import cats.effect._
 import cats.implicits._
-import cats.Monad
 import gpp.sso.service.config._
-import gpp.sso.service.config.Environment._
 import gpp.sso.service.database.Database
 import gpp.sso.service.orcid.OrcidService
 import io.jaegertracing.Configuration.{ ReporterConfiguration, SamplerConfiguration }
@@ -15,18 +14,27 @@ import java.io.{ PrintWriter, StringWriter }
 import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
 import natchez.jaeger.Jaeger
+import org.flywaydb.core.Flyway
 import org.http4s._
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
-import org.http4s.server.middleware.Logger
 import skunk._
-import org.flywaydb.core.Flyway
+import io.chrisdavenport.log4cats.Logger
+import cats.data.Kleisli
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 
 object Main extends IOApp {
+
+  /** A logger we can use everywhere. */
+  implicit val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName("lucuma-sso")
+
+  /** Our main program, which runs forever, and can be stopped with ^C. */
   def run(args: List[String]): IO[ExitCode] =
     FMain.main[IO]
+
 }
 
 object FMain {
@@ -34,7 +42,8 @@ object FMain {
   // TODO: put this in the config
   val MaxConnections = 10
 
-  def poolResource[F[_]: Concurrent: ContextShift: Trace](
+  /** A resource that yields a Skunk session pool. */
+  def databasePoolResource[F[_]: Concurrent: ContextShift: Trace](
     config: DatabaseConfig
   ): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
@@ -49,21 +58,9 @@ object FMain {
       // debug    = true
     )
 
-  // Run flyway migrations
-  def migrate[F[_]: Sync](config: DatabaseConfig): F[Int] =
-    Sync[F].delay {
-      Flyway
-        .configure()
-        .dataSource(config.jdbcUrl, config.user, config.password.orEmpty)
-        .baselineOnMigrate(true)
-        .load()
-        .migrate()
-    }
 
-  def app[F[_]: Monad](routes: HttpRoutes[F]): HttpApp[F] =
-    Router("/" -> routes).orNotFound
-
-  def server[F[_]: Concurrent: ContextShift: Timer](
+  /** A resource that yields a running HTTP server. */
+  def serverResource[F[_]: Concurrent: ContextShift: Timer](
     port: Int,
     app:  HttpApp[F]
   ): Resource[F, Server[F]] =
@@ -75,15 +72,16 @@ object FMain {
       .withOnError { t =>
         // for now let's include the stacktrace in the message body
         val sw = new StringWriter
+        // t.printStackTrace()
         t.printStackTrace(new PrintWriter(sw))
         Response[F](
           status = Status.InternalServerError,
-          body   = EntityEncoder[F, String].toEntity(sw.toString).body
-        )
+        ).withEntity(sw.toString)
       }
       .build
 
-  def entryPoint[F[_]: Sync]: Resource[F, EntryPoint[F]] = {
+  /** A resource that yields a Natchez tracing entry point. */
+  def entryPointResource[F[_]: Sync]: Resource[F, EntryPoint[F]] = {
     Jaeger.entryPoint[F]("gpp-sso") { c =>
       Sync[F].delay {
         c.withSampler(SamplerConfiguration.fromEnv)
@@ -93,61 +91,73 @@ object FMain {
     }
   }
 
-  def loggingMiddleware[F[_]: Concurrent: ContextShift](
-    env: Environment
-  ): HttpRoutes[F] => HttpRoutes[F] =
-    Logger.httpRoutes[F](
-        logHeaders = true,
-        logBody    = env == Local,
-        redactHeadersWhen = { h =>
-          env match {
-            case Local                => false
-            case Staging | Production => Headers.SensitiveHeaders.contains(h)
-          }
-        }
-      )
-
+  /** A resource that yields an OrcidService. */
   def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift](config: OrcidConfig) =
-    EmberClientBuilder.default[F].build.map { client =>
+    EmberClientBuilder.default[F].build.map(org.http4s.client.middleware.Logger[F](
+      logHeaders = true,
+      logBody    = true,
+    )).map { client =>
       OrcidService(config.clientId, config.clientSecret, client)
     }
 
-  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer](config: Config) =
-    (poolResource[F](config.database), orcidServiceResource(config.orcid)).mapN { (pool, orcid) =>
-      Routes[F](
-        dbPool       = pool.map(Database.fromSession(_)),
-        orcid        = orcid,
-        cookieReader = config.cookieReader,
-        cookieWriter = config.cookieWriter,
-      )
-    }
-    .map(natchezMiddleware(_))
-    .map(loggingMiddleware(config.environment))
+  /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
+  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config): Resource[F, HttpRoutes[F]] =
+    (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
+      .mapN { (pool, orcid) =>
+        Routes[F](
+          dbPool       = pool.map(Database.fromSession(_)),
+          orcid        = orcid,
+          publicKey    = config.publicKey,
+          cookieReader = config.cookieReader,
+          cookieWriter = config.cookieWriter,
+          scheme       = config.scheme,
+          authority    = config.authority,
+        )
+      } .map(ServerMiddleware(config.environment, config.cookieReader))
 
-  def banner[F[_]: Sync](config: Config): F[Unit] =
-    Sync[F].delay{
-      // https://manytools.org/hacker-tools/ascii-banner/ .. font here is Calvin S
-      Console.err.println(
-        s"""|╔═╗╔═╗╔═╗   ╔═╗╔═╗╔═╗
-            |║ ╦╠═╝╠═╝───╚═╗╚═╗║ ║
-            |╚═╝╩  ╩     ╚═╝╚═╝╚═╝
+  /** A startup action that prints a banner. */
+  def banner[F[_]: Applicative: Logger](config: Config): F[Unit] = {
+    val banner =
+        s"""|
+            |╦  ╦ ╦╔═╗╦ ╦╔╦╗╔═╗   ╔═╗╔═╗╔═╗
+            |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
+            |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
             |${config.environment} Environment
+            |
             |""".stripMargin
-      )
+    banner.linesIterator.toList.traverse_(Logger[F].info(_))
+  }
+
+  /** A startup action that runs database migrations using Flyway. */
+  def migrateDatabase[F[_]: Sync](config: DatabaseConfig): F[Int] =
+    Sync[F].delay {
+      Flyway
+        .configure()
+        .dataSource(config.jdbcUrl, config.user, config.password.orEmpty)
+        .baselineOnMigrate(true)
+        .load()
+        .migrate()
     }
 
-  def rmain[F[_]: Concurrent: ContextShift: Timer]: Resource[F, ExitCode] =
+  implicit def kleisliLogger[F[_]: Logger, A]: Logger[Kleisli[F, A, *]] =
+    Logger[F].mapK(Kleisli.liftK)
+
+  /**
+   * Our main program, as a resource that starts up our server on acquire and shuts it all down
+   * in cleanup, yielding an `ExitCode`. Users will `use` this resource and hold it forever.
+   */
+  def rmain[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, ExitCode] =
     for {
       c  <- Resource.liftF(Config.config.load[F])
       _  <- Resource.liftF(banner[F](c))
-      _  <- Resource.liftF(migrate[F](c.database))
-      ep <- entryPoint
-      rs <- ep.liftR(routesResource(c))
-      ap  = app(rs)
-      _  <- server(c.httpPort, ap)
+      _  <- Resource.liftF(migrateDatabase[F](c.database))
+      ep <- entryPointResource
+      ap <- ep.liftR(routesResource(c)).map(rs => Router("/" -> rs).orNotFound)
+      _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
-  def main[F[_]: Concurrent: ContextShift: Timer]: F[ExitCode] =
+  /** Our main program, which runs forever. */
+  def main[F[_]: Concurrent: ContextShift: Timer: Logger]: F[ExitCode] =
     rmain.use(_ => Concurrent[F].never[ExitCode])
 
 }

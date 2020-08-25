@@ -19,6 +19,8 @@ import natchez.TraceValue
 import cats.Monad
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+// import org.http4s.Headers
+// import org.http4s.Header
 
 object implicits {
 
@@ -119,7 +121,14 @@ object implicits {
         )
 
       OptionT {
-        routes(req).onError {
+        routes(req)
+        // .flatMap { res =>
+        //   // experiment: add the kernel headers to the response .. probably want to filter these
+        //   OptionT.liftF(Trace[F].kernel.map { k =>
+        //     res.withHeaders(Headers(k.toHeaders.toList.map { case (k, v) => Header(s"X-Natchez-$k", v) }))
+        //   })
+        // }
+        .onError {
           case NonFatal(e)   => OptionT.liftF(addRequestFields *> addErrorFields(e))
         } .value.flatMap {
           case Some(handler) => addRequestFields *> addResponseFields(handler).as(handler.some)

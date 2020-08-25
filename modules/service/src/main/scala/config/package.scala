@@ -4,7 +4,7 @@
 package gpp.sso.service
 
 import cats.implicits._
-import ciris.ConfigDecoder
+import ciris._
 import java.net.URI
 import java.security.{ PrivateKey, PublicKey }
 import gpp.sso.service.util.GpgPrivateKeyReader
@@ -24,5 +24,12 @@ package object config {
 
   implicit val uri: ConfigDecoder[String, URI] =
     ConfigDecoder[String].map(new URI(_))
+
+  /**
+   * Ciris config value that is read from the environment, falling back to Java system properties
+   * if the environment variable is not set.
+   */
+  def envOrProp(name: String): ConfigValue[String] =
+    env(name) or prop(name)
 
 }

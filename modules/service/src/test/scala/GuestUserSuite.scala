@@ -6,9 +6,8 @@ import gpp.sso.model.User
 import gpp.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
-import weaver._
 
-object GuestUserSuite extends SimpleIOSuite with Fixture {
+object GuestUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Anonymous user logs in as a guest.") {
     SsoSimulator[IO].use { case (_, sso, reader) =>
