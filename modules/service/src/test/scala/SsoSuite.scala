@@ -1,4 +1,4 @@
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats.effect._
 import io.chrisdavenport.log4cats.Logger

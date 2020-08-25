@@ -1,14 +1,14 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service
+package lucuma.sso.service
 
 import cats._
 import cats.effect._
 import cats.implicits._
-import gpp.sso.service.config._
-import gpp.sso.service.database.Database
-import gpp.sso.service.orcid.OrcidService
+import lucuma.sso.service.config._
+import lucuma.sso.service.database.Database
+import lucuma.sso.service.orcid.OrcidService
 import io.jaegertracing.Configuration.{ ReporterConfiguration, SamplerConfiguration }
 import java.io.{ PrintWriter, StringWriter }
 import natchez.{ EntryPoint, Trace }
@@ -82,7 +82,7 @@ object FMain {
 
   /** A resource that yields a Natchez tracing entry point. */
   def entryPointResource[F[_]: Sync]: Resource[F, EntryPoint[F]] = {
-    Jaeger.entryPoint[F]("gpp-sso") { c =>
+    Jaeger.entryPoint[F]("lucuma-sso") { c =>
       Sync[F].delay {
         c.withSampler(SamplerConfiguration.fromEnv)
          .withReporter(ReporterConfiguration.fromEnv)

@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.database
+package lucuma.sso.service.database
 
-import gpp.sso.model._
+import lucuma.sso.model._
 import skunk._
 import skunk.codec.all._
 import skunk.data.Type
@@ -38,9 +38,9 @@ trait Codecs {
   }
 
   val role_type: Codec[RoleType] =
-    enum(RoleType, Type("gpp_role_type"))
+    enum(RoleType, Type("lucuma_role_type"))
 
   val partner: Codec[Partner] =
-    enum[Partner](Enumerated[Partner].tag, Enumerated[Partner].fromTag, Type("gpp_ngo"))
+    enum[Partner](Enumerated[Partner].tag, Enumerated[Partner].fromTag, Type("lucuma_ngo"))
 
 }

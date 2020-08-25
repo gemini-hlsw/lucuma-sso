@@ -1,17 +1,17 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service
+package lucuma.sso.service
 
 import natchez.http4s.implicits._
 import natchez.Trace
 import cats._
 import org.http4s.HttpRoutes
-import gpp.sso.client.RequestLogger
-import gpp.sso.client.SsoCookieReader
+import lucuma.sso.client.RequestLogger
+import lucuma.sso.client.SsoCookieReader
 import cats.effect._
-import gpp.sso.service.config.Environment
-import gpp.sso.service.config.Environment._
+import lucuma.sso.service.config.Environment
+import lucuma.sso.service.config.Environment._
 import org.http4s.Headers
 import org.http4s.server.middleware.ErrorAction
 import io.chrisdavenport.log4cats.Logger

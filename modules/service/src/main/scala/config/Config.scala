@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.config
+package lucuma.sso.service.config
 
 import cats.effect._
 import cats.implicits._
@@ -10,10 +10,10 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
-import gpp.sso.client.SsoCookieReader
-import gpp.sso.service.SsoCookieWriter
-import gpp.sso.client.util.JwtDecoder
-import gpp.sso.service.util.JwtEncoder
+import lucuma.sso.client.SsoCookieReader
+import lucuma.sso.service.SsoCookieWriter
+import lucuma.sso.client.util.JwtDecoder
+import lucuma.sso.service.util.JwtEncoder
 import cats.MonadError
 import scala.concurrent.duration._
 import org.http4s.Uri
@@ -76,7 +76,7 @@ object Config {
   }
 
   def config: ConfigValue[Config] =
-    envOrProp("GPP_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
+    envOrProp("lucuma_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
 
       case Environment.Local =>
         OrcidConfig.config.map(local)

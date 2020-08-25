@@ -1,11 +1,11 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service
+package lucuma.sso.service
 
 import org.http4s.ResponseCookie
-import gpp.sso.model.User
-import gpp.sso.client.SsoCookieReader
+import lucuma.sso.model.User
+import lucuma.sso.client.SsoCookieReader
 import pdi.jwt.JwtClaim
 import java.time.Instant
 import cats.effect.Sync
@@ -13,7 +13,7 @@ import cats.implicits._
 import io.circe.Json
 import io.circe.syntax._
 import scala.concurrent.duration.FiniteDuration
-import gpp.sso.service.util.JwtEncoder
+import lucuma.sso.service.util.JwtEncoder
 import org.http4s.HttpDate
 
 trait SsoCookieWriter[F[_]] {
@@ -32,7 +32,7 @@ trait SsoCookieWriter[F[_]] {
 object SsoCookieWriter {
 
   private val JwtCookie = SsoCookieReader.JwtCookie
-  private val GppUser   = SsoCookieReader.GppUser
+  private val lucumaUser   = SsoCookieReader.lucumaUser
 
   val HttpOnly = true // JS can't see the cookie
   val SameSite = org.http4s.SameSite.Lax // We don't care
@@ -50,10 +50,10 @@ object SsoCookieWriter {
       def newClaim(user: User): F[JwtClaim] =
         now.map { inst =>
           JwtClaim(
-            content    = Json.obj(GppUser -> user.asJson).spaces2,
-            issuer     = Some("gpp-sso"),
+            content    = Json.obj(lucumaUser -> user.asJson).spaces2,
+            issuer     = Some("lucuma-sso"),
             subject    = Some(user.id.value.toString()),
-            audience   = Some(Set("gpp")),
+            audience   = Some(Set("lucuma")),
             expiration = Some(inst.plusSeconds(jwtTimeout.toSeconds).getEpochSecond),
             notBefore  = Some(inst.getEpochSecond),
             issuedAt   = Some(inst.getEpochSecond),
@@ -64,9 +64,9 @@ object SsoCookieWriter {
         now.map { inst =>
           JwtClaim(
             content    = claim.content,
-            issuer     = Some("gpp-sso"),
+            issuer     = Some("lucuma-sso"),
             subject    = claim.subject,
-            audience   = Some(Set("gpp")),
+            audience   = Some(Set("lucuma")),
             expiration = Some(inst.plusSeconds(jwtTimeout.toSeconds).getEpochSecond),
             notBefore  = Some(inst.getEpochSecond),
             issuedAt   = Some(inst.getEpochSecond),

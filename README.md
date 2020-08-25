@@ -1,6 +1,6 @@
-# GPP-SSO
+# LUCUMA-SSO
 
-Single sign-on service and support libries for GPP.
+Single sign-on service and support libries for Lucuma.
 
 ## API
 
@@ -21,15 +21,15 @@ There is currently no GraphQL interface. This is pending.
 
 ### Queries
 
-- `GET /api/v1/whoami` returns 403 if the user is not logged in, otherwise a JSON-encoded `gpp.sso.model.User`.
-- `GET /api/v1/publicKey` returns the server's ASCII-armored public key (BCPG), readable by `gpp.sso.client.util.GpgPublicKeyReader`. Services will read this value on startup and use it to validate JWTs.
+- `GET /api/v1/whoami` returns 403 if the user is not logged in, otherwise a JSON-encoded `lucuma.sso.model.User`.
+- `GET /api/v1/publicKey` returns the server's ASCII-armored public key (BCPG), readable by `lucuma.sso.client.util.GpgPublicKeyReader`. Services will read this value on startup and use it to validate JWTs.
 
 ### Mutations
 
-- `POST /api/v1/authAsGuest` issues a JWT cookie authenticating the user as a guest, and returns the guest as a JSON-encoded `gpp.sso.model.User`.
+- `POST /api/v1/authAsGuest` issues a JWT cookie authenticating the user as a guest, and returns the guest as a JSON-encoded `lucuma.sso.model.User`.
 - `POST /api/v1/logout` removes the JWT cookie, if any, and returns nothing of interest.
 
-- TODO `POST /api/v1/setRole` with `role=ROLE_ID` as a form parameter will set the current user's role to `ROLE_ID`. Returns 403 if the user is not logged in, not a standard user, or does not own the specified role; otherwise issues a new JWT cookie and returns the updated JSON-encoded `gpp.sso.model.User`.
+- TODO `POST /api/v1/setRole` with `role=ROLE_ID` as a form parameter will set the current user's role to `ROLE_ID`. Returns 403 if the user is not logged in, not a standard user, or does not own the specified role; otherwise issues a new JWT cookie and returns the updated JSON-encoded `lucuma.sso.model.User`.
 
 ## Web Client Workflow
 
@@ -44,7 +44,7 @@ Applications should follow this workflow when loaded into the user's browser.
 1. If the user has insufficient privileges to view the application, there are three possibilities:
     - _Log in via ORCID_. Present this if the user is currently a Guest, with the same link as above, to allow the user to upgrade their guest account. Continue at (1) above.
     - _Change Role_. If the user has other roles that _are_ sufficient (via the `otherRoles` member on `StandardUser`) provide a menu that allows the user to select one of these roles and make an `POST` call to `/api/v1/setRole` to receive an upgraded JWT. Continue at (1) above.
-    - _Change User_. Offer the option to log out and log back in as someone else. To do this you must hit `https://sso.gpp.gemini.edu/api/v1/logout` _and_ `https://orcid.org/userStatus.json?logUserOut=true` and then continue with (1) above.
+    - _Change User_. Offer the option to log out and log back in as someone else. To do this you must hit `https://sso.lucuma.gemini.edu/api/v1/logout` _and_ `https://orcid.org/userStatus.json?logUserOut=true` and then continue with (1) above.
 1. Continue with application startup.
 
 Applications should provide a user menu displaying the user's `displayName`, providing the following options:
@@ -59,20 +59,20 @@ Applications should examine the cookie periodically while the application is run
 
 This is speculative, not fully implemented yet.
 
-- The `gpp-sso-client` library will provide an `AuthMiddleware[F, User]` that decodes the request JWT and passes the user to to the request handler. If necessary the JWT will be renwewed asynchronously while the request is processed, and the cookie will be replaced in the response.
-- If the request processing requires that a downstream call be made to another GPP service, the cookie can be lifted from the request and passed forward. We also need to pass trace headers, so it might make sense for the middleware to also provide an HTTP client. TBD.
+- The `lucuma-sso-client` library will provide an `AuthMiddleware[F, User]` that decodes the request JWT and passes the user to to the request handler. If necessary the JWT will be renwewed asynchronously while the request is processed, and the cookie will be replaced in the response.
+- If the request processing requires that a downstream call be made to another LUCUMA service, the cookie can be lifted from the request and passed forward. We also need to pass trace headers, so it might make sense for the middleware to also provide an HTTP client. TBD.
 
 ## Local Development QuickStart
 
 Use `docker-compose` to wrangle a dev database. It's way easier than dealing with a real installation.
 
-| Command                                                               | Description                                  |
-|-----------------------------------------------------------------------|----------------------------------------------|
-| `docker-compose up`                                                   | start up the test database                   |
-| `docker-compose up -d`                                                | start up the test database in the background |
-| `docker-compose run postgres psql -h postgres -d gpp-sso -U postgres` | start up a `psql` shell                      |
-| `docker-compose stop`                                                 | stop the test database                       |
-| `docker-compose down`                                                 | destroy the database                         |
+| Command                                                               | Description                                    |
+|-----------------------------------------------------------------------|------------------------------------------------|
+| `docker-compose up`                                                   | start up the test database                     |
+| `docker-compose up -d`                                                | start up the test database in the background   |
+| `docker-compose run postgres psql -h postgres -d lucuma-sso -U jimmy` | start up a `psql` shell (password is `banana`) |
+| `docker-compose stop`                                                 | stop the test database                         |
+| `docker-compose down`                                                 | destroy the database                           |
 
 
 ### Working on the Schema
@@ -83,18 +83,17 @@ The app runs these migrations on startup as well, so you don't need to do the do
 
 ### Connecting to the Database
 
-You can connect to youe dev database with locally-installed tools like `pgAdmin` and `psql` as follows. Note that it's important to explicitly specify `localhost` as the host, for example `psql -h localhost -d gpp-sso -U jimmy`.
+You can connect to youe dev database with locally-installed tools like `pgAdmin` and `psql` as follows. Note that it's important to explicitly specify `localhost` as the host, for example `psql -h localhost -d lucuma-sso -U jimmy`.
 
-| Parameter | Value       |
-|-----------|-------------|
-| host      | `localhost` |
-| port      | `5432`      |
-| database  | `gpp-sso`   |
-| user      | `jimmy`     |
-| password  | `banana`    |
+| Parameter | Value        |
+|-----------|--------------|
+| host      | `localhost`  |
+| port      | `5432`       |
+| database  | `lucuma-sso` |
+| user      | `jimmy`      |
+| password  | `banana`     |
 
 ### Setting up ORCID Credentials
-
 
 If you try to run `Main` you will find that it barfs because it needs some ORCID configuration. To set this up, sign into [ORCID](http://orcid.org) as yourself, go to **Developer Tools** under the name menu and create an API key with redirect URL `http://localhost:8080/auth/stage2`. This will allow you to test ORCID authentication locally.
 
@@ -108,7 +107,7 @@ You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` eit
       "type"       : "scala",
       "request"    : "launch",
       "name"       : "Lucuma SSO",
-      "mainClass"  : "gpp.sso.service.Main",
+      "mainClass"  : "lucuma.sso.service.Main",
       "args"       : [],
       "buildTarget": "service",
       "jvmOptions" : [

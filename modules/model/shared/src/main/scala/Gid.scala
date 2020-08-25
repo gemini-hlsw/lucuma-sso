@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.model
+package lucuma.sso.model
 
 import cats._
 import cats.implicits._
@@ -10,7 +10,7 @@ import monocle.{ Iso, Prism }
 import scala.util.matching.Regex
 
 /**
- * A typeclass for GPP identifiers, which are of the form T-26fd21b3 where T is a constant,
+ * A typeclass for lucuma identifiers, which are of the form T-26fd21b3 where T is a constant,
  * type-specific tag and the remainder is a positive hex-encoded Long, with lowercase alpha digits
  * and no leading zeros (thus having a unique string representation).
  */

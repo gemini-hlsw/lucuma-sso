@@ -1,4 +1,4 @@
-package gpp.sso.service
+package lucuma.sso.service
 package simulator
 
 import cats.effect._
@@ -6,15 +6,15 @@ import org.http4s.HttpRoutes
 import org.http4s.implicits._
 import org.http4s.client.Client
 import org.http4s.server.Router
-import gpp.sso.service.orcid.OrcidService
-import gpp.sso.service.config.Config
+import lucuma.sso.service.orcid.OrcidService
+import lucuma.sso.service.config.Config
 import natchez.Trace.Implicits.noop
-import gpp.sso.service.database.Database
-import gpp.sso.client.SsoCookieReader
+import lucuma.sso.service.database.Database
+import lucuma.sso.client.SsoCookieReader
 import org.http4s.Uri
 import org.http4s.Uri.RegName
 import io.chrisdavenport.log4cats.Logger
-import gpp.sso.service.config.OrcidConfig
+import lucuma.sso.service.config.OrcidConfig
 
 object SsoSimulator {
 

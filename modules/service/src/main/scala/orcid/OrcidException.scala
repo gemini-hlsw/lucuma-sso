@@ -3,7 +3,7 @@
 
 package orcid
 
-package gpp.sso.service.orcid
+package lucuma.sso.service.orcid
 
 import io.circe.Decoder
 import cats.effect.Sync

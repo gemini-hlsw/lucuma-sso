@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.orcid
+package lucuma.sso.service.orcid
 
-import gpp.sso.model.Orcid
+import lucuma.sso.model.Orcid
 import io.circe.Decoder
 import io.circe.syntax._
 import java.time.Duration

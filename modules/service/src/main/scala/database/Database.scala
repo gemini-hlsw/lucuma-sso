@@ -1,15 +1,15 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.database
+package lucuma.sso.service.database
 
 import cats.implicits._
-import gpp.sso.model._
+import lucuma.sso.model._
 import skunk._
 import skunk.implicits._
 import skunk.codec.all._
-import gpp.sso.service.orcid.OrcidAccess
-import gpp.sso.service.orcid.OrcidPerson
+import lucuma.sso.service.orcid.OrcidAccess
+import lucuma.sso.service.orcid.OrcidPerson
 import cats.data.OptionT
 import skunk.data.Completion.Delete
 import cats.effect.Sync
@@ -146,14 +146,14 @@ object Database extends Codecs {
 
   val InsertGuestUser: Query[Void, GuestUser] =
     sql"""
-      INSERT INTO gpp_user (user_type)
+      INSERT INTO lucuma_user (user_type)
       VALUES ('guest')
       RETURNING user_id
     """.query(user_id.map(GuestUser(_)))
 
   val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
-      UPDATE gpp_user
+      UPDATE lucuma_user
       SET orcid_access_token     = $uuid,
        -- orcid_token_expiration -- TODO
           orcid_given_name       = ${varchar.opt},
@@ -177,7 +177,7 @@ object Database extends Codecs {
 
   val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
-      INSERT INTO gpp_user (
+      INSERT INTO lucuma_user (
         user_type,
         orcid_id,
         orcid_access_token,
@@ -227,8 +227,8 @@ object Database extends Codecs {
              r.role_id,
              r.role_type,
              r.role_ngo
-      FROM   gpp_user u
-      JOIN   gpp_role r
+      FROM   lucuma_user u
+      JOIN   lucuma_role r
       ON     u.user_id = r.user_id
       WHERE  u.user_id = $user_id
       AND    u.user_type = 'standard' -- sanity check
@@ -262,12 +262,12 @@ object Database extends Codecs {
 
   val DeleteUser: Command[User.Id] =
     sql"""
-      DELETE FROM gpp_user WHERE user_id = $user_id
+      DELETE FROM lucuma_user WHERE user_id = $user_id
     """.command
 
   val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
     sql"""
-      INSERT INTO gpp_role (user_id, role_type, role_ngo)
+      INSERT INTO lucuma_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})
       RETURNING role_id
     """
@@ -276,7 +276,7 @@ object Database extends Codecs {
 
   val UpdateActiveRole: Command[StandardRole.Id ~ User.Id] =
     sql"""
-      UPDATE gpp_user
+      UPDATE lucuma_user
       SET    role_id = $role_id
       WHERE  user_id = $user_id
     """.command

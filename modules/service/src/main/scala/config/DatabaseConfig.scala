@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.config
+package lucuma.sso.service.config
 
 import java.net.URI
 import ciris._
@@ -26,7 +26,7 @@ object DatabaseConfig {
   val Local  = DatabaseConfig(
     host     = "localhost",
     port     = 5432,
-    database = "gpp-sso",
+    database = "lucuma-sso",
     user     = "jimmy",
     password = Some("banana"),
   )

@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package gpp.sso.service.database
+package lucuma.sso.service.database
 
-import gpp.sso.model._
+import lucuma.sso.model._
 
 sealed abstract class RoleRequest(
   val tpe: RoleType,
