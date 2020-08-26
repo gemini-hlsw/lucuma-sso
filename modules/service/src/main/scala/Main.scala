@@ -110,8 +110,7 @@ object FMain {
           publicKey    = config.publicKey,
           cookieReader = config.cookieReader,
           cookieWriter = config.cookieWriter,
-          scheme       = config.scheme,
-          authority    = config.authority,
+          publicUri    = config.publicUri,
         )
       } .map(ServerMiddleware(config.environment, config.cookieReader))
 
