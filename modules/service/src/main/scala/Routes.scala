@@ -46,11 +46,7 @@ object Routes {
     // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
     // a URL that makes sense to the user's browser!
     val Stage2Uri: Uri =
-      Uri(
-        scheme    = Some(scheme),     // http[s]
-        authority = Some(authority),  // host[:port]
-        path      = "/auth/stage2"
-      )
+      RootUri.copy(path = "/auth/stage2")
 
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
