@@ -97,7 +97,7 @@ object FMain {
       logHeaders = true,
       logBody    = true,
     )).map { client =>
-      OrcidService(config.clientId, config.clientSecret, client)
+      OrcidService(config.orcidHost, config.clientId, config.clientSecret, client)
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
@@ -123,7 +123,8 @@ object FMain {
             |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
             |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
             |${config.environment} Environment at ${config.publicUri}
-            |JWT cookie domain is ${config.cookieDomain.getOrElse("<none>")}
+            |Cookie domain is ${config.cookieDomain.getOrElse("<none>")}
+            |ORCID host is ${config.orcid.orcidHost}
             |
             |""".stripMargin
     banner.linesIterator.toList.traverse_(Logger[F].info(_))

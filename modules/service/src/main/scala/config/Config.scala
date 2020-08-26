@@ -91,16 +91,16 @@ object Config {
   def config: ConfigValue[Config] =
     envOrProp("LUCUMA_SSO_ENVIRONMENT")
       .as[Environment]
-      .default(Environment.Local)
+      .default(Local)
       .flatMap {
 
-        case Environment.Local =>
-          OrcidConfig.config.map(local)
+        case Local =>
+          OrcidConfig.config(Local).map(local)
 
         case envi => (
           envOrProp("PORT").as[Int],
           DatabaseConfig.config,
-          OrcidConfig.config,
+          OrcidConfig.config(envi),
           envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
           envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
           envOrProp("GPG_SSO_PASSPHRASE").redacted,
