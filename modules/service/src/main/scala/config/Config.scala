@@ -104,8 +104,8 @@ object Config {
           envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
           envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
           envOrProp("GPG_SSO_PASSPHRASE").redacted,
-          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ => ".herokuapp.com")).map(_.some),
-          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_  + ".herokuapp.com")),
+          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")).map(_.some),
+          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
         ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
           for {
             skey <- default(text).as[PrivateKey](privateKey(pass))

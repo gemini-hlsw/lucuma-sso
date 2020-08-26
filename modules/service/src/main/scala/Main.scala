@@ -123,6 +123,7 @@ object FMain {
             |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
             |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
             |${config.environment} Environment at ${config.publicUri}
+            |JWT cookie domain is ${config.cookieDomain.getOrElse("<none>")}
             |
             |""".stripMargin
     banner.linesIterator.toList.traverse_(Logger[F].info(_))
