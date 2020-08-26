@@ -42,7 +42,7 @@ object HomePage {
   def apply(myUri: Uri, ou: Option[Either[JwtException, User]]): Elem =
     <html>
       <script>{ script }</script>
-      <h2>lucuma-SSO</h2>
+      <h2>Lucuma SSO</h2>
       {
         ou match {
           case None =>
