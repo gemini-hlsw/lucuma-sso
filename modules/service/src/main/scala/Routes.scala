@@ -18,6 +18,7 @@ import org.http4s.scalaxml._
 import org.http4s.headers.`Content-Type`
 import java.security.PublicKey
 import lucuma.sso.client.util.GpgPublicKeyReader
+import org.http4s.Uri.Scheme
 
 object Routes {
 
@@ -65,11 +66,11 @@ object Routes {
 
       // Create and return a new guest user
       // TODO: should we no-op if the user is already logged in (as anyone)?
-      case r@(POST -> Root / "api" / "v1" / "authAsGuest") =>
+      case POST -> Root / "api" / "v1" / "authAsGuest" =>
         dbPool.use { db =>
           for {
             gu  <- db.createGuestUser
-            c   <- cookieWriter.newCookie(gu, r.isSecure.getOrElse(false))
+            c   <- cookieWriter.newCookie(gu, scheme == Scheme.https)
             r   <- Created((gu:User).asJson.spaces2)
           } yield r.addCookie(c)
         }
@@ -122,7 +123,7 @@ object Routes {
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            cookie   <- cookieWriter.newCookie(user, r.isSecure.getOrElse(false))
+            cookie   <- cookieWriter.newCookie(user, scheme == Scheme.https)
             res      <- Found(Location(redir), (user:User).asJson.spaces2)
           } yield res.addCookie(cookie)
         }
