@@ -18,6 +18,7 @@ import org.http4s.scalaxml._
 import org.http4s.headers.`Content-Type`
 import java.security.PublicKey
 import lucuma.sso.client.util.GpgPublicKeyReader
+import org.http4s.Uri.Scheme
 
 object Routes {
 
@@ -33,6 +34,14 @@ object Routes {
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
+
+    // The root URI for this application
+    val RootUri: Uri =
+      Uri(
+        scheme    = Some(scheme),     // http[s]
+        authority = Some(authority),  // host[:port]
+        path      = "/"
+      )
 
     // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
     // a URL that makes sense to the user's browser!
@@ -52,16 +61,16 @@ object Routes {
       case r@(GET -> Root) =>
         for {
           u <- cookieReader.attemptFindUser(r)
-          r <- Ok(HomePage(u), `Content-Type`(MediaType.text.html))
+          r <- Ok(HomePage(RootUri, u), `Content-Type`(MediaType.text.html))
         } yield r
 
       // Create and return a new guest user
       // TODO: should we no-op if the user is already logged in (as anyone)?
-      case r@(POST -> Root / "api" / "v1" / "authAsGuest") =>
+      case POST -> Root / "api" / "v1" / "authAsGuest" =>
         dbPool.use { db =>
           for {
             gu  <- db.createGuestUser
-            c   <- cookieWriter.newCookie(gu, r.isSecure.getOrElse(false))
+            c   <- cookieWriter.newCookie(gu, scheme == Scheme.https)
             r   <- Created((gu:User).asJson.spaces2)
           } yield r.addCookie(c)
         }
@@ -114,7 +123,7 @@ object Routes {
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            cookie   <- cookieWriter.newCookie(user, r.isSecure.getOrElse(false))
+            cookie   <- cookieWriter.newCookie(user, scheme == Scheme.https)
             res      <- Found(Location(redir), (user:User).asJson.spaces2)
           } yield res.addCookie(cookie)
         }

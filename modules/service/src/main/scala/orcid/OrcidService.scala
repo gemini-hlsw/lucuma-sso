@@ -9,9 +9,11 @@ import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
-import org.http4s.implicits._
 import org.http4s.headers.Authorization
 import orcid.lucuma.sso.service.orcid.OrcidException
+import org.http4s.Uri.Scheme
+import org.http4s.Uri.Authority
+import org.http4s.Uri.Host
 
 trait OrcidService[F[_]] {
 
@@ -47,21 +49,29 @@ trait OrcidService[F[_]] {
 object OrcidService {
 
   def apply[F[_]: Sync](
+    orcidHost:         Host,
     orcidClientId:     String,
     orcidClientSecret: String,
     httpClient:        Client[F],
   ): OrcidService[F] =
     new OrcidService[F] with Http4sClientDsl[F] {
 
+      def orcidUri(path: String): Uri =
+        Uri(
+          scheme    = Some(Scheme.https),
+          authority = Some(Authority(host = orcidHost)),
+          path      = path
+        )
+
       def logoutUri(script: Option[String]): F[Uri] =
-        uri"https://orcid.org/userStatus.json"
+        orcidUri("/userStatus.json")
           .withQueryParams(
             Map("logUserOut" -> "true") ++ script.foldMap(s =>
             Map("callback"   -> s))
           ).pure[F]
 
       def authenticationUri(redirect: Uri, state: Option[String]): F[Uri] =
-        uri"https://orcid.org/oauth/authorize"
+        orcidUri("/oauth/authorize")
           .withQueryParams(
             state.foldMap(s => Map(
               "state"         -> s
@@ -82,7 +92,7 @@ object OrcidService {
               "redirect_uri"  -> redirect.toString,
               "code"          -> authenticationCode,
             ),
-            uri"https://orcid.org/oauth/token",
+            orcidUri("/oauth/token"),
             Accept(MediaType.application.json)
           )
         )(_.as[OrcidException].widen)
@@ -90,7 +100,7 @@ object OrcidService {
       def getPerson(access: OrcidAccess): F[OrcidPerson] =
         httpClient.expectOr[OrcidPerson](
           Method.GET(
-            Uri.unsafeFromString(s"https://pub.orcid.org/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
+            Uri.unsafeFromString(s"https://pub.$orcidHost/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
             Accept(MediaType.application.json),
             Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
           )

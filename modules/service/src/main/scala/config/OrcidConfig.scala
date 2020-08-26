@@ -5,10 +5,17 @@ package lucuma.sso.service.config
 
 import ciris._
 import cats.implicits._
+import org.http4s.Uri.Host
+import lucuma.sso.service.config.Environment.Local
+import lucuma.sso.service.config.Environment.Review
+import lucuma.sso.service.config.Environment.Staging
+import lucuma.sso.service.config.Environment.Production
+import org.http4s.Uri.RegName
 
 final case class OrcidConfig(
-  clientId: String,
-  clientSecret: String
+  clientId:     String,
+  clientSecret: String,
+  orcidHost:    Host,
 )
 
 object OrcidConfig {
@@ -16,9 +23,15 @@ object OrcidConfig {
   // We can't fake this part for running locally, you really do need to have ORCID credentials. See
   // the project README for information on setting this up.
 
-  val config: ConfigValue[OrcidConfig] = (
-    envOrProp("lucuma_ORCID_CLIENT_ID"),
-    envOrProp("lucuma_ORCID_CLIENT_SECRET")
-  ).parMapN(apply(_, _))
+  def orcidHost(env: Environment): Host =
+    env match {
+      case Local   | Review     => RegName("sandbox.orcid.org")
+      case Staging | Production => RegName("orcid.org")
+    }
+
+  def config(env: Environment): ConfigValue[OrcidConfig] = (
+    envOrProp("LUCUMA_ORCID_CLIENT_ID"),
+    envOrProp("LUCUMA_ORCID_CLIENT_SECRET")
+  ).parMapN(apply(_, _, orcidHost(env)))
 
 }

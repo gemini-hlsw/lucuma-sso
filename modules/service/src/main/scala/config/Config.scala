@@ -18,6 +18,8 @@ import cats.MonadError
 import scala.concurrent.duration._
 import org.http4s.Uri
 import org.http4s.Uri.RegName
+import lucuma.sso.service.config.Environment.Local
+import org.http4s.Uri.Authority
 
 final case class Config(
   environment:  Environment,
@@ -45,6 +47,17 @@ final case class Config(
 
   def cookieWriter[F[_]: Sync] =
     SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime, cookieDomain)
+
+  def publicUri: Uri =
+    Uri(
+      scheme = Some(scheme),
+      authority = Some(
+        Authority(
+          host = authority.host,
+          port = if (environment == Local) Some(httpPort) else None
+        )
+      )
+    )
 
 }
 
@@ -76,27 +89,30 @@ object Config {
   }
 
   def config: ConfigValue[Config] =
-    envOrProp("lucuma_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
+    envOrProp("LUCUMA_SSO_ENVIRONMENT")
+      .as[Environment]
+      .default(Local)
+      .flatMap {
 
-      case Environment.Local =>
-        OrcidConfig.config.map(local)
+        case Local =>
+          OrcidConfig.config(Local).map(local)
 
-      case envi => (
-        envOrProp("PORT").as[Int],
-        DatabaseConfig.config,
-        OrcidConfig.config,
-        envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
-        envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
-        envOrProp("GPG_SSO_PASSPHRASE").redacted,
-        envOrProp("GPG_SSO_COOKIE_DOMAIN").option,
-        envOrProp("GPG_SSO_HOSTNAME"),
-      ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
-        for {
-          skey <- default(text).as[PrivateKey](privateKey(pass))
-        } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
+        case envi => (
+          envOrProp("PORT").as[Int],
+          DatabaseConfig.config,
+          OrcidConfig.config(envi),
+          envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
+          envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
+          envOrProp("GPG_SSO_PASSPHRASE").redacted,
+          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")).map(_.some),
+          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
+        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
+          for {
+            skey <- default(text).as[PrivateKey](privateKey(pass))
+          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
+        }
+
       }
-
-    }
 
 }
 

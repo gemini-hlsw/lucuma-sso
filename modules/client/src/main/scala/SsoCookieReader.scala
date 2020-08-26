@@ -41,8 +41,8 @@ trait SsoCookieReader[F[_]] { outer =>
 
 object SsoCookieReader {
 
-  private[sso] val JwtCookie = "edu.gemini.lucuma.sso_jwt"
-  private[sso] val lucumaUser   = "lucuma-user"
+  private[sso] val JwtCookie  = "lucuma-jwt"
+  private[sso] val lucumaUser = "lucuma-user"
 
   def apply[F[_]: MonadError[?[_], Throwable]](jwtDecoder: JwtDecoder[F]): SsoCookieReader[F] =
     new SsoCookieReader[F] {

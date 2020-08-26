@@ -97,7 +97,7 @@ object FMain {
       logHeaders = true,
       logBody    = true,
     )).map { client =>
-      OrcidService(config.clientId, config.clientSecret, client)
+      OrcidService(config.orcidHost, config.clientId, config.clientSecret, client)
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
@@ -122,7 +122,9 @@ object FMain {
             |╦  ╦ ╦╔═╗╦ ╦╔╦╗╔═╗   ╔═╗╔═╗╔═╗
             |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
             |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
-            |${config.environment} Environment
+            |${config.environment} Environment at ${config.publicUri}
+            |Cookie domain is ${config.cookieDomain.getOrElse("<none>")}
+            |ORCID host is ${config.orcid.orcidHost}
             |
             |""".stripMargin
     banner.linesIterator.toList.traverse_(Logger[F].info(_))
@@ -152,7 +154,7 @@ object FMain {
       _  <- Resource.liftF(banner[F](c))
       _  <- Resource.liftF(migrateDatabase[F](c.database))
       ep <- entryPointResource
-      ap <- ep.liftR(routesResource(c)).map(rs => Router("/" -> rs).orNotFound)
+      ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
