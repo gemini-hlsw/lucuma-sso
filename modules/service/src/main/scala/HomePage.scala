@@ -13,6 +13,7 @@ import lucuma.sso.model.GuestUser
 import lucuma.sso.model.ServiceUser
 import lucuma.sso.model.StandardUser
 import java.net.URLEncoder
+import org.http4s.Uri
 
 
 object HomePage {
@@ -38,7 +39,7 @@ object HomePage {
         |
         |""".stripMargin
 
-  def apply(ou: Option[Either[JwtException, User]]): Elem =
+  def apply(myUri: Uri, ou: Option[Either[JwtException, User]]): Elem =
     <html>
       <script>{ script }</script>
       <h2>lucuma-SSO</h2>
@@ -47,7 +48,7 @@ object HomePage {
           case None =>
             <div>You are not logged in.</div>
             <ul>
-              <li><a href={ s"/auth/stage1?state=${URLEncoder.encode("http://localhost:8080/", "UTF-8")}" }>Authenticate via ORCID.</a></li>
+              <li><a href={ s"/auth/stage1?state=${URLEncoder.encode(myUri.renderString, "UTF-8")}" }>Authenticate via ORCID.</a></li>
               <li><a href="javascript:authAsGuest()">Continue as guest.</a></li>
             </ul>
 
@@ -61,7 +62,7 @@ object HomePage {
                 }
               }
               <ul>
-                <li><a href={ s"/auth/stage1?state=${URLEncoder.encode("http://localhost:8080/", "UTF-8")}" }>Authenticate via ORCID.</a></li>
+                <li><a href={ s"/auth/stage1?state=${URLEncoder.encode(myUri.renderString, "UTF-8")}" }>Authenticate via ORCID.</a></li>
                 <li><a href="javascript:authAsGuest()">Continue as Guest</a></li>
               </ul>
             </div>
@@ -73,7 +74,7 @@ object HomePage {
               {
                 u match {
                   case GuestUser(_) =>
-                    <li><a href={ s"/auth/stage1?state=${URLEncoder.encode("http://localhost:8080/", "UTF-8")}" }>Authenticate via ORCID.</a></li>
+                    <li><a href={ s"/auth/stage1?state=${URLEncoder.encode(myUri.renderString, "UTF-8")}" }>Authenticate via ORCID.</a></li>
                   case ServiceUser(_, _) =>
                   case StandardUser(_, _, _, p) =>
                     <li>

@@ -12,7 +12,6 @@ import lucuma.sso.client.SsoCookieReader
 import cats.effect._
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
-import org.http4s.Headers
 import org.http4s.server.middleware.ErrorAction
 import io.chrisdavenport.log4cats.Logger
 
@@ -38,10 +37,10 @@ object ServerMiddleware {
     org.http4s.server.middleware.Logger.httpRoutes[F](
       logHeaders        = true,
       logBody           = false,
-      redactHeadersWhen = { h =>
+      redactHeadersWhen = { _ =>
         env match {
           case Local                => false
-          case Staging | Production => Headers.SensitiveHeaders.contains(h)
+          case Staging | Production => false // TODO: Headers.SensitiveHeaders.contains(h)
         }
       }
     )

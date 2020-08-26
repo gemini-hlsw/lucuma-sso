@@ -152,7 +152,7 @@ object FMain {
       _  <- Resource.liftF(banner[F](c))
       _  <- Resource.liftF(migrateDatabase[F](c.database))
       ep <- entryPointResource
-      ap <- ep.liftR(routesResource(c)).map(rs => Router("/" -> rs).orNotFound)
+      ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 

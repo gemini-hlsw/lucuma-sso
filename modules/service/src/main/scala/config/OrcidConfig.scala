@@ -17,8 +17,8 @@ object OrcidConfig {
   // the project README for information on setting this up.
 
   val config: ConfigValue[OrcidConfig] = (
-    envOrProp("lucuma_ORCID_CLIENT_ID"),
-    envOrProp("lucuma_ORCID_CLIENT_SECRET")
+    envOrProp("LUCUMA_ORCID_CLIENT_ID"),
+    envOrProp("LUCUMA_ORCID_CLIENT_SECRET")
   ).parMapN(apply(_, _))
 
 }

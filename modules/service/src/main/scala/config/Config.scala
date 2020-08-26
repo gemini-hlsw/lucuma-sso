@@ -76,7 +76,7 @@ object Config {
   }
 
   def config: ConfigValue[Config] =
-    envOrProp("lucuma_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
+    envOrProp("LUCUMA_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
 
       case Environment.Local =>
         OrcidConfig.config.map(local)
@@ -88,8 +88,8 @@ object Config {
         envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
         envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
         envOrProp("GPG_SSO_PASSPHRASE").redacted,
-        envOrProp("GPG_SSO_COOKIE_DOMAIN").option,
-        envOrProp("GPG_SSO_HOSTNAME"),
+        envOrProp("LUCUMA_SSO_COOKIE_DOMAIN").option,
+        envOrProp("LUCUMA_SSO_HOSTNAME"),
       ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
         for {
           skey <- default(text).as[PrivateKey](privateKey(pass))

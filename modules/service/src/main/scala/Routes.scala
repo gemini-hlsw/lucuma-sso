@@ -34,6 +34,14 @@ object Routes {
     object FDsl extends Http4sDsl[F]
     import FDsl._
 
+    // The root URI for this application
+    val RootUri: Uri =
+      Uri(
+        scheme    = Some(scheme),     // http[s]
+        authority = Some(authority),  // host[:port]
+        path      = "/"
+      )
+
     // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
     // a URL that makes sense to the user's browser!
     val Stage2Uri: Uri =
@@ -52,7 +60,7 @@ object Routes {
       case r@(GET -> Root) =>
         for {
           u <- cookieReader.attemptFindUser(r)
-          r <- Ok(HomePage(u), `Content-Type`(MediaType.text.html))
+          r <- Ok(HomePage(RootUri, u), `Content-Type`(MediaType.text.html))
         } yield r
 
       // Create and return a new guest user
