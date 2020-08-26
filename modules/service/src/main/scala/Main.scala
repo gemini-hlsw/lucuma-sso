@@ -122,7 +122,7 @@ object FMain {
             |╦  ╦ ╦╔═╗╦ ╦╔╦╗╔═╗   ╔═╗╔═╗╔═╗
             |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
             |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
-            |${config.environment} Environment
+            |${config.environment} Environment at ${Uri(scheme = Some(config.scheme), authority = Some(config.authority))}
             |
             |""".stripMargin
     banner.linesIterator.toList.traverse_(Logger[F].info(_))

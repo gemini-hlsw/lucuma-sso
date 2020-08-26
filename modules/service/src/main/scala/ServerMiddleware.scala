@@ -40,7 +40,7 @@ object ServerMiddleware {
       redactHeadersWhen = { _ =>
         env match {
           case Local                => false
-          case Staging | Production => false // TODO: Headers.SensitiveHeaders.contains(h)
+          case Review | Staging | Production => false // TODO: Headers.SensitiveHeaders.contains(h)
         }
       }
     )

@@ -76,27 +76,30 @@ object Config {
   }
 
   def config: ConfigValue[Config] =
-    envOrProp("LUCUMA_SSO_ENVIRONMENT").as[Environment].default(Environment.Local).flatMap {
+    envOrProp("LUCUMA_SSO_ENVIRONMENT")
+      .as[Environment]
+      .default(Environment.Local)
+      .flatMap {
 
-      case Environment.Local =>
-        OrcidConfig.config.map(local)
+        case Environment.Local =>
+          OrcidConfig.config.map(local)
 
-      case envi => (
-        envOrProp("PORT").as[Int],
-        DatabaseConfig.config,
-        OrcidConfig.config,
-        envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
-        envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
-        envOrProp("GPG_SSO_PASSPHRASE").redacted,
-        envOrProp("LUCUMA_SSO_COOKIE_DOMAIN").option,
-        envOrProp("LUCUMA_SSO_HOSTNAME"),
-      ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
-        for {
-          skey <- default(text).as[PrivateKey](privateKey(pass))
-        } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
+        case envi => (
+          envOrProp("PORT").as[Int],
+          DatabaseConfig.config,
+          OrcidConfig.config,
+          envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
+          envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
+          envOrProp("GPG_SSO_PASSPHRASE").redacted,
+          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ => "herokuapp.com")).map(_.some),
+          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
+        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
+          for {
+            skey <- default(text).as[PrivateKey](privateKey(pass))
+          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
+        }
+
       }
-
-    }
 
 }
 
