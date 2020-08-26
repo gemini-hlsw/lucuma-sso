@@ -18,6 +18,8 @@ import cats.MonadError
 import scala.concurrent.duration._
 import org.http4s.Uri
 import org.http4s.Uri.RegName
+import lucuma.sso.service.config.Environment.Local
+import org.http4s.Uri.Authority
 
 final case class Config(
   environment:  Environment,
@@ -45,6 +47,17 @@ final case class Config(
 
   def cookieWriter[F[_]: Sync] =
     SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime, cookieDomain)
+
+  def publicUri: Uri =
+    Uri(
+      scheme = Some(scheme),
+      authority = Some(
+        Authority(
+          host = authority.host,
+          port = if (environment == Local) Some(httpPort) else None
+        )
+      )
+    )
 
 }
 
