@@ -5,6 +5,7 @@ package lucuma.sso.service.orcid
 
 import lucuma.sso.model.OrcidProfile
 import io.circe._
+import io.circe.generic.semiauto._
 import io.circe.syntax._
 
 case class OrcidName(
@@ -17,18 +18,24 @@ case class OrcidName(
 }
 object OrcidName {
 
+  case class Value(value: String) // annoying
+  object Value {
+    implicit val EncoderValue: Encoder[Value] = deriveEncoder
+    implicit val DecoderValue: Decoder[Value] = deriveDecoder
+  }
+
   implicit val DecoderOrcidName: Decoder[OrcidName] = c =>
     for {
-      f <- c.downField("family-name").downField("value").as[Option[String]]
-      g <- c.downField("given-names").downField("value").as[Option[String]]
-      c <- c.downField("credit-name").downField("value").as[Option[String]]
-    } yield OrcidName(f,g,c)
+      f <- c.downField("family-name").as[Option[Value]]
+      g <- c.downField("given-names").as[Option[Value]]
+      c <- c.downField("credit-name").as[Option[Value]]
+    } yield OrcidName(f.map(_.value),g.map(_.value),c.map(_.value))
 
   implicit val EncoderOrcidName: Encoder[OrcidName] = n =>
     Json.obj(
-      "family-name" -> Json.obj("value" -> n.familyName.asJson),
-      "given-names" -> Json.obj("value" -> n.givenName.asJson),
-      "credit-name" -> Json.obj("value" -> n.creditName.asJson),
+      "family-name" -> n.familyName.map(Value(_)).asJson,
+      "given-names" -> n.givenName.map(Value(_)).asJson,
+      "credit-name" -> n.creditName.map(Value(_)).asJson,
     )
 
 }
