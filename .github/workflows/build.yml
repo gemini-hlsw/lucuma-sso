@@ -10,12 +10,7 @@ jobs:
       - name: Set up JDK
         uses: olafurpg/setup-scala@v2
       - name: Cache SBT
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache/coursier/v1
-            ~/.sbt
-          key: sbt-${{ hashFiles('**/build.sbt') }}
+        uses: coursier/cache-action@v3
       - name: Set up cert permissions (1)
         run: chmod 600 test-cert/server.key
       - name: Set up cert permissions (2)
@@ -23,6 +18,8 @@ jobs:
       - name: Start up Postgres instances
         run: docker-compose up -d
       - name: Compile and test
-        run: csbt headerCheck clean +test
+        run: csbt headerCheck clean coverage +test coverageReport
       - name: Shut down Postgres instances
         run: docker-compose down
+      - name: Upload code coverage data
+        run: bash <(curl -s https://codecov.io/bash)
