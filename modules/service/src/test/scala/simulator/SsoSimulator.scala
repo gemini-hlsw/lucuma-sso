@@ -11,8 +11,6 @@ import lucuma.sso.service.config.Config
 import natchez.Trace.Implicits.noop
 import lucuma.sso.service.database.Database
 import lucuma.sso.client.SsoCookieReader
-import org.http4s.Uri
-import org.http4s.Uri.RegName
 import io.chrisdavenport.log4cats.Logger
 import lucuma.sso.service.config.OrcidConfig
 import lucuma.sso.service.config.Environment
@@ -30,11 +28,7 @@ object SsoSimulator {
           publicKey    = config.publicKey,
           cookieReader = config.cookieReader,
           cookieWriter = config.cookieWriter,
-          scheme       = Uri.Scheme.https,
-          authority    = Uri.Authority(
-            host = RegName("sso.gemini.edu"),
-            port = Some(80),
-          ),
+          publicUri    = config.publicUri,
         ), config.cookieReader)
     }
   }

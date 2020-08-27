@@ -29,24 +29,15 @@ object Routes {
     publicKey:    PublicKey,
     cookieReader: SsoCookieReader[F],
     cookieWriter: SsoCookieWriter[F],
-    scheme:       Uri.Scheme,
-    authority:    Uri.Authority,
+    publicUri:    Uri, // root URI
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
 
-    // The root URI for this application
-    val RootUri: Uri =
-      Uri(
-        scheme    = Some(scheme),     // http[s]
-        authority = Some(authority),  // host[:port]
-        path      = "/"
-      )
-
     // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
     // a URL that makes sense to the user's browser!
     val Stage2Uri: Uri =
-      RootUri.copy(path = "/auth/stage2")
+      publicUri.copy(path = "/auth/stage2")
 
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
@@ -57,7 +48,7 @@ object Routes {
       case r@(GET -> Root) =>
         for {
           u <- cookieReader.attemptFindUser(r)
-          r <- Ok(HomePage(RootUri, u), `Content-Type`(MediaType.text.html))
+          r <- Ok(HomePage(publicUri, u), `Content-Type`(MediaType.text.html))
         } yield r
 
       // Create and return a new guest user
@@ -66,7 +57,7 @@ object Routes {
         dbPool.use { db =>
           for {
             gu  <- db.createGuestUser
-            c   <- cookieWriter.newCookie(gu, scheme == Scheme.https)
+            c   <- cookieWriter.newCookie(gu, publicUri.scheme == Some(Scheme.https))
             r   <- Created((gu:User).asJson.spaces2)
           } yield r.addCookie(c)
         }
@@ -119,7 +110,7 @@ object Routes {
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            cookie   <- cookieWriter.newCookie(user, scheme == Scheme.https)
+            cookie   <- cookieWriter.newCookie(user, publicUri.scheme == Some(Scheme.https))
             res      <- Found(Location(redir), (user:User).asJson.spaces2)
           } yield res.addCookie(cookie)
         }
