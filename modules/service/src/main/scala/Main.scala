@@ -10,7 +10,6 @@ import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.orcid.OrcidService
 import io.jaegertracing.Configuration.{ ReporterConfiguration, SamplerConfiguration }
-import java.io.{ PrintWriter, StringWriter }
 import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
 import natchez.jaeger.Jaeger
@@ -24,6 +23,10 @@ import skunk._
 import io.chrisdavenport.log4cats.Logger
 import cats.data.Kleisli
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import natchez.http4s.AnsiFilterStream
+import java.io.ByteArrayOutputStream
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
 
 object Main extends IOApp {
 
@@ -70,13 +73,19 @@ object FMain {
       .withHttpApp(app)
       .withPort(port)
       .withOnError { t =>
-        // for now let's include the stacktrace in the message body
-        val sw = new StringWriter
-        // t.printStackTrace()
-        t.printStackTrace(new PrintWriter(sw))
+        // TODO: don't show this in production
+        val baos = new ByteArrayOutputStream
+        val fs   = new AnsiFilterStream(baos)
+        val osw  = new OutputStreamWriter(fs, "UTF-8")
+        val pw   = new PrintWriter(osw)
+        t.printStackTrace(pw)
+        pw.close()
+        osw.close()
+        fs.close()
+        baos.close()
         Response[F](
           status = Status.InternalServerError,
-        ).withEntity(sw.toString)
+        ).withEntity(new String(baos.toByteArray, "UTF-8"))
       }
       .build
 
