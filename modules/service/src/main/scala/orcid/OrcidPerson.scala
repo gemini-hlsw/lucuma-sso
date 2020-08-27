@@ -23,7 +23,7 @@ object OrcidPerson {
 
   implicit val DecoderOrcidPerson: Decoder[OrcidPerson] = c =>
     for {
-      n  <- c.downField("name").as[OrcidName]
+      n  <- c.downField("name").as[Option[OrcidName]].map(_.getOrElse(OrcidName(None, None, None)))
       es <- c.downField("emails").downField("email").as[List[OrcidEmail]]
     } yield OrcidPerson(n, es)
 

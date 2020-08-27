@@ -25,7 +25,7 @@ object OrcidConfig {
 
   def orcidHost(env: Environment): Host =
     env match {
-      case Local   | Review     => RegName("sandbox.orcid.org")
+      case Local   | Review     => RegName("orcid.org") // TODO? RegName("sandbox.orcid.org")
       case Staging | Production => RegName("orcid.org")
     }
 
