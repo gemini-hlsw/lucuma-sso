@@ -48,7 +48,7 @@ object Routes {
       case r@(GET -> Root) =>
         for {
           u <- cookieReader.attemptFindUser(r)
-          r <- Ok(HomePage(publicUri, u), `Content-Type`(MediaType.text.html))
+          r <- Ok(HomePage(publicUri, u), `Content-Type`(MediaType.text.html, Some(Charset.`UTF-8`)))
         } yield r
 
       // Create and return a new guest user
