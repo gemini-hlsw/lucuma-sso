@@ -18,7 +18,7 @@ jobs:
       - name: Start up Postgres instances
         run: docker-compose up -d
       - name: Compile and test
-        run: csbt headerCheck clean coverage +test coverageReport
+        run: csbt headerCheck clean modelJS/test coverage modelJVM/test client/test service/test modelJVM/coverageReport client/coverageReport service/coverageReport
       - name: Shut down Postgres instances
         run: docker-compose down
       - name: Upload code coverage data
