@@ -64,7 +64,9 @@ object Database extends Codecs {
         role:      RoleRequest
       ): F[(StandardUser, Boolean)] =
         s.transaction.use { _ =>
-          // we need to validate that promotion is in fact a guest user, and ignore it otherwise
+          // Try to update the profile and read the user. If it works then the user already exists
+          // and we need to chown the guest user's stuff (if any). Otherwise, if there is a guest
+          // user then we need to promote it, if not it's a brand new user.
           OptionT(updateProfile(access, person)).tupleRight(true).getOrElseF {
             promotion match {
               case Some(guestId) => promoteGuest(access, person, guestId, role).tupleRight(false)
@@ -96,7 +98,14 @@ object Database extends Codecs {
         person:    OrcidPerson,
         promotion: User.Id,
         role:      RoleRequest
-      ): F[StandardUser] = ???
+      ): F[StandardUser] =
+        s.prepare(PromoteGuest).use { pq =>
+          for {
+            userId <- pq.unique(promotion ~ access ~ person)
+            _      <- addRole(userId, role, true)
+            user   <- readStandardUser(userId)
+          } yield user
+        }
 
       def createStandardUser(
         access:    OrcidAccess,
@@ -174,6 +183,32 @@ object Database extends Codecs {
           access.orcidId
       }
 
+  val PromoteGuest: Query[User.Id ~ OrcidAccess ~ OrcidPerson, User.Id] =
+    sql"""
+      UPDATE lucuma_user
+      SET user_type              = 'standard',
+          orcid_id               = $orcid,
+          orcid_access_token     = $uuid,
+       -- orcid_token_expiration -- TODO
+          orcid_given_name       = ${varchar.opt},
+          orcid_credit_name      = ${varchar.opt},
+          orcid_family_name      = ${varchar.opt},
+          orcid_email            = ${varchar.opt}
+      WHERE user_id   = $user_id
+      AND   user_type = 'guest' -- sanity check
+      RETURNING (user_id)
+    """
+      .query(user_id)
+      .contramap[User.Id ~ OrcidAccess ~ OrcidPerson] {
+        case id ~ access ~ person =>
+          access.orcidId                   ~
+          access.accessToken               ~ // TODO: expiration
+          person.name.givenName            ~
+          person.name.creditName           ~
+          person.name.familyName           ~
+          person.primaryEmail.map(_.email) ~
+          id
+      }
 
   val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
