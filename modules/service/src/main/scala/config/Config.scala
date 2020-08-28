@@ -31,7 +31,11 @@ final case class Config(
   cookieDomain: Option[String],
   scheme:       Uri.Scheme,
   hostname:     String,
+  heroku:       Option[HerokuConfig],
 ) {
+
+  def versionText: String =
+    heroku.fold(s"Work In Progress")(_.versionText)
 
   val authority: Uri.Authority =
     Uri.Authority(
@@ -84,6 +88,7 @@ object Config {
       None,
       Uri.Scheme.http,
       "localhost",
+      None
     )
 
   }
@@ -106,10 +111,11 @@ object Config {
           envOrProp("GPG_SSO_PASSPHRASE").redacted,
           (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")).map(_.some),
           (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
-        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host) =>
+          HerokuConfig.config.option,
+        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku) =>
           for {
             skey <- default(text).as[PrivateKey](privateKey(pass))
-          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host)
+          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host, heroku)
         }
 
       }
