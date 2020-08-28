@@ -60,7 +60,7 @@ object HerokuConfig {
   val review: ConfigValue[Review] = (
     env("HEROKU_APP_NAME"),
     env("HEROKU_BRANCH"),
-    env("prNumber").as[Int].option,
+    env("HEROKU_PR_NUMBER").as[Int].option,
   ).parMapN(Review)
 
   val default: ConfigValue[Default] = (
