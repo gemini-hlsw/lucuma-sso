@@ -74,7 +74,8 @@ object HerokuConfig {
   ).parMapN(Default)
 
   val config: ConfigValue[HerokuConfig] =
-    default.widen or review.widen
+    // default.widen or review.widen
+    review.widen
 
 }
 
