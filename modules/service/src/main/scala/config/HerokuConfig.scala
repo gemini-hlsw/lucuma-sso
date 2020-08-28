@@ -16,7 +16,8 @@ sealed trait HerokuConfig {
 
   def versionText: String =
     this match {
-      case Review(_, branch, prNumber) => s"Pull Request #$prNumber from $branch"
+      case Review(_, branch, prNumber) =>
+        s"Pull Request ${prNumber.foldMap(n => s"#$n ")}from $branch"
       case Default(_, _, _, releaseCreatedAt, releaseVersion, slugCommit, _) =>
         s"$releaseVersion/$slugCommit created at $releaseCreatedAt"
     }
