@@ -59,24 +59,23 @@ object HerokuConfig {
   ) extends HerokuConfig
 
   val review: ConfigValue[Review] = (
-    env("HEROKU_APP_NAME"),
-    env("HEROKU_BRANCH"),
-    env("HEROKU_PR_NUMBER").as[Int].option,
-  ).parMapN(Review)
+    envOrProp("HEROKU_APP_NAME"),
+    envOrProp("HEROKU_BRANCH"),
+    envOrProp("HEROKU_PR_NUMBER").as[Int].option,
+  ).mapN(Review)
 
   val default: ConfigValue[Default] = (
-    env("HEROKU_APP_ID").as[UUID],
-    env("HEROKU_APP_NAME"),
-    env("HEROKU_DYNO_ID").as[UUID],
-    env("HEROKU_RELEASE_CREATED_AT").as(isoLocalDateTime),
-    env("HEROKU_RELEASE_VERSION"),
-    env("HEROKU_SLUG_COMMIT"),
-    env("HEROKU_SLUG_DESCRIPTION"),
-  ).parMapN(Default)
+    envOrProp("HEROKU_APP_ID").as[UUID],
+    envOrProp("HEROKU_APP_NAME"),
+    envOrProp("HEROKU_DYNO_ID").as[UUID],
+    envOrProp("HEROKU_RELEASE_CREATED_AT").as(isoLocalDateTime),
+    envOrProp("HEROKU_RELEASE_VERSION"),
+    envOrProp("HEROKU_SLUG_COMMIT"),
+    envOrProp("HEROKU_SLUG_DESCRIPTION"),
+  ).mapN(Default)
 
   val config: ConfigValue[HerokuConfig] =
-    // default.widen or review.widen
-    review.widen
+    default.widen or review.widen
 
 }
 
