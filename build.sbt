@@ -55,7 +55,7 @@ lazy val service = project
       "org.http4s"             %% "http4s-scala-xml"    % "0.21.7+17-2e3f5550-SNAPSHOT",
       "org.slf4j"              %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"           %% "natchez-jaeger"      % "0.0.12",
-      "org.tpolecat"           %% "skunk-core"          % "0.0.17",
+      "org.tpolecat"           %% "skunk-core"          % "0.0.18",
       // We use JDBC to do migrations
       "org.flywaydb"           % "flyway-core"          % "6.5.4",
       "org.postgresql"         % "postgresql"           % "42.2.15",
