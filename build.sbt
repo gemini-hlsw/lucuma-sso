@@ -48,7 +48,7 @@ lazy val service = project
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
       "io.circe"               %% "circe-parser"        % "0.13.0",
-      "is.cir"                 %% "ciris"               % "1.1.2",
+      "is.cir"                 %% "ciris"               % "1.2.1",
       "org.http4s"             %% "http4s-dsl"          % "0.21.7+17-2e3f5550-SNAPSHOT",
       "org.http4s"             %% "http4s-ember-client" % "0.21.7+17-2e3f5550-SNAPSHOT",
       "org.http4s"             %% "http4s-ember-server" % "0.21.7+17-2e3f5550-SNAPSHOT",
