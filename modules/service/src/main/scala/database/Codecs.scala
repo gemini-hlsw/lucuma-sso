@@ -7,7 +7,7 @@ import lucuma.sso.model._
 import skunk._
 import skunk.codec.all._
 import skunk.data.Type
-import gem.util.Enumerated
+import lucuma.core.util.Enumerated
 
 // Codecs for some atomic types.
 trait Codecs {

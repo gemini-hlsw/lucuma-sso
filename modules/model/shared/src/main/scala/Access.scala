@@ -3,7 +3,7 @@
 
 package lucuma.sso.model
 
-import gem.util.Enumerated
+import lucuma.core.util.Enumerated
 
 /** Much of the time we only care about a user's access level. */
 sealed abstract class Access(val name: String, val tag: String) extends Product with Serializable
