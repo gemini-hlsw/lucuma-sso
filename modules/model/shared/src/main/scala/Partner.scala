@@ -3,7 +3,7 @@
 
 package lucuma.sso.model
 
-import gem.util.Enumerated
+import lucuma.core.util.Enumerated
 import io.circe._
 
 sealed abstract class Partner(

@@ -1,5 +1,6 @@
 import sbtcrossproject.crossProject
 import sbtcrossproject.CrossType
+import com.timushev.sbt.updates.UpdatesKeys.dependencyUpdatesFilter
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
@@ -19,7 +20,7 @@ lazy val model = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "lucuma-sso-model",
     libraryDependencies ++= Seq(
-      "edu.gemini" %%% "gsp-core-model" % "0.2.8",
+      "edu.gemini" %%% "lucuma-core"    % "0.4.1",
       "io.circe"   %%% "circe-generic"  % "0.13.0",
     )
   )
@@ -55,11 +56,12 @@ lazy val service = project
       "org.http4s"             %% "http4s-scala-xml"    % "0.21.7+17-2e3f5550-SNAPSHOT",
       "org.slf4j"              %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"           %% "natchez-jaeger"      % "0.0.12",
-      "org.tpolecat"           %% "skunk-core"          % "0.0.17",
+      "org.tpolecat"           %% "skunk-core"          % "0.0.19",
       // We use JDBC to do migrations
-      "org.flywaydb"           % "flyway-core"          % "6.5.4",
-      "org.postgresql"         % "postgresql"           % "42.2.15",
+      "org.flywaydb"           % "flyway-core"          % "6.5.5",
+      "org.postgresql"         % "postgresql"           % "42.2.16",
     ),
 
   )
+
 
