@@ -20,7 +20,7 @@ lazy val model = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "lucuma-sso-model",
     libraryDependencies ++= Seq(
-      "edu.gemini" %%% "lucuma-core"    % "0.4.1",
+      "edu.gemini" %%% "lucuma-core"    % "0.4.3",
       "io.circe"   %%% "circe-generic"  % "0.13.0",
     )
   )
