@@ -2,11 +2,12 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import lucuma.sso.model._
+import lucuma.core.model._
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.Location
 import org.http4s.Request
+import lucuma.sso.client.codec.user._
 
 object ExistingUserSuite extends SsoSuite with Fixture {
 
@@ -25,7 +26,7 @@ object ExistingUserSuite extends SsoSuite with Fixture {
         user1  <- sso.fetchAs[User](Request[IO](uri =stage2))
 
         // Log into ORCID as Bob, who is now an existing user.
-        stage2 <- sim.authenticate(redir, Bob, Option(user1).collect { case StandardUser(_, _, _, p) => p.orcid })
+        stage2 <- sim.authenticate(redir, Bob, Option(user1).collect { case StandardUser(_, _, _, p) => p.orcidId })
 
         // Stage 2 should fetch the existing user this time.
         user2  <- sso.fetchAs[User](Request[IO](uri =stage2))

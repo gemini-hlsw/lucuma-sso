@@ -4,7 +4,7 @@ import cats.data.OptionT
 import cats.effect._
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import lucuma.sso.model.Orcid
+import lucuma.core.model.OrcidId
 import lucuma.sso.service.orcid._
 import java.time.Duration
 import java.util.UUID
@@ -13,11 +13,12 @@ import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits._
 import org.http4s.server._
+import scala.util.Random
 
 /** An ORCID simulator. */
 trait OrcidSimulator[F[_]] {
   def client:  Client[F]
-  def authenticate(uri: Uri, as: OrcidPerson, id: Option[Orcid]): F[Uri]
+  def authenticate(uri: Uri, as: OrcidPerson, id: Option[OrcidId]): F[Uri]
 }
 
 object OrcidSimulator {
@@ -32,20 +33,20 @@ object OrcidSimulator {
       // the record before returning the athentication code. There is no sense in which we need to
       // test "failure" because if the user can't log in we'll never hear from them again. We only get
       // a callback on success.
-      people <- Ref[F].of(Map.empty[Orcid, OrcidPerson])
+      people <- Ref[F].of(Map.empty[OrcidId, OrcidPerson])
 
       // After authentication we add an entry to the pending token exchanges.
-      pending <- Ref[F].of(Map.empty[(Uri, Code), Orcid])
+      pending <- Ref[F].of(Map.empty[(Uri, Code), OrcidId])
 
       // When we do a token exchange we add an access token to this map.
-      tokens  <- Ref[F].of(Map.empty[Token, Orcid])
+      tokens  <- Ref[F].of(Map.empty[Token, OrcidId])
 
     } yield new OrcidSimulator[F] with Http4sDsl[F] {
 
       object State       extends OptionalQueryParamDecoderMatcher[String]("state")
       object RedirectUri extends QueryParamDecoderMatcher[Uri]("redirect_uri")
 
-      def genAccess(o: Orcid, p: OrcidPerson): F[OrcidAccess] =
+      def genAccess(o: OrcidId, p: OrcidPerson): F[OrcidAccess] =
         Sync[F].delay {
           OrcidAccess(
             accessToken   = UUID.randomUUID,
@@ -53,7 +54,7 @@ object OrcidSimulator {
             refreshToken  = UUID.randomUUID,
             expiresIn     = Duration.ofDays(100),
             scope         = "",
-            name          = p.name.displayName.getOrElse(o.value),
+            name          = p.name.displayName(o),
             orcidId       = o,
           )
         }
@@ -83,13 +84,13 @@ object OrcidSimulator {
             } yield r
 
           case GET -> Root / "v3.0" / who / "person" =>
-            Orcid.fromString(who) match {
-              case Some(orcid) =>
+            OrcidId.fromString(s"https://orcid.org/$who") match {
+              case Right(orcid) =>
                 people.get.map(_.get(orcid)).flatMap {
                   case Some(person) => Ok(person)
                   case None         => NotFound()
                 }
-              case None => NotFound()
+              case Left(_) => NotFound()
             }
 
           case r =>
@@ -101,15 +102,19 @@ object OrcidSimulator {
       def client: Client[F] =
         Client.fromHttpApp(Router("/" -> httpRoutes).orNotFound)
 
-      def randomOrcidId: F[Orcid] =
+      def randomOrcidId: F[OrcidId] =
         Sync[F].delay {
-          val uuid  = UUID.randomUUID
-          val big   = (BigInt(uuid.getMostSignificantBits) << 64) + BigInt(uuid.getLeastSignificantBits)
-          val orcid = big.abs.toString.grouped(4).take(4).mkString("-")
-          Orcid.fromString(orcid).getOrElse(sys.error(s"Can't make an ORCID with $orcid"))
+          def digit = Random.nextInt(10).toString
+          val a, b, c = List.fill(4)(digit).mkString
+          val d = List.fill(3)(digit).mkString
+          val x = OrcidId.checkDigit(a + b + c + d)
+          OrcidId.fromString(s"https://orcid.org/$a-$b-$c-$d$x") match {
+            case Left(s)  => sys.error(s)
+            case Right(o) => o
+          }
         }
 
-      def authenticate(uri: Uri, person: OrcidPerson, id: Option[Orcid]): F[Uri] =
+      def authenticate(uri: Uri, person: OrcidPerson, id: Option[OrcidId]): F[Uri] =
         Request[F](uri = uri) match {
 
           case GET -> Root / "oauth" / "authorize" :? RedirectUri(r) +& State(s) =>

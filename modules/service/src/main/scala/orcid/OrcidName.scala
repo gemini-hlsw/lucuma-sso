@@ -3,18 +3,20 @@
 
 package lucuma.sso.service.orcid
 
-import lucuma.sso.model.OrcidProfile
+// import lucuma.core.model.OrcidProfile
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
+import lucuma.core.model.OrcidId
+import lucuma.core.model.OrcidProfile
 
 case class OrcidName(
   familyName: Option[String],
   givenName:  Option[String],
   creditName: Option[String],
 ) {
-  def displayName: Option[String] =
-    OrcidProfile.displayName(givenName, familyName, creditName)
+  def displayName(orcidId: OrcidId): String =
+    OrcidProfile(orcidId, givenName, familyName, creditName, None).displayName
 }
 object OrcidName {
 

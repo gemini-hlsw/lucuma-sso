@@ -3,7 +3,8 @@
 
 package lucuma.sso.service.database
 
-import lucuma.sso.model._
+import lucuma.core.model._
+import lucuma.core.util.Gid
 import skunk._
 import skunk.codec.all._
 import skunk.data.Type
@@ -12,10 +13,11 @@ import lucuma.core.util.Enumerated
 // Codecs for some atomic types.
 trait Codecs {
 
-  val orcid: Codec[Orcid] =
-    Codec.simple[Orcid](
-      _.value,
-      Orcid.fromString(_).toRight("Invalid ORCID iD"),
+  // TODO: change this to URI in the database schema
+  val orcid_id: Codec[OrcidId] =
+    Codec.simple[OrcidId](
+      _.value.toString(),
+      OrcidId.fromString(_),
       Type.varchar
     )
 

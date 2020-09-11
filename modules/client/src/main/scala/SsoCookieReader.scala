@@ -6,8 +6,9 @@ package lucuma.sso.client
 import cats.data.OptionT
 import cats.implicits._
 import cats.MonadError
+import lucuma.core.model.User
+import lucuma.sso.client.codec.user._
 import lucuma.sso.client.util.JwtDecoder
-import lucuma.sso.model.User
 import io.circe.parser.parse
 import org.http4s.Request
 import pdi.jwt.JwtClaim

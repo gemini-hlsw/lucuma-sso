@@ -1,6 +1,3 @@
-import sbtcrossproject.crossProject
-import sbtcrossproject.CrossType
-import com.timushev.sbt.updates.UpdatesKeys.dependencyUpdatesFilter
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
@@ -14,35 +11,23 @@ inThisBuild(Seq(
 
 skip in publish := true
 
-lazy val model = crossProject(JVMPlatform, JSPlatform)
-  .crossType(CrossType.Full)
-  .in(file("modules/model"))
-  .settings(
-    name := "lucuma-sso-model",
-    libraryDependencies ++= Seq(
-      "edu.gemini" %%% "lucuma-core"    % "0.4.5",
-      "io.circe"   %%% "circe-generic"  % "0.13.0",
-    )
-  )
-  .jvmConfigure(_.enablePlugins(AutomateHeaderPlugin))
-  .jsSettings(gspScalaJsSettings: _*)
-
 lazy val client = project
   .in(file("modules/client"))
-  .dependsOn(model.jvm)
   .settings(
     name := "lucuma-sso-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"    %% "jwt-circe"           % "4.3.0",
-      "com.pauldijou"    %% "jwt-core"            % "4.3.0",
-      "org.bouncycastle" %  "bcpg-jdk15on"        % "1.66",
-      "org.http4s"       %% "http4s-circe"        % "0.21.7+17-2e3f5550-SNAPSHOT",
+      "edu.gemini"       %% "lucuma-core"    % "0.4.5",
+      "io.circe"         %% "circe-generic"  % "0.13.0",
+      "com.pauldijou"    %% "jwt-circe"      % "4.3.0",
+      "com.pauldijou"    %% "jwt-core"       % "4.3.0",
+      "org.bouncycastle" %  "bcpg-jdk15on"   % "1.66",
+      "org.http4s"       %% "http4s-circe"   % "0.21.7+17-2e3f5550-SNAPSHOT",
     )
   )
 
 lazy val service = project
   .in(file("modules/service"))
-  .dependsOn(model.jvm, client)
+  .dependsOn(client)
   .enablePlugins(JavaAppPackaging)
   .settings(
     publish / skip := true,
