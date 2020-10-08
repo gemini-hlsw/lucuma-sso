@@ -6,8 +6,8 @@ inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-framework"  % "0.4.3" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.4.3" % Test,
+    "com.disneystreaming" %% "weaver-framework"  % "0.5.0" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.5.0" % Test,
   ),
   testFrameworks += new TestFramework("weaver.framework.TestFramework"),
 ) ++ gspPublishSettings)
