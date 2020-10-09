@@ -100,7 +100,7 @@ object OrcidService {
       def getPerson(access: OrcidAccess): F[OrcidPerson] =
         httpClient.expectOr[OrcidPerson](
           Method.GET(
-            Uri.unsafeFromString(s"https://pub.$orcidHost/v3.0/${access.orcidId.value.getPath.drop(1)}/person"), // safe, heh-heh
+            Uri.unsafeFromString(s"https://pub.$orcidHost/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
             Accept(MediaType.application.json),
             Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
           )

@@ -17,7 +17,7 @@ trait Codecs {
   val orcid_id: Codec[OrcidId] =
     Codec.simple[OrcidId](
       _.value.toString(),
-      OrcidId.fromString(_),
+      OrcidId.fromValue(_),
       Type.varchar
     )
 

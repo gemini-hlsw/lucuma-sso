@@ -28,7 +28,7 @@ final case class OrcidAccess(
 object OrcidAccess {
 
   implicit val DecoderOrcidId: Decoder[OrcidId] =
-    Decoder[String].emap(OrcidId.fromString)
+    Decoder[String].emap(OrcidId.fromValue)
 
   implicit val DecoderOrcidAccess: Decoder[OrcidAccess] = c =>
     for {
