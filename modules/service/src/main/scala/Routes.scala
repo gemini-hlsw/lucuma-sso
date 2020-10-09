@@ -6,7 +6,7 @@ package lucuma.sso.service
 import cats.effect._
 import cats.implicits._
 import lucuma.sso.client._
-import lucuma.sso.model._
+import lucuma.core.model._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleRequest
 import lucuma.sso.service.orcid.OrcidService
@@ -19,6 +19,7 @@ import org.http4s.headers.`Content-Type`
 import java.security.PublicKey
 import lucuma.sso.client.util.GpgPublicKeyReader
 import org.http4s.Uri.Scheme
+import lucuma.sso.client.codec.user._
 
 object Routes {
 

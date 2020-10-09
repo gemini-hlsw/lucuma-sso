@@ -3,8 +3,8 @@ package lucuma.sso.service
 import cats.implicits._
 import org.http4s.implicits._
 import lucuma.sso.service.orcid._
-import lucuma.sso.model._
-import lucuma.sso.model.StandardRole._
+import lucuma.core.model._
+import lucuma.core.model.StandardRole._
 import weaver.SimpleMutableIOSuite
 import cats.effect.IO
 
@@ -40,7 +40,7 @@ trait Fixture { self: SimpleMutableIOSuite =>
         for {
           _ <- expect(Option(last)  === p.name.familyName).failFast
           _ <- expect(Option(first) === p.name.givenName).failFast
-          _ <- expect(p.emails.find(_.primary).exists(_.email == email)).failFast
+          _ <- expect(p.emails.find(_.primary).exists(e => Option(e.email) === email)).failFast
         } yield ()
       case _ => expect(false).failFast
     }

@@ -2,10 +2,11 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import lucuma.sso.model.User
+import lucuma.core.model.User
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
+import lucuma.sso.client.codec.user._
 
 object GuestUserSuite extends SsoSuite with Fixture {
 

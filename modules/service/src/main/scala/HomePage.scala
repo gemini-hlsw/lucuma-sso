@@ -4,14 +4,15 @@
 package lucuma.sso.service
 
 import scala.xml.Elem
-import lucuma.sso.model.User
+import lucuma.core.model.User
 import io.circe.syntax._
 import pdi.jwt.exceptions.JwtException
 import pdi.jwt.exceptions.JwtExpirationException
 import pdi.jwt.exceptions.JwtValidationException
-import lucuma.sso.model.GuestUser
-import lucuma.sso.model.ServiceUser
-import lucuma.sso.model.StandardUser
+import lucuma.core.model.GuestUser
+import lucuma.core.model.ServiceUser
+import lucuma.core.model.StandardUser
+import lucuma.sso.client.codec.user._
 import java.net.URLEncoder
 import org.http4s.Uri
 
@@ -79,7 +80,7 @@ object HomePage {
                   case StandardUser(_, _, _, p) =>
                     <li>
                       Display name is
-                      <a href={ s"https://orcid.org/${p.orcid.value}" }><img alt="ORCID logo" src="https://orcid.org/sites/default/files/images/orcid_16x16.png" width="16" height="16"/></a>
+                      <a href={p.orcidId.toString}><img alt="ORCID logo" src="https://orcid.org/sites/default/files/images/orcid_16x16.png" width="16" height="16"/></a>
                       <b>{p.displayName}</b>.
                     </li>
                 }

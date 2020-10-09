@@ -54,6 +54,8 @@ object implicits {
         val kernel: F[Kernel] = Kernel(Map.empty).pure[F]
         def put(fields: (String, TraceValue)*): F[Unit] = Monad[F].unit
         def span(name: String): Resource[F, Span[F]] = Monad[Resource[F, ?]].pure(this)
+        def traceId: F[Option[String]] = Monad[F].pure(None)
+        def traceUri: F[Option[java.net.URI]] = Monad[F].pure(None)
       }
 
     def liftT(routes: HttpRoutes[Kleisli[F, Span[F], ?]])(

@@ -4,7 +4,7 @@
 package lucuma.sso.service
 
 import org.http4s.ResponseCookie
-import lucuma.sso.model.User
+import lucuma.core.model.User
 import lucuma.sso.client.SsoCookieReader
 import pdi.jwt.JwtClaim
 import java.time.Instant
@@ -15,6 +15,7 @@ import io.circe.syntax._
 import scala.concurrent.duration.FiniteDuration
 import lucuma.sso.service.util.JwtEncoder
 import org.http4s.HttpDate
+import lucuma.sso.client.codec.user._
 
 trait SsoCookieWriter[F[_]] {
 

@@ -3,7 +3,7 @@
 
 package lucuma.sso.service.orcid
 
-import lucuma.sso.model.Orcid
+import lucuma.core.model.OrcidId
 import io.circe.Decoder
 import io.circe.syntax._
 import java.time.Duration
@@ -22,13 +22,13 @@ final case class OrcidAccess(
   expiresIn:    Duration,
   scope:        String,
   name:         String,
-  orcidId:      Orcid
+  orcidId:      OrcidId
 )
 
 object OrcidAccess {
 
-  implicit val DecoderOrcidId: Decoder[Orcid] =
-    Decoder[String].emap(s => Orcid.fromString(s).toRight(s"Invalid ORCID iD: $s"))
+  implicit val DecoderOrcidId: Decoder[OrcidId] =
+    Decoder[String].emap(OrcidId.fromValue)
 
   implicit val DecoderOrcidAccess: Decoder[OrcidAccess] = c =>
     for {
@@ -38,14 +38,11 @@ object OrcidAccess {
       e <- c.downField("expires_in").as[Long].map(Duration.ofSeconds)
       s <- c.downField("scope").as[String]
       n <- c.downField("name").as[String]
-      o <- c.downField("orcid").as[Orcid]
+      o <- c.downField("orcid").as[OrcidId]
     } yield OrcidAccess(a, t, r, e, s, n, o)
 
   implicit def entityDecoderOrcidAccess[F[_]: Sync]: EntityDecoder[F, OrcidAccess] =
     jsonOf[F, OrcidAccess]
-
-  implicit val EncoderOrcidId: Encoder[Orcid] =
-    Encoder[String].contramap(_.value)
 
   implicit val EncoderOrcidAccess: Encoder[OrcidAccess] = a =>
     Json.obj(

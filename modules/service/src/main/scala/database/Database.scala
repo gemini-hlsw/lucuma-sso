@@ -4,7 +4,7 @@
 package lucuma.sso.service.database
 
 import cats.implicits._
-import lucuma.sso.model._
+import lucuma.core.model._
 import skunk._
 import skunk.implicits._
 import skunk.codec.all._
@@ -169,7 +169,7 @@ object Database extends Codecs {
           orcid_credit_name      = ${varchar.opt},
           orcid_family_name      = ${varchar.opt},
           orcid_email            = ${varchar.opt}
-      WHERE orcid_id = $orcid
+      WHERE orcid_id = $orcid_id
       RETURNING (user_id)
     """
       .query(user_id)
@@ -187,7 +187,7 @@ object Database extends Codecs {
     sql"""
       UPDATE lucuma_user
       SET user_type              = 'standard',
-          orcid_id               = $orcid,
+          orcid_id               = $orcid_id,
           orcid_access_token     = $uuid,
        -- orcid_token_expiration -- TODO
           orcid_given_name       = ${varchar.opt},
@@ -224,7 +224,7 @@ object Database extends Codecs {
       )
       VALUES (
         'standard',
-        $orcid,
+        $orcid_id,
         $uuid,
         ${varchar.opt},
         ${varchar.opt},
@@ -269,19 +269,19 @@ object Database extends Codecs {
       AND    u.user_type = 'standard' -- sanity check
     """
       .query(
-        (user_id ~ role_id ~ orcid ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
-          case id ~ roleId ~ orcid ~ givenName ~ creditName ~ familyName ~ email =>
+        (user_id ~ role_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
+          case id ~ roleId ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
           roleId ~
           StandardUser(
-            id = id,
-            role = null, // TODO
+            id         = id,
+            role       = null, // TODO
             otherRoles = Nil, // TODO
-            profile = OrcidProfile(
-              orcid = orcid,
-              givenName = givenName,
-              creditName = creditName,
-              familyName = familyName,
-              primaryEmail = email.getOrElse("<none>") // TODO
+            profile    = OrcidProfile(
+              orcidId      = orcidId,
+              givenName    = givenName,
+              creditName   = creditName,
+              familyName   = familyName,
+              primaryEmail = email
             )
           )
         } ~
