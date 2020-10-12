@@ -14,6 +14,8 @@ import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
 import org.http4s.server.middleware.ErrorAction
 import io.chrisdavenport.log4cats.Logger
+import org.http4s.server.middleware.CORS
+import lucuma.sso.service.config.Config
 
 /** A module of all the middlewares we apply to the server routes. */
 object ServerMiddleware {
@@ -53,14 +55,30 @@ object ServerMiddleware {
       serviceErrorLogAction   = Logger[F].error(_)(_)
     )
 
+  /** A middleware that adds CORS headers. In production the origin must match the cookie domain. */
+  def cors[F[_]: Monad](env: Environment, domain: Option[String]): Middleware[F] = routes =>
+    CORS(
+      routes,
+      env match {
+        case Local | Review | Staging => CORS.DefaultCORSConfig
+        case Production =>
+          CORS.DefaultCORSConfig.copy(
+            anyOrigin      = false,
+            allowedOrigins = domain.contains
+          )
+      }
+    )
+
   /** A middleware that composes all the others defined in this module. */
   def apply[F[_]: Concurrent: ContextShift: Trace: Logger](
-    env:          Environment,
-    cookieReader: SsoCookieReader[F],
+    config: Config,
   ): Middleware[F] =
-    natchez                   andThen
-    userLogging(cookieReader) andThen
-    logging(env)              andThen
-    errorReporting
+    List[Middleware[F]](
+      cors(config.environment, config.cookieDomain),
+      natchez,
+      userLogging(config.cookieReader),
+      logging(config.environment),
+      errorReporting,
+    ).reduce(_ andThen _) // N.B. the monoid for Endo uses `compose`
 
 }
