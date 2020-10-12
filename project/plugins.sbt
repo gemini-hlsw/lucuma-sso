@@ -1,5 +1,5 @@
 addSbtPlugin("edu.gemini"         % "sbt-gsp"                  % "0.2.5")
 addSbtPlugin("com.geirsson"       % "sbt-ci-release"           % "1.5.3")
 addSbtPlugin("com.timushev.sbt"   % "sbt-updates"              % "0.5.1")
-addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.7.5")
+addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.7.6")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage"            % "1.6.1")
