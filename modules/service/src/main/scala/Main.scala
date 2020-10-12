@@ -121,7 +121,7 @@ object FMain {
           cookieWriter = config.cookieWriter,
           publicUri    = config.publicUri,
         )
-      } .map(ServerMiddleware(config.environment, config.cookieReader))
+      } .map(ServerMiddleware(config))
 
   /** A startup action that prints a banner. */
   def banner[F[_]: Applicative: Logger](config: Config): F[Unit] = {
