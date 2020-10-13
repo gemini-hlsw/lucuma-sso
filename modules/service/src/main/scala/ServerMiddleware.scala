@@ -55,14 +55,21 @@ object ServerMiddleware {
       serviceErrorLogAction   = Logger[F].error(_)(_)
     )
 
+  // Our base CORS config says you can send the cookie back
+  val CorsConfig =
+    CORS.DefaultCORSConfig.copy(
+      allowedMethods = Some(Set("GET", "PUT"))
+    )
+
   /** A middleware that adds CORS headers. In production the origin must match the cookie domain. */
   def cors[F[_]: Monad](env: Environment, domain: Option[String]): Middleware[F] = routes =>
     CORS(
       routes,
       env match {
-        case Local | Review | Staging => CORS.DefaultCORSConfig
+        case Local | Review | Staging =>
+          CorsConfig
         case Production =>
-          CORS.DefaultCORSConfig.copy(
+          CorsConfig.copy(
             anyOrigin      = false,
             allowedOrigins = domain.contains
           )
@@ -74,10 +81,10 @@ object ServerMiddleware {
     config: Config,
   ): Middleware[F] =
     List[Middleware[F]](
+      logging(config.environment),
       cors(config.environment, config.cookieDomain),
       natchez,
       userLogging(config.cookieReader),
-      logging(config.environment),
       errorReporting,
     ).reduce(_ andThen _) // N.B. the monoid for Endo uses `compose`
 
