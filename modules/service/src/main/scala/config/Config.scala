@@ -10,11 +10,10 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
-import lucuma.sso.client.SsoCookieReader
-import lucuma.sso.service.SsoCookieWriter
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.service.SsoJwtWriter
 import lucuma.sso.client.util.JwtDecoder
 import lucuma.sso.service.util.JwtEncoder
-import cats.MonadError
 import scala.concurrent.duration._
 import org.http4s.Uri
 import org.http4s.Uri.RegName
@@ -46,11 +45,11 @@ final case class Config(
   // TODO: parameterize
   val JwtLifetime    = 10.minutes
 
-  def cookieReader[F[_]: MonadError[?[_], Throwable]] =
-    SsoCookieReader(JwtDecoder.withPublicKey[F](publicKey))
+  def cookieReader[F[_]: Sync] =
+    SsoJwtReader(JwtDecoder.withPublicKey[F](publicKey))
 
   def cookieWriter[F[_]: Sync] =
-    SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime, cookieDomain)
+    SsoJwtWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime)
 
   def publicUri: Uri =
     Uri(

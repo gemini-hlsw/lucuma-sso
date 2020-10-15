@@ -28,14 +28,14 @@ import pdi.jwt.exceptions.JwtNonNumberException
 object RequestLogger {
 
   def apply[F[_]: Sync](
-    cookieReader: SsoCookieReader[F],
+    cookieReader: SsoJwtReader[F],
   ): HttpRoutes[F] => HttpRoutes[F] = { routes =>
     Kleisli { req: org.http4s.Request[F] =>
       OptionT.liftF(logRequest(req, cookieReader)) *> routes.run(req)
     }
   }
 
-  private def cookieMessage[F[_]: Monad](req: Request[F], cookieReader: SsoCookieReader[F]): F[String] =
+  private def cookieMessage[F[_]: Monad](req: Request[F], cookieReader: SsoJwtReader[F]): F[String] =
     cookieReader.attemptFindUser(req).map {
       case None => "none"
       case Some(Right(u)) => u.toString // TODO
@@ -58,7 +58,7 @@ object RequestLogger {
         }
     }
 
-  private def logRequest[F[_]: Sync](req: Request[F], cookieReader: SsoCookieReader[F]): F[Unit] =
+  private def logRequest[F[_]: Sync](req: Request[F], cookieReader: SsoJwtReader[F]): F[Unit] =
     cookieMessage(req, cookieReader).flatMap { msg =>
       Sync[F].delay(println("==> JWT: " + msg))
     }

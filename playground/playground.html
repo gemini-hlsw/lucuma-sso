@@ -1,0 +1,66 @@
+<html>
+  <title>LUCUMA-SSO PLAYGROUND</title>
+  <script>
+    var ssoRootUri = "https://gppsso.gpp.lucuma.xyz"
+
+    function authAsGuest() {
+      var xhttp = new XMLHttpRequest()
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4) {
+          init()
+        }
+      }
+      xhttp.open("POST", ssoRootUri + "/api/v1/authAsGuest", true);
+      xhttp.withCredentials = true
+      xhttp.send(null);
+    }
+
+    function init() {
+      document.getElementById("ssoRootUri").innerHTML = ssoRootUri
+      var xhttp = new XMLHttpRequest()
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4) {
+          document.getElementById("whoami").innerHTML = xhttp.responseText;
+        }
+      }
+      xhttp.open("GET", ssoRootUri + "/api/v1/whoami", true);
+      xhttp.withCredentials = true
+      xhttp.send(null);
+    }
+
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    div {
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .preformatted {
+      padding: 4px;
+      border: 1px solid gray;
+      background-color: lightgray;
+      font-family: monospace;
+      white-space: pre;
+    }
+  </style>
+  <body onload="init()">
+
+    <h1>LUCUMA-SSO PLAYGROUND</h1>
+
+    <div>
+      The SSO root URI is <span id="ssoRootUri"></span>.
+    </div>
+
+    <div>
+      <div class="preformatted" id="whoami">
+      </div>
+    </div>
+
+    <ul>
+      <li><a href="javascript:authAsGuest()">Log in as guest.</a></li>
+    </li>
+
+  </body>
+</html>

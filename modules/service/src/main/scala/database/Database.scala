@@ -102,7 +102,7 @@ object Database extends Codecs {
         s.prepare(PromoteGuest).use { pq =>
           for {
             userId <- pq.unique(promotion ~ access ~ person)
-            _      <- addRole(userId, role, true)
+            _      <- addRole(userId, role)
             user   <- readStandardUser(userId)
           } yield user
         }
@@ -115,17 +115,14 @@ object Database extends Codecs {
         s.prepare(InsertStandardUser).use { pq =>
           for {
             userId <- pq.unique(access ~ person)
-            _      <- addRole(userId, role, true) // we know there will be no conflict
+            _      <- addRole(userId, role)
             user   <- readStandardUser(userId)
           } yield user
         }
 
       // will raise a constraint failure if it's not a standard user id
-      def addRole(user: User.Id, role: RoleRequest, makeActive: Boolean): F[StandardRole.Id] =
-        for {
-          roleId <- s.prepare(InsertRole).use(_.unique(user ~ role))
-          _      <- s.prepare(UpdateActiveRole).use(_.execute(roleId ~ user)).whenA(makeActive)
-        } yield roleId
+      def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
+        s.prepare(InsertRole).use(_.unique(user ~ role))
 
       def findStandardUser(
         id: User.Id
@@ -133,12 +130,16 @@ object Database extends Codecs {
         s.prepare(SelectStandardUser).use { pq =>
           pq.stream(id, 64).compile.toList flatMap {
             case Nil => none[StandardUser].pure[F]
-            case all @ ((roleId ~ user ~ _) :: _) =>
-              val roles = all.map(_._2)
-              roles.find(_.id === roleId) match {
-                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
-                case Some(activeRole) =>
-                  (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
+            case all @ ((user ~ _) :: _) =>
+              s.prepare(SelectDefaultRole).use { pq =>
+                pq.unique(user.id)
+              } .flatMap { roleId =>
+                val roles = all.map(_._2)
+                roles.find(_.id === roleId) match {
+                  case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
+                  case Some(activeRole) =>
+                    (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
+                }
               }
           }
         }
@@ -250,10 +251,9 @@ object Database extends Codecs {
    * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
    * role, from which the active and other roles must be selected.
    */
-  val SelectStandardUser: Query[User.Id, StandardRole.Id ~ StandardUser ~ StandardRole] =
+  val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
     sql"""
       SELECT u.user_id,
-             u.role_id,
              u.orcid_id,
              u.orcid_given_name,
              u.orcid_credit_name,
@@ -269,9 +269,8 @@ object Database extends Codecs {
       AND    u.user_type = 'standard' -- sanity check
     """
       .query(
-        (user_id ~ role_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
-          case id ~ roleId ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
-          roleId ~
+        (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
+          case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
           StandardUser(
             id         = id,
             role       = null, // TODO
@@ -309,11 +308,13 @@ object Database extends Codecs {
       .query(role_id)
       .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
 
-  val UpdateActiveRole: Command[StandardRole.Id ~ User.Id] =
+  /** Select the id of the weakest role for a user (typically the PI role). */
+  val SelectDefaultRole: Query[User.Id, StandardRole.Id] =
     sql"""
-      UPDATE lucuma_user
-      SET    role_id = $role_id
-      WHERE  user_id = $user_id
-    """.command
+      SELECT DISTINCT ON (user_id) role_id
+      FROM lucuma_role
+      WHERE user_id=$user_id
+      ORDER BY user_id, role_type ASC
+    """.query(role_id)
 
 }

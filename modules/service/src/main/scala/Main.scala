@@ -114,12 +114,12 @@ object FMain {
     (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
       .mapN { (pool, orcid) =>
         Routes[F](
-          dbPool       = pool.map(Database.fromSession(_)),
-          orcid        = orcid,
-          publicKey    = config.publicKey,
-          cookieReader = config.cookieReader,
-          cookieWriter = config.cookieWriter,
-          publicUri    = config.publicUri,
+          dbPool    = pool.map(Database.fromSession(_)),
+          orcid     = orcid,
+          jwtReader = config.cookieReader,
+          jwtWriter = config.cookieWriter,
+          publicUri = config.publicUri,
+          cookies   = CookieService[F](config.cookieDomain)
         )
       } .map(ServerMiddleware(config))
 

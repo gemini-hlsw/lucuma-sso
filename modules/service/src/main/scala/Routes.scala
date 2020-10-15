@@ -10,27 +10,22 @@ import lucuma.core.model._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleRequest
 import lucuma.sso.service.orcid.OrcidService
-import io.circe.syntax._
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import org.http4s.scalaxml._
 import org.http4s.headers.`Content-Type`
-import java.security.PublicKey
-import lucuma.sso.client.util.GpgPublicKeyReader
-import org.http4s.Uri.Scheme
-import lucuma.sso.client.codec.user._
 
 object Routes {
 
   // This is the main event. Here are the routes we're serving.
   def apply[F[_]: Sync: Timer](
-    dbPool:       Resource[F, Database[F]],
-    orcid:        OrcidService[F],
-    publicKey:    PublicKey,
-    cookieReader: SsoCookieReader[F],
-    cookieWriter: SsoCookieWriter[F],
-    publicUri:    Uri, // root URI
+    dbPool:    Resource[F, Database[F]],
+    orcid:     OrcidService[F],
+    jwtReader: SsoJwtReader[F],
+    jwtWriter: SsoJwtWriter[F],
+    cookies:   CookieService[F],
+    publicUri: Uri, // root URI
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -48,7 +43,7 @@ object Routes {
 
       case r@(GET -> Root) =>
         for {
-          u <- cookieReader.attemptFindUser(r)
+          u <- jwtReader.attemptFindUser(r)
           r <- Ok(HomePage(publicUri, u), `Content-Type`(MediaType.text.html, Some(Charset.`UTF-8`)))
         } yield r
 
@@ -58,33 +53,21 @@ object Routes {
         dbPool.use { db =>
           for {
             gu  <- db.createGuestUser
-            c   <- cookieWriter.newCookie(gu, publicUri.scheme == Some(Scheme.https))
-            r   <- Created((gu:User).asJson.spaces2)
+            jwt <- jwtWriter.newJwt(gu)
+            tok <- TokenService[F](db, jwtWriter).issueToken(gu)
+            c   <- cookies.cookie(tok)
+            r   <- Created(jwt)
           } yield r.addCookie(c)
         }
 
-      // Show the current user, if any
-      case r@(GET -> Root / "api" / "v1" / "whoami") =>
-        cookieReader.findUser(r) flatMap {
-          case Some(u) => Ok(u.asJson.spaces2)
-          case None    => Forbidden("Not logged in.")
-        }
-
-      case GET -> Root / "api" / "v1" / "publicKey" =>
-        // TODO: only do this once
-        for {
-          text <- GpgPublicKeyReader.armorText(publicKey).liftTo[F]
-          r    <- Ok(text)
-        } yield r
-
       // Log out. TODO: If it's a guest user, delete that user.
       case POST -> Root / "api" / "v1" / "logout" =>
-        cookieWriter.removeCookie.flatMap(c => Ok("Logged out").map(_.removeCookie(c)))
+        ??? // TODO
 
       // Athentication Stage 1. If the user is logged in as a non-guest we're done, otherwise we
       // redirect to ORCID, and on success the user will be redirected back for stage 2.
       case r@(GET -> Root / "auth" / "stage1" :? RedirectUri(redirectUrl)) =>
-        cookieReader.findUser(r).flatMap {
+        jwtReader.findUser(r).flatMap {
 
             // If there is no JWT cookie or it's a guest, redirect to ORCID.
             case None | Some(GuestUser(_)) =>
@@ -104,16 +87,17 @@ object Routes {
           for {
             access   <- orcid.getAccessToken(Stage2Uri, code) // when this fails we get a 400 back so we need to handle that case somehow
             person   <- orcid.getPerson(access)
-            oguestId <- cookieReader.findUser(r).map(_.collect { case GuestUser(id) => id})
+            oguestId <- jwtReader.findUser(r).map(_.collect { case GuestUser(id) => id})
             pair     <- db.upsertOrPromoteUser(access, person, oguestId, RoleRequest.Pi)
             (user, chown) = pair
             _        <- oguestId.traverse { guestId =>
                           Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
                           db.deleteUser(guestId)
                         } .whenA(chown)
-            cookie   <- cookieWriter.newCookie(user, publicUri.scheme == Some(Scheme.https))
-            res      <- Found(Location(redir), (user:User).asJson.spaces2)
-          } yield res.addCookie(cookie)
+            // TODO: add refresh cookie
+            // cookie   <- jwtWriter.newCookie(user, publicUri.scheme == Some(Scheme.https))
+            res      <- Found(Location(redir))
+          } yield res //.addCookie(cookie)
         }
 
     }

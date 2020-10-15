@@ -30,7 +30,7 @@ object NewUserSuite extends SsoSuite with Fixture {
           for {
 
             // cookie should exist and JWT body should be a StandardUser for Bob, as a PI
-            cu <- reader.findUser(res).flatMap(_.toRight(new RuntimeException("No user.")).liftTo[IO])
+            cu <- reader.findUser(res)
             _  <- expectLoggedInAsPi(Bob, cu)
 
             // the response body should contain the exact same user!
