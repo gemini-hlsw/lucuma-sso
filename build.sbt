@@ -42,8 +42,8 @@ lazy val service = project
       "org.tpolecat"           %% "natchez-jaeger"      % "0.0.13",
       "org.tpolecat"           %% "skunk-core"          % "0.0.21",
       // We use JDBC to do migrations
-      "org.flywaydb"           % "flyway-core"          % "7.0.3",
-      "org.postgresql"         % "postgresql"           % "42.2.17",
+      "org.flywaydb"           % "flyway-core"          % "6.5.7",
+      "org.postgresql"         % "postgresql"           % "42.2.18",
     ),
   )
 
