@@ -7,8 +7,6 @@ import natchez.http4s.implicits._
 import natchez.Trace
 import cats._
 import org.http4s.HttpRoutes
-import lucuma.sso.client.RequestLogger
-import lucuma.sso.client.SsoJwtReader
 import cats.effect._
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
@@ -25,12 +23,6 @@ object ServerMiddleware {
   /** A middleware that adds distributed tracing. */
   def natchez[F[_]: Bracket[*[_], Throwable]: Trace]: Middleware[F] =
     natchezMiddleware[F]
-
-  /** A middleware that logs the user making the request (if any). */
-  def userLogging[F[_]: Sync](
-    cookieReader: SsoJwtReader[F],
-  ): Middleware[F] =
-    RequestLogger(cookieReader)
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
   def logging[F[_]: Concurrent: ContextShift](
@@ -78,7 +70,6 @@ object ServerMiddleware {
       cors(config.environment, config.cookieDomain),
       logging(config.environment),
       natchez,
-      userLogging(config.cookieReader),
       errorReporting,
     ).reduce(_ andThen _) // N.B. the monoid for Endo uses `compose`
 

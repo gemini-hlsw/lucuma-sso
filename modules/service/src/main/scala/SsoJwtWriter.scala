@@ -4,7 +4,7 @@
 package lucuma.sso.service
 
 import lucuma.core.model.User
-import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.client.SsoJwtClaim
 import pdi.jwt.JwtClaim
 import java.time.Instant
 import cats.effect.Sync
@@ -28,7 +28,7 @@ trait SsoJwtWriter[F[_]] {
 
 object SsoJwtWriter {
 
-  private val lucumaUser   = SsoJwtReader.lucumaUser
+  private val lucumaUser   = SsoJwtClaim.lucumaUser
 
   val HttpOnly = true // JS can't see the cookie
   val SameSite = org.http4s.SameSite.None // We don't care

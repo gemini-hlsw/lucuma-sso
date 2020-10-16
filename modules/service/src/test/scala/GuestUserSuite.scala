@@ -1,36 +1,36 @@
 package lucuma.sso.service
 
 import cats.effect._
-import cats.syntax.all._
 import lucuma.sso.service.simulator.SsoSimulator
+import lucuma.sso.client.SsoJwtClaim
 import org.http4s._
 import lucuma.core.model.GuestRole
-import java.util.UUID
 
 object GuestUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Anonymous user logs in as a guest.") {
-    SsoSimulator[IO].use { case (_, sso, reader) =>
-      sso.run(
-        Request(
-          method = Method.POST,
-          uri    = SsoRoot / "api" / "v1" / "authAsGuest"
-        )
-      ).use { res =>
-        for {
-          jwt  <- reader.findClaim(res) // response body should be a JWT
-          user <- reader.getUser(jwt)   // containing the user
-          _    <- res.cookies           // and there should be a cookie containing a UUID
-                    .find(_.name == CookieService.CookieName)
-                    .map(c => UUID.fromString(c.content))
-                    .toRight(new RuntimeException("No cookie!"))
-                    .liftTo[IO]
-                    // TODO: ... which we can use to fetch another JWT containing the same user
-        } yield
-          expect(res.status == Status.Created) &&
-          expect(user.role  == GuestRole)
+    SsoSimulator[IO]
+      .flatMap { case (pool, _, sso, reader) => pool.map(db => (db, sso, reader)) }
+      .use { case (db, sso, reader) =>
+        sso.run(
+          Request(
+            method = Method.POST,
+            uri    = SsoRoot / "api" / "v1" / "authAsGuest"
+          )
+        ).use { res =>
+          import reader.entityDecoder // note
+          for {
+            jwt   <- res.as[SsoJwtClaim]                    // response body is a jwt
+            user  <- jwt.getUserF                           // get the user
+            tok   <- CookieReader[IO].getSessionToken(res)  // get the new session token
+            userʹ <- db.getGuestUserFromToken(tok)          // redeem it to get the same user
+          } yield
+            expect(res.status == Status.Created) &&
+            expect(user.role  == GuestRole) &&
+            expect(user.id == userʹ.id)
+        }
       }
     }
-  }
 
 }
+

@@ -12,7 +12,7 @@ import lucuma.sso.client.codec.user._
 object ExistingUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Bob logs in via ORCID as a new lucuma user, then logs in again.") {
-    SsoSimulator[IO].use { case (sim, sso, _) =>
+    SsoSimulator[IO].use { case (_, sim, sso, _) =>
       val stage1  = (SsoRoot / "auth" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 

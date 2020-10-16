@@ -8,6 +8,7 @@ import lucuma.core.model._
 import skunk._
 import skunk.implicits._
 import skunk.codec.all._
+import lucuma.sso.service.SessionToken
 import lucuma.sso.service.orcid.OrcidAccess
 import lucuma.sso.service.orcid.OrcidPerson
 import cats.data.OptionT
@@ -18,6 +19,14 @@ import cats.effect.Sync
 trait Database[F[_]] {
 
   def createGuestUser: F[GuestUser]
+  def createGuestUserRefreshToken(guestUser: GuestUser): F[SessionToken]
+  def createGuestUserAndRefreshToken: F[(GuestUser, SessionToken)]
+
+  def createStandardUserRefreshToken(roleId: StandardRole.Id): F[SessionToken]
+
+  def findGuestUserFromToken(token: SessionToken): F[Option[GuestUser]]
+
+  def getGuestUserFromToken(token: SessionToken): F[GuestUser]
 
   /**
    * [After ORCID authenticaton] insert, update, or promote the specified ORCID user, yielding a
@@ -35,7 +44,7 @@ trait Database[F[_]] {
   def upsertOrPromoteUser(
     access:    OrcidAccess,
     person:    OrcidPerson,
-    promotion: Option[User.Id],
+    promotion: Option[GuestUser],
     role:      RoleRequest
   ) : F[(StandardUser, Boolean)]
 
@@ -57,10 +66,28 @@ object Database extends Codecs {
       def createGuestUser: F[GuestUser] =
         s.unique(InsertGuestUser)
 
+      def createGuestUserRefreshToken(guestUser: GuestUser): F[SessionToken] =
+        s.prepare(InsertGuestUserSessionToken).use(_.unique(guestUser.id))
+
+      def createGuestUserAndRefreshToken: F[(GuestUser, SessionToken)] =
+        s.transaction.use { _ =>
+          createGuestUser.mproduct(createGuestUserRefreshToken) // 🔥
+        }
+
+      def createStandardUserRefreshToken(roleId: StandardRole.Id): F[SessionToken] =
+        s.prepare(InsertStandardUserSessionToken).use(_.unique(roleId))
+
+      def findGuestUserFromToken(token: SessionToken): F[Option[GuestUser]] =
+        s.prepare(SelectGuestUserForSessionToken).use(_.option(token))
+
+      def getGuestUserFromToken(token: SessionToken): F[GuestUser] =
+        findGuestUserFromToken(token)
+          .flatMap(_.toRight(new RuntimeException(s"No guest user for session token: ${token.value}")).liftTo[F])
+
       def upsertOrPromoteUser(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: Option[User.Id],
+        promotion: Option[GuestUser],
         role:      RoleRequest
       ): F[(StandardUser, Boolean)] =
         s.transaction.use { _ =>
@@ -96,12 +123,12 @@ object Database extends Codecs {
       def promoteGuest(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: User.Id,
+        promotion: GuestUser,
         role:      RoleRequest
       ): F[StandardUser] =
         s.prepare(PromoteGuest).use { pq =>
           for {
-            userId <- pq.unique(promotion ~ access ~ person)
+            userId <- pq.unique(promotion.id ~ access ~ person)
             _      <- addRole(userId, role)
             user   <- readStandardUser(userId)
           } yield user
@@ -154,14 +181,14 @@ object Database extends Codecs {
 
   }
 
-  val InsertGuestUser: Query[Void, GuestUser] =
+  private val InsertGuestUser: Query[Void, GuestUser] =
     sql"""
       INSERT INTO lucuma_user (user_type)
       VALUES ('guest')
       RETURNING user_id
     """.query(user_id.map(GuestUser(_)))
 
-  val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, User.Id] =
+  private val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       UPDATE lucuma_user
       SET orcid_access_token     = $uuid,
@@ -184,7 +211,7 @@ object Database extends Codecs {
           access.orcidId
       }
 
-  val PromoteGuest: Query[User.Id ~ OrcidAccess ~ OrcidPerson, User.Id] =
+  private val PromoteGuest: Query[User.Id ~ OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       UPDATE lucuma_user
       SET user_type              = 'standard',
@@ -211,7 +238,7 @@ object Database extends Codecs {
           id
       }
 
-  val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
+  private val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
     sql"""
       INSERT INTO lucuma_user (
         user_type,
@@ -251,7 +278,7 @@ object Database extends Codecs {
    * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
    * role, from which the active and other roles must be selected.
    */
-  val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
+  private val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
     sql"""
       SELECT u.user_id,
              u.orcid_id,
@@ -294,12 +321,12 @@ object Database extends Codecs {
         }
       )
 
-  val DeleteUser: Command[User.Id] =
+  private val DeleteUser: Command[User.Id] =
     sql"""
       DELETE FROM lucuma_user WHERE user_id = $user_id
     """.command
 
-  val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
+  private val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
     sql"""
       INSERT INTO lucuma_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})
@@ -309,12 +336,39 @@ object Database extends Codecs {
       .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
 
   /** Select the id of the weakest role for a user (typically the PI role). */
-  val SelectDefaultRole: Query[User.Id, StandardRole.Id] =
+  private val SelectDefaultRole: Query[User.Id, StandardRole.Id] =
     sql"""
       SELECT DISTINCT ON (user_id) role_id
       FROM lucuma_role
       WHERE user_id=$user_id
       ORDER BY user_id, role_type ASC
     """.query(role_id)
+
+  /** Create a session token for a guest user. */
+  private val InsertGuestUserSessionToken: Query[User.Id, SessionToken] =
+    sql"""
+      INSERT INTO lucuma_session (user_id, user_type, role_id)
+      VALUES ($user_id, 'guest', null)
+      RETURNING refresh_token
+      """.query(session_token)
+
+  /** Create a session token for a standard user [role]. */
+  private val InsertStandardUserSessionToken: Query[StandardRole.Id, SessionToken] =
+    sql"""
+      INSERT INTO lucuma_session (user_id, user_type, role_id)
+      SELECT user_id, user_type, role_id
+      FROM lucuma_role
+      WHERE role_id = $role_id
+      AND user_type = 'standard' -- sanity check
+      RETURNING refresh_token
+      """.query(session_token)
+
+  private val SelectGuestUserForSessionToken: Query[SessionToken, GuestUser] =
+    sql"""
+      SELECT user_id
+      FROM lucuma_session
+      WHERE user_type = 'guest'
+      AND   refresh_token = $session_token
+    """.query(user_id).map(GuestUser(_))
 
 }

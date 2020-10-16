@@ -3,7 +3,6 @@ package lucuma.sso.service
 import cats.effect._
 import org.http4s._
 import org.http4s.implicits._
-import lucuma.sso.service.config.Config
 import lucuma.sso.service.config.Environment
 
 object CorsSuite extends SsoSuite {
@@ -13,7 +12,6 @@ object CorsSuite extends SsoSuite {
       Routes[IO](
         dbPool    = null,
         orcid     = null,
-        jwtReader = Config.local(null).cookieReader,
         jwtWriter = null,
         publicUri = uri"http://unused",
         cookies   = null,
