@@ -39,7 +39,7 @@ object Routes {
       // Authenticate as a guest. Response body is the new user's JWT, and a refresh token is set.
       case POST -> Root / "api" / "v1" / "authAsGuest" =>
         dbPool.use { db =>
-          db.createGuestUserAndRefreshToken.flatMap { case (user, token) =>
+          db.createGuestUserAndSessionToken.flatMap { case (user, token) =>
             for {
               jwt <- jwtWriter.newJwt(user)
               res <- Created(jwt)
@@ -64,16 +64,21 @@ object Routes {
             person   <- orcid.getPerson(access)
             otoken   <- cookies.findSessionToken(r)
             oguest   <- otoken.flatTraverse(db.findGuestUserFromToken)
-            pair     <- db.upsertOrPromoteUser(access, person, oguest, RoleRequest.Pi)
-            (user, chown) = pair
-            _        <- oguest.map(_.id).traverse { guestId =>
-                          Sync[F].delay(println(s"TODO: chown $guestId -> ${user.id}")) *> // TODO!
-                          db.deleteUser(guestId)
-                        } .whenA(chown)
-            // TODO: add refresh cookie
-            // cookie   <- jwtWriter.newCookie(user, publicUri.scheme == Some(Scheme.https))
+            token    <-
+              oguest match {
+                case None =>
+                  db.canonicalizeUser(access, person, RoleRequest.Pi)
+                case Some(g) =>
+                  db.promoteGuestUser(access, person, g.id, RoleRequest.Pi).flatMap {
+                    case (None, tok) => tok.pure[F]
+                    case (Some(existing), tok) =>
+                      Sync[F].delay(println(s"==> TODO: chown ${g.id} -> $existing"))
+                        .as(tok)
+                  }
+              }
+            cookie   <- cookies.sessionCookie(token)
             res      <- Found(Location(redir))
-          } yield res //.addCookie(cookie)
+          } yield res.addCookie(cookie)
         }
 
       // Log out. TODO: If it's a guest user, delete that user.

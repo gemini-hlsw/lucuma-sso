@@ -30,7 +30,7 @@ object SsoSimulator {
           orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
           jwtWriter = config.cookieWriter,
           publicUri = config.publicUri,
-          cookies   = CookieService[F](None)
+          cookies   = CookieService[F](Some("gemini.edu"))
         ), config.cookieReader)
     }
   }

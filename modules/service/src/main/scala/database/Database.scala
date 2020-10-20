@@ -19,34 +19,30 @@ import cats.effect.Sync
 trait Database[F[_]] {
 
   def createGuestUser: F[GuestUser]
-  def createGuestUserRefreshToken(guestUser: GuestUser): F[SessionToken]
-  def createGuestUserAndRefreshToken: F[(GuestUser, SessionToken)]
+  def createGuestUserSessionToken(guestUser: GuestUser): F[SessionToken]
+  def createGuestUserAndSessionToken: F[(GuestUser, SessionToken)]
 
-  def createStandardUserRefreshToken(roleId: StandardRole.Id): F[SessionToken]
+  def createStandardUserSessionToken(roleId: StandardRole.Id): F[SessionToken]
 
   def findGuestUserFromToken(token: SessionToken): F[Option[GuestUser]]
 
   def getGuestUserFromToken(token: SessionToken): F[GuestUser]
 
-  /**
-   * [After ORCID authenticaton] insert, update, or promote the specified ORCID user, yielding a
-   * `StandardUser` and a flag indicating whether objects owned by the specified guest user (if
-   * any) should be chowned to the new `StandardUser`. This will be true only if a guest user has
-   * authenticated as an existing user (if the guest user authenticates as a new user then the
-   * guest user will be promoted without a change in id).
-   *
-   * If a chown is needed then it's the caller's responsibility to do so, after which the guest
-   * user should be deleted.
-   *
-   * Note that `role` is used only when creating a new user or promoting a guest user. It is
-   * ignored for existing users.
-   */
-  def upsertOrPromoteUser(
+
+  def getStandardUserFromToken(token: SessionToken): F[StandardUser]
+
+  def canonicalizeUser(
     access:    OrcidAccess,
     person:    OrcidPerson,
-    promotion: Option[GuestUser],
     role:      RoleRequest
-  ) : F[(StandardUser, Boolean)]
+  ) : F[SessionToken]
+
+  def promoteGuestUser(
+    access:    OrcidAccess,
+    person:    OrcidPerson,
+    gid:       User.Id,
+    role:      RoleRequest
+  ) : F[(Option[User.Id], SessionToken)]
 
   def deleteUser(id: User.Id): F[Boolean]
   // // Read
@@ -66,15 +62,15 @@ object Database extends Codecs {
       def createGuestUser: F[GuestUser] =
         s.unique(InsertGuestUser)
 
-      def createGuestUserRefreshToken(guestUser: GuestUser): F[SessionToken] =
+      def createGuestUserSessionToken(guestUser: GuestUser): F[SessionToken] =
         s.prepare(InsertGuestUserSessionToken).use(_.unique(guestUser.id))
 
-      def createGuestUserAndRefreshToken: F[(GuestUser, SessionToken)] =
+      def createGuestUserAndSessionToken: F[(GuestUser, SessionToken)] =
         s.transaction.use { _ =>
-          createGuestUser.mproduct(createGuestUserRefreshToken) // 🔥
+          createGuestUser.mproduct(createGuestUserSessionToken) // 🔥
         }
 
-      def createStandardUserRefreshToken(roleId: StandardRole.Id): F[SessionToken] =
+      def createStandardUserSessionToken(roleId: StandardRole.Id): F[SessionToken] =
         s.prepare(InsertStandardUserSessionToken).use(_.unique(roleId))
 
       def findGuestUserFromToken(token: SessionToken): F[Option[GuestUser]] =
@@ -84,23 +80,86 @@ object Database extends Codecs {
         findGuestUserFromToken(token)
           .flatMap(_.toRight(new RuntimeException(s"No guest user for session token: ${token.value}")).liftTo[F])
 
-      def upsertOrPromoteUser(
+      def promoteGuestUser(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: Option[GuestUser],
+        gid:       User.Id,
         role:      RoleRequest
-      ): F[(StandardUser, Boolean)] =
+      ) : F[(Option[User.Id], SessionToken)] =
         s.transaction.use { _ =>
-          // Try to update the profile and read the user. If it works then the user already exists
-          // and we need to chown the guest user's stuff (if any). Otherwise, if there is a guest
-          // user then we need to promote it, if not it's a brand new user.
-          OptionT(updateProfile(access, person)).tupleRight(true).getOrElseF {
-            promotion match {
-              case Some(guestId) => promoteGuest(access, person, guestId, role).tupleRight(false)
-              case None          => createStandardUser(access, person, role).tupleRight(false)
-            }
+
+          // See if we can update the ORCID profile. If we can then it means it already exists.
+          updateProfile(access, person).flatMap {
+
+            // In this case the user has logged in as someone who already exists in the database.
+            case Some(existingUserId) =>
+              for {
+                rid <- canonicalizeRole(existingUserId, role) // find or create requested role
+                tok <- createStandardUserSessionToken(rid)    // create a session token
+              } yield (Some(existingUserId), tok)     // return the existing user's id if we're promiting a guest user, plus the token
+
+            // Promote the guest user.
+            case None =>
+              for {
+                rid <- promoteGuest(access, person, gid, role) // promote the guest user
+                tok <- createStandardUserSessionToken(rid)     // create a session token
+              } yield (None, tok)
+
           }
+
         }
+
+      def canonicalizeUser(
+        access:    OrcidAccess,
+        person:    OrcidPerson,
+        role:      RoleRequest
+      ) : F[SessionToken] =
+        s.transaction.use { _ =>
+
+          // See if we can update the ORCID profile. If we can then it means it already exists.
+          updateProfile(access, person).flatMap {
+
+            // In this case the user has logged in as someone who already exists in the database.
+            case Some(existingUserId) =>
+              for {
+                rid <- canonicalizeRole(existingUserId, role) // find or create requested role
+                tok <- createStandardUserSessionToken(rid)    // create a session token
+              } yield tok     // return the existing user's id if we're promiting a guest user, plus the token
+
+            // Promote the guest user.
+            case None =>
+              for {
+                rid <- createStandardUser(access, person, role) // promote the guest user
+                tok <- createStandardUserSessionToken(rid)     // create a session token
+              } yield tok
+
+          }
+
+        }
+
+      private def canonicalizeRole(userId: User.Id, role: RoleRequest): F[StandardRole.Id] =
+        // we assume we're in a transction … would be nice if we could put this in the type
+        OptionT(findRole(userId, role)).getOrElseF(addRole(userId, role))
+
+      def findRole(userId: User.Id, role: RoleRequest): F[Option[StandardRole.Id]] = {
+
+        // Query depends on whether there's a partner or not.
+        val af: AppliedFragment =
+          sql"""
+            SELECT role_id
+            FROM   lucuma_role
+            WHERE  user_id = $user_id
+            AND    role_type = $role_type
+          """.apply(userId ~ role.tpe) |+|
+          role.partnerOption.fold(AppliedFragment.empty)(sql" AND partner = $partner")
+
+        // Done
+        s.prepare(af.fragment.query(role_id)).use(pq => pq.option(af.argument))
+
+      }
+
+      // def getDefaultRole(id: User.Id): F[Option[StandardRole.Id]] =
+      //   s.prepare(SelectDefaultRole).use(_.option(id))
 
       def deleteUser(id: User.Id): F[Boolean] =
         s.prepare(DeleteUser).use { pq =>
@@ -113,73 +172,89 @@ object Database extends Codecs {
       /// HELPERS
 
       // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
-      def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[StandardUser]] =
-        s.prepare(UpdateProfile).use { pq =>
-          OptionT(pq.option(access ~ person))
-            .semiflatMap(readStandardUser)
-            .value
-        }
+      def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[User.Id]] =
+        s.prepare(UpdateProfile).use(_.option(access ~ person))
 
       def promoteGuest(
         access:    OrcidAccess,
         person:    OrcidPerson,
-        promotion: GuestUser,
+        gid:       User.Id,
         role:      RoleRequest
-      ): F[StandardUser] =
+      ): F[StandardRole.Id] =
         s.prepare(PromoteGuest).use { pq =>
           for {
-            userId <- pq.unique(promotion.id ~ access ~ person)
-            _      <- addRole(userId, role)
-            user   <- readStandardUser(userId)
-          } yield user
+            userId <- pq.unique(gid ~ access ~ person)
+            rid    <- addRole(userId, role)
+          } yield rid
         }
 
       def createStandardUser(
         access:    OrcidAccess,
         person:    OrcidPerson,
         role:      RoleRequest
-      ): F[StandardUser] =
+      ): F[StandardRole.Id] =
         s.prepare(InsertStandardUser).use { pq =>
           for {
             userId <- pq.unique(access ~ person)
-            _      <- addRole(userId, role)
-            user   <- readStandardUser(userId)
-          } yield user
+            rid    <- addRole(userId, role)
+          } yield rid
         }
 
       // will raise a constraint failure if it's not a standard user id
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
-        s.prepare(InsertRole).use(_.unique(user ~ role))
+        s.prepare(CanonicalizeRole).use(_.unique(user ~ role))
 
-      def findStandardUser(
-        id: User.Id
+      // def findStandardUser(
+      //   id: User.Id
+      // ): F[Option[StandardUser]] =
+      //   s.prepare(SelectStandardUser).use { pq =>
+      //     pq.stream(id, 64).compile.toList flatMap {
+      //       case Nil => none[StandardUser].pure[F]
+      //       case all @ ((user ~ _) :: _) =>
+      //         s.prepare(SelectDefaultRole).use { pq =>
+      //           pq.unique(user.id)
+      //         } .flatMap { roleId =>
+      //           val roles = all.map(_._2)
+      //           roles.find(_.id === roleId) match {
+      //             case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
+      //             case Some(activeRole) =>
+      //               (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
+      //           }
+      //         }
+      //     }
+      //   }
+
+      def getStandardUserFromToken(token: SessionToken): F[StandardUser] =
+        findStandardUserFromToken(token).flatMap {
+          case None => Sync[F].raiseError(new RuntimeException(s"No such standard user with session token: ${token.value}"))
+          case Some(u) => u.pure[F]
+        }
+
+      def findStandardUserFromToken(
+        token: SessionToken
       ): F[Option[StandardUser]] =
-        s.prepare(SelectStandardUser).use { pq =>
-          pq.stream(id, 64).compile.toList flatMap {
+        s.prepare(SelectStandardUserByToken).use { pq =>
+          pq.stream(token, 64).compile.toList flatMap {
             case Nil => none[StandardUser].pure[F]
-            case all @ ((user ~ _) :: _) =>
-              s.prepare(SelectDefaultRole).use { pq =>
-                pq.unique(user.id)
-              } .flatMap { roleId =>
-                val roles = all.map(_._2)
-                roles.find(_.id === roleId) match {
-                  case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
-                  case Some(activeRole) =>
-                    (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
-                }
+            case all @ ((roleId ~ user ~ _) :: _) =>
+              val roles = all.map(_._2)
+              roles.find(_.id === roleId) match {
+                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user token: ${token.value}"))
+                case Some(activeRole) =>
+                  (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
               }
           }
         }
 
-      def readStandardUser(
-        id: User.Id
-      ): F[StandardUser] =
-        findStandardUser(id).flatMap {
-          case None => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
-          case Some(u) => u.pure[F]
-        }
+      // def readStandardUser(
+      //   id: User.Id
+      // ): F[StandardUser] =
+      //   findStandardUser(id).flatMap {
+      //     case None => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
+      //     case Some(u) => u.pure[F]
+      //   }
 
-  }
+    }
 
   private val InsertGuestUser: Query[Void, GuestUser] =
     sql"""
@@ -273,29 +348,79 @@ object Database extends Codecs {
       }
 
 
+  // /**
+  //  * Query that reads a single standard user as a list of triples. The first two values are
+  //  * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
+  //  * role, from which the active and other roles must be selected.
+  //  */
+  // private val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
+  //   sql"""
+  //     SELECT u.user_id,
+  //            u.orcid_id,
+  //            u.orcid_given_name,
+  //            u.orcid_credit_name,
+  //            u.orcid_family_name,
+  //            u.orcid_email,
+  //            r.role_id,
+  //            r.role_type,
+  //            r.role_ngo
+  //     FROM   lucuma_user u
+  //     JOIN   lucuma_role r
+  //     ON     u.user_id = r.user_id
+  //     WHERE  u.user_id = $user_id
+  //     AND    u.user_type = 'standard' -- sanity check
+  //   """
+  //     .query(
+  //       (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
+  //         case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
+  //         StandardUser(
+  //           id         = id,
+  //           role       = null, // TODO
+  //           otherRoles = Nil, // TODO
+  //           profile    = OrcidProfile(
+  //             orcidId      = orcidId,
+  //             givenName    = givenName,
+  //             creditName   = creditName,
+  //             familyName   = familyName,
+  //             primaryEmail = email
+  //           )
+  //         )
+  //       } ~
+  //       (role_id ~ role_type ~ partner.opt).map {
+  //         // we really need emap here
+  //         case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id)
+  //         case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id)
+  //         case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p)
+  //         case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id)
+  //         case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
+  //       }
+  //     )
+
   /**
    * Query that reads a single standard user as a list of triples. The first two values are
    * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
    * role, from which the active and other roles must be selected.
    */
-  private val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
+  val SelectStandardUserByToken: Query[SessionToken, StandardRole.Id ~ StandardUser ~ StandardRole] =
     sql"""
-      SELECT u.user_id,
-             u.orcid_id,
-             u.orcid_given_name,
-             u.orcid_credit_name,
-             u.orcid_family_name,
-             u.orcid_email,
-             r.role_id,
-             r.role_type,
-             r.role_ngo
-      FROM   lucuma_user u
-      JOIN   lucuma_role r
-      ON     u.user_id = r.user_id
-      WHERE  u.user_id = $user_id
-      AND    u.user_type = 'standard' -- sanity check
-    """
-      .query(
+      SELECT
+        s.role_id,
+        u.user_id,
+        u.orcid_id,
+        u.orcid_given_name,
+        u.orcid_credit_name,
+        u.orcid_family_name,
+        u.orcid_email,
+        r.role_id,
+        r.role_type,
+        r.role_ngo
+      FROM lucuma_session s
+      JOIN lucuma_user    u on u.user_id = s.user_id
+      JOIN lucuma_role    r on r.user_id = s.user_id
+      WHERE s.refresh_token = $session_token
+      AND   s.user_type     = 'standard'
+    """.query(
+        role_id ~
         (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
           case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
           StandardUser(
@@ -321,12 +446,13 @@ object Database extends Codecs {
         }
       )
 
+
   private val DeleteUser: Command[User.Id] =
     sql"""
       DELETE FROM lucuma_user WHERE user_id = $user_id
     """.command
 
-  private val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
+  private val CanonicalizeRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
     sql"""
       INSERT INTO lucuma_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})
@@ -335,14 +461,6 @@ object Database extends Codecs {
       .query(role_id)
       .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
 
-  /** Select the id of the weakest role for a user (typically the PI role). */
-  private val SelectDefaultRole: Query[User.Id, StandardRole.Id] =
-    sql"""
-      SELECT DISTINCT ON (user_id) role_id
-      FROM lucuma_role
-      WHERE user_id=$user_id
-      ORDER BY user_id, role_type ASC
-    """.query(role_id)
 
   /** Create a session token for a guest user. */
   private val InsertGuestUserSessionToken: Query[User.Id, SessionToken] =

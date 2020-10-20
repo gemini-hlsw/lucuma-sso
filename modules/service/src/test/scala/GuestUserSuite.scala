@@ -1,10 +1,11 @@
 package lucuma.sso.service
 
 import cats.effect._
-import lucuma.sso.service.simulator.SsoSimulator
+import cats.syntax.all._
 import lucuma.sso.client.SsoJwtClaim
 import org.http4s._
 import lucuma.core.model.GuestRole
+import lucuma.sso.service.simulator.SsoSimulator
 
 object GuestUserSuite extends SsoSuite with Fixture {
 
@@ -21,7 +22,7 @@ object GuestUserSuite extends SsoSuite with Fixture {
           import reader.entityDecoder // note
           for {
             jwt   <- res.as[SsoJwtClaim]                    // response body is a jwt
-            user  <- jwt.getUserF                           // get the user
+            user  <- jwt.getUser.liftTo[IO]                 // get the user
             tok   <- CookieReader[IO].getSessionToken(res)  // get the new session token
             userʹ <- db.getGuestUserFromToken(tok)          // redeem it to get the same user
           } yield

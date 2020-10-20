@@ -10,8 +10,8 @@ import cats.effect.IO
 
 trait Fixture { self: SimpleMutableIOSuite =>
 
-  val SsoRoot     = uri"https://sso.lucuma.gemini.edu"
-  val ExploreRoot = uri"https://explore.lucuma.gemini.edu"
+  val SsoRoot     = uri"https://sso.gpp.gemini.edu"
+  val ExploreRoot = uri"https://explore.gemini.edu"
 
   val Bob: OrcidPerson =
     OrcidPerson(
