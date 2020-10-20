@@ -31,6 +31,8 @@ trait Database[F[_]] {
 
   def getStandardUserFromToken(token: SessionToken): F[StandardUser]
 
+  def getUserFromToken(token: SessionToken): F[User]
+
   def canonicalizeUser(
     access:    OrcidAccess,
     person:    OrcidPerson,
@@ -79,6 +81,12 @@ object Database extends Codecs {
       def getGuestUserFromToken(token: SessionToken): F[GuestUser] =
         findGuestUserFromToken(token)
           .flatMap(_.toRight(new RuntimeException(s"No guest user for session token: ${token.value}")).liftTo[F])
+
+      def getUserFromToken(token: SessionToken): F[User] =
+        OptionT(findStandardUserFromToken(token).widen[Option[User]])
+          .orElse(OptionT(findGuestUserFromToken(token).widen[Option[User]]))
+          .value
+          .flatMap(_.toRight(new RuntimeException(s"No user for session token: ${token.value}")).liftTo[F])
 
       def promoteGuestUser(
         access:    OrcidAccess,

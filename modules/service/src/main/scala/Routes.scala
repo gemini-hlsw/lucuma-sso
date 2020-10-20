@@ -36,8 +36,21 @@ object Routes {
 
     HttpRoutes.of[F] {
 
+      case r@(POST -> Root / "api" / "v1" / "refresh-token") =>
+        cookies.findSessionToken(r).flatMap {
+          case None => Forbidden("Not logged in.")
+          case Some(tok) =>
+            dbPool.use { db =>
+              for {
+                user <- db.getStandardUserFromToken(tok)
+                jwt  <- jwtWriter.newJwt(user)
+                res  <- Ok(jwt)
+              } yield res
+            }
+        }
+
       // Authenticate as a guest. Response body is the new user's JWT, and a refresh token is set.
-      case POST -> Root / "api" / "v1" / "authAsGuest" =>
+      case POST -> Root / "api" / "v1" / "auth-as-guest" =>
         dbPool.use { db =>
           db.createGuestUserAndSessionToken.flatMap { case (user, token) =>
             for {
