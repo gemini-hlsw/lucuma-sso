@@ -45,10 +45,10 @@ final case class Config(
   // TODO: parameterize
   val JwtLifetime    = 10.minutes
 
-  def cookieReader[F[_]: Sync] =
+  def ssoJwtReader[F[_]: Sync] =
     SsoJwtReader(JwtDecoder.withPublicKey[F](publicKey))
 
-  def cookieWriter[F[_]: Sync] =
+  def ssoJwtWriter[F[_]: Sync] =
     SsoJwtWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime)
 
   def publicUri: Uri =

@@ -116,7 +116,7 @@ object FMain {
         Routes[F](
           dbPool    = pool.map(Database.fromSession(_)),
           orcid     = orcid,
-          jwtWriter = config.cookieWriter,
+          jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](config.cookieDomain)
         )

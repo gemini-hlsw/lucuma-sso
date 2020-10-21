@@ -28,10 +28,10 @@ object SsoSimulator {
         (sessionPool, sim, Routes[F](
           dbPool    = sessionPool,
           orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
-          jwtWriter = config.cookieWriter,
+          jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](Some("gemini.edu"))
-        ), config.cookieReader)
+        ), config.ssoJwtReader)
     }
   }
 

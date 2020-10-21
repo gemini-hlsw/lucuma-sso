@@ -22,19 +22,19 @@ object SsoMiddlewareSuite extends SsoSuite with Fixture {
   val config = Config.local(null)
 
   simpleTest("Service with SsoMiddleware should accept request with JWT header.") {
-    val middleware = SsoMiddleware[IO](config.cookieReader)
+    val middleware = SsoMiddleware[IO](config.ssoJwtReader)
     val routes     = middleware(authedRoots)
     val client     = Client.fromHttpApp(routes.orNotFound)
     val user       = GuestUser(User.Id(123L))
     val req        = Request[IO](uri = uri"http://ignored.com/foo")
     for {
-      reqʹ <- config.cookieWriter.addAuthorizationHeader(user, req)
+      reqʹ <- config.ssoJwtWriter.addAuthorizationHeader(user, req)
       st   <- client.status(reqʹ)
     } yield expect(st == Ok)
   }
 
   simpleTest("Service with SsoMiddleware should reject request without header.") {
-    val middleware = SsoMiddleware[IO](config.cookieReader)
+    val middleware = SsoMiddleware[IO](config.ssoJwtReader)
     val routes     = middleware(authedRoots)
     val client     = Client.fromHttpApp(routes.orNotFound)
     val req        = Request[IO](uri = uri"http://ignored.com/foo")

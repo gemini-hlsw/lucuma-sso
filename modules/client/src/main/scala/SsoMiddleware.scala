@@ -1,3 +1,6 @@
+// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
+
 package lucuma.sso.client
 
 import cats._
@@ -28,7 +31,7 @@ object SsoMiddleware {
         jwtReader.attemptFindClaim(req).flatMap {
           case Some(Right(jwt)) =>
             jwt.getUser match {
-              case Right(u) => Logger[F].info(s"User is: ${u}") *> rs(ContextRequest(u, req)).value
+              case Right(u) => Logger[F].debug(s"User is: ${u}") *> rs(ContextRequest(u, req)).value
               case Left(_)  => BadRequest("JWT is valid but user struct is unreadable.").map(_.pure[Option])
             }
           case Some(Left(e)) =>
