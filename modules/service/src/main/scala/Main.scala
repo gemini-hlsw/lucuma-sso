@@ -132,7 +132,7 @@ object FMain {
             |${config.versionText}
             |${config.environment} Environment at ${config.publicUri}
             |
-            |Cookie domain is ${config.cookieDomain.getOrElse("<none>")}
+            |Cookie domain is ${config.cookieDomain}
             |ORCID host is ${config.orcid.orcidHost}
             |
             |""".stripMargin

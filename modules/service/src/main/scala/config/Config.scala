@@ -27,7 +27,7 @@ final case class Config(
   publicKey:    PublicKey,
   privateKey:   PrivateKey,
   httpPort:     Int,
-  cookieDomain: Option[String],
+  cookieDomain: String,
   scheme:       Uri.Scheme,
   hostname:     String,
   heroku:       Option[HerokuConfig],
@@ -84,8 +84,8 @@ object Config {
       keyPair.getPublic,
       keyPair.getPrivate,
       8080,
-      None,
-      Uri.Scheme.https,
+      "lucuma.xyz",
+      Uri.Scheme.http,
       "local.lucuma.xyz",
       None
     )
@@ -108,8 +108,8 @@ object Config {
           envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
           envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
           envOrProp("GPG_SSO_PASSPHRASE").redacted,
-          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")).map(_.some),
-          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
+          envOrProp("LUCUMA_SSO_COOKIE_DOMAIN"),
+          envOrProp("LUCUMA_SSO_HOSTNAME"),
           HerokuConfig.config.option,
         ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku) =>
           for {

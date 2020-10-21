@@ -79,7 +79,7 @@ object CookieWriter {
   private[service] val CookieName = CookieReader.CookieName
 
   def apply[F[_]: Applicative](
-    domain: Option[String]
+    domain: String
   ): CookieWriter[F] =
     new CookieWriter[F] {
 
@@ -87,7 +87,7 @@ object CookieWriter {
         ResponseCookie(
           name     = CookieName,
           content  = token.value.toString(),
-          domain   = domain,
+          domain   = Some(domain),
           sameSite = SameSite.None,
           secure   = true,
           httpOnly = true,
@@ -107,7 +107,7 @@ trait CookieService[F[_]]
 
 object CookieService {
     def apply[F[_]: MonadError[*[_], Throwable]](
-      domain: Option[String]
+      domain: String
     ): CookieService[F] =
       new CookieService[F] {
         val reader = CookieReader[F]

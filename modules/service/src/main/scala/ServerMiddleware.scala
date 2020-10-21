@@ -67,7 +67,7 @@ object ServerMiddleware {
     config: Config,
   ): Middleware[F] =
     List[Middleware[F]](
-      cors(config.environment, config.cookieDomain),
+      cors(config.environment, Some(config.cookieDomain)),
       logging(config.environment),
       natchez,
       errorReporting,
