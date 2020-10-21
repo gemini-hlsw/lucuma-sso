@@ -21,9 +21,9 @@ object HomePage {
 
   val script: String =
     s"""|
-        |function authAsGuest() {
+        |function auth-as-guest() {
         |  var req = new XMLHttpRequest();
-        |  req.open('POST', '/api/v1/authAsGuest');
+        |  req.open('POST', '/api/v1/auth-as-guest');
         |  req.onreadystatechange = function () {
         |    location.reload();
         |  };
@@ -50,7 +50,7 @@ object HomePage {
             <div>You are not logged in.</div>
             <ul>
               <li><a href={ s"/auth/stage1?state=${URLEncoder.encode(myUri.renderString, "UTF-8")}" }>Authenticate via ORCID.</a></li>
-              <li><a href="javascript:authAsGuest()">Continue as guest.</a></li>
+              <li><a href="javascript:auth-as-guest()">Continue as guest.</a></li>
             </ul>
 
           case Some(Left(e)) =>
@@ -64,7 +64,7 @@ object HomePage {
               }
               <ul>
                 <li><a href={ s"/auth/stage1?state=${URLEncoder.encode(myUri.renderString, "UTF-8")}" }>Authenticate via ORCID.</a></li>
-                <li><a href="javascript:authAsGuest()">Continue as Guest</a></li>
+                <li><a href="javascript:auth-as-guest()">Continue as Guest</a></li>
               </ul>
             </div>
 

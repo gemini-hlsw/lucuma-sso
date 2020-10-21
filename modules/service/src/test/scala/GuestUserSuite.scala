@@ -16,7 +16,7 @@ object GuestUserSuite extends SsoSuite with Fixture {
         sso.run(
           Request(
             method = Method.POST,
-            uri    = SsoRoot / "api" / "v1" / "authAsGuest"
+            uri    = SsoRoot / "api" / "v1" / "auth-as-guest"
           )
         ).use { res =>
           import reader.entityDecoder // note

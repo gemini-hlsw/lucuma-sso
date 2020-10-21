@@ -11,7 +11,7 @@ Single sign-on service and support libries for Lucuma.
     - Continue with **Login** below.
   - If you get a `200 Ok`
     - You are logged in.
-    - The response body will contain your JWT.
+    - The response body will contain a new JWT.
     - An http-only refresh cookie will also be set.
     - Set a timer to run **Initialization** again one minute before the JWT expires.
     - Continue with **Normal Operation** below.
@@ -22,13 +22,13 @@ The user must be allowed to choose to log in with ORCID or log in as a guest.
 
 #### Guest Login
 
-- Post to `/api/v1/authAsGuest`
-  - The response body will contain a JWT, and an http-only refresh cookie will be set.
+- Post to `/api/v1/auth-as-guest`
+  - The response will be `201 Created` and the body will contain a JWT. An http-only refresh cookie will be set.
     - Continue with **Normal Operation** below.
 
 #### ORCID Login
 
-- Perform a client-side redirect to `/auth/stage1?state=APP_URI`
+- Perform a client-side redirect to `/auth/v1/stage1?state=APP_URI`
   - On success the user will be redirected to `APP_URI`.
     - Continue with **Initialization** above.
 
@@ -61,9 +61,15 @@ The user must be allowed to choose to log in with ORCID or log in as a guest.
 
 ## Back-End Service Workflow
 
-TBD
+> Note: this is not implemented yet.
 
+Add `lucuma-sso-client` as a dependency.
 
+### Initialization
+
+- Get `/api/v1/public-key` and decode the body as a `PublicKey`.
+- Pass this value to the `SsoMiddleware` constructor.
+- Use this to wrap routes that must be authenticated. `SsoMiddleware` is an `AuthedMiddleware` that will provide a `User`, or will reject the request with `403 Forbidden`.
 
 ## Local Development QuickStart
 
@@ -98,7 +104,7 @@ You can connect to youe dev database with locally-installed tools like `pgAdmin`
 
 ### Setting up ORCID Credentials
 
-If you try to run `Main` you will find that it barfs because it needs some ORCID configuration. To set this up, sign into [ORCID](http://orcid.org) as yourself, go to **Developer Tools** under the name menu and create an API key with redirect URL `http://localhost:8080/auth/stage2`. This will allow you to test ORCID authentication locally.
+If you try to run `Main` you will find that it barfs because it needs some ORCID configuration. To set this up, sign into [ORCID](http://orcid.org) as yourself, go to **Developer Tools** under the name menu and create an API key with redirect URL `http://localhost:8080/auth/v1/stage2`. This will allow you to test ORCID authentication locally.
 
 You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` either as environment variables or system properties when you run `Main`. To do this in VS-Code you can hit F5 and then set up a run configuration as follows after which hitting F5 again should run SSO locally. Output will be in the Debug Console window.
 
@@ -114,8 +120,8 @@ You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` eit
       "args"       : [],
       "buildTarget": "service",
       "jvmOptions" : [
-        "-DGPP_ORCID_CLIENT_ID=...",
-        "-DGPP_ORCID_CLIENT_SECRET=..."
+        "-DLUCUMA_ORCID_CLIENT_ID=APP-XCUB4VY7YAN9U6BH",
+        "-DLUCUMA_ORCID_CLIENT_SECRET=265b63e5-a924-4512-a1e8-573fcfefa92d",
       ],
     }
   ]

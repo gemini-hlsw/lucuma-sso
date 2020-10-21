@@ -21,6 +21,9 @@ lazy val client = project
       "com.pauldijou"    %% "jwt-core"       % "4.3.0",
       "org.bouncycastle" %  "bcpg-jdk15on"   % "1.66",
       "org.http4s"       %% "http4s-circe"   % "0.21.8",
+      "org.http4s"        %% "http4s-circe"   % "0.21.8",
+      "org.http4s"        %% "http4s-dsl"     % "0.21.8",
+      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
     ),
   )
 
@@ -34,14 +37,12 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "io.circe"               %% "circe-parser"        % "0.13.0",
       "is.cir"                 %% "ciris"               % "1.2.1",
-      "org.http4s"             %% "http4s-dsl"          % "0.21.8",
       "org.http4s"             %% "http4s-ember-client" % "0.21.8",
       "org.http4s"             %% "http4s-ember-server" % "0.21.8",
       "org.http4s"             %% "http4s-scala-xml"    % "0.21.8",
       "org.slf4j"              %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"           %% "natchez-jaeger"      % "0.0.13",
       "org.tpolecat"           %% "skunk-core"          % "0.0.21",
-      // We use JDBC to do migrations
       "org.flywaydb"           % "flyway-core"          % "6.5.7",
       "org.postgresql"         % "postgresql"           % "42.2.18",
     ),

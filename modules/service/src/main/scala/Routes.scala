@@ -36,13 +36,14 @@ object Routes {
 
     HttpRoutes.of[F] {
 
+      // If the user has a refresh token, return a new JWT. Otherwise 403.
       case r@(POST -> Root / "api" / "v1" / "refresh-token") =>
         cookies.findSessionToken(r).flatMap {
           case None => Forbidden("Not logged in.")
           case Some(tok) =>
             dbPool.use { db =>
               for {
-                user <- db.getStandardUserFromToken(tok)
+                user <- db.getUserFromToken(tok)
                 jwt  <- jwtWriter.newJwt(user)
                 res  <- Ok(jwt)
               } yield res
@@ -60,6 +61,10 @@ object Routes {
             } yield res.addCookie(coo)
           }
         }
+
+      // Log out. TODO: If it's a guest user, delete that user.
+      case POST -> Root / "api" / "v1" / "logout" =>
+        Ok("Logged out.").flatMap(cookies.removeCookie)
 
       // Authentication Stage 1: Send the user to ORCID.
       case GET -> Root / "auth" / "v1" / "stage1" :? RedirectUri(redirectUrl) =>
@@ -93,10 +98,6 @@ object Routes {
             res      <- Found(Location(redir))
           } yield res.addCookie(cookie)
         }
-
-      // Log out. TODO: If it's a guest user, delete that user.
-      case POST -> Root / "api" / "v1" / "logout" =>
-        ??? // TODO
 
     }
   }

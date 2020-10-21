@@ -14,6 +14,10 @@ import io.circe.syntax._
 import scala.concurrent.duration.FiniteDuration
 import lucuma.sso.service.util.JwtEncoder
 import lucuma.sso.client.codec.user._
+import org.http4s.Request
+import org.http4s.headers.Authorization
+import org.http4s.Credentials
+import org.http4s.util.CaseInsensitiveString
 
 trait SsoJwtWriter[F[_]] {
 
@@ -23,6 +27,8 @@ trait SsoJwtWriter[F[_]] {
 
   // Encoded JWTs
   def newJwt(user: User): F[String]
+
+  def addAuthorizationHeader(user: User, req: Request[F]): F[Request[F]]
 
 }
 
@@ -41,6 +47,8 @@ object SsoJwtWriter {
 
       val now: F[Instant] =
         Sync[F].delay(Instant.now)
+
+        val Bearer = CaseInsensitiveString("Bearer")
 
       def newClaim(content: String, subject: Option[String]): F[JwtClaim] =
         now.map { inst =>
@@ -66,6 +74,9 @@ object SsoJwtWriter {
 
       def newJwt(user: User): F[String] =
         newClaim(user).flatMap(jwtEncoder.encode)
+
+      def addAuthorizationHeader(user: User, req: Request[F]): F[Request[F]] =
+         newJwt(user).map(jwt => req.putHeaders(Authorization(Credentials.Token(Bearer, jwt))))
 
     }
 

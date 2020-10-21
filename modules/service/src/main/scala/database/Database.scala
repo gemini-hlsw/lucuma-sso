@@ -83,10 +83,12 @@ object Database extends Codecs {
           .flatMap(_.toRight(new RuntimeException(s"No guest user for session token: ${token.value}")).liftTo[F])
 
       def getUserFromToken(token: SessionToken): F[User] =
-        OptionT(findStandardUserFromToken(token).widen[Option[User]])
-          .orElse(OptionT(findGuestUserFromToken(token).widen[Option[User]]))
-          .value
-          .flatMap(_.toRight(new RuntimeException(s"No user for session token: ${token.value}")).liftTo[F])
+        s.transaction.use { _ =>
+          OptionT(findStandardUserFromToken(token).widen[Option[User]])
+            .orElse(OptionT(findGuestUserFromToken(token).widen[Option[User]]))
+            .value
+            .flatMap(_.toRight(new RuntimeException(s"No user for session token: ${token.value}")).liftTo[F])
+        }
 
       def promoteGuestUser(
         access:    OrcidAccess,
@@ -208,29 +210,8 @@ object Database extends Codecs {
           } yield rid
         }
 
-      // will raise a constraint failure if it's not a standard user id
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
-        s.prepare(CanonicalizeRole).use(_.unique(user ~ role))
-
-      // def findStandardUser(
-      //   id: User.Id
-      // ): F[Option[StandardUser]] =
-      //   s.prepare(SelectStandardUser).use { pq =>
-      //     pq.stream(id, 64).compile.toList flatMap {
-      //       case Nil => none[StandardUser].pure[F]
-      //       case all @ ((user ~ _) :: _) =>
-      //         s.prepare(SelectDefaultRole).use { pq =>
-      //           pq.unique(user.id)
-      //         } .flatMap { roleId =>
-      //           val roles = all.map(_._2)
-      //           roles.find(_.id === roleId) match {
-      //             case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role $roleId was not found for user: $id"))
-      //             case Some(activeRole) =>
-      //               (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
-      //           }
-      //         }
-      //     }
-      //   }
+        s.prepare(InsertRole).use(_.unique(user ~ role))
 
       def getStandardUserFromToken(token: SessionToken): F[StandardUser] =
         findStandardUserFromToken(token).flatMap {
@@ -253,14 +234,6 @@ object Database extends Codecs {
               }
           }
         }
-
-      // def readStandardUser(
-      //   id: User.Id
-      // ): F[StandardUser] =
-      //   findStandardUser(id).flatMap {
-      //     case None => Sync[F].raiseError(new RuntimeException(s"No such standard user: $id"))
-      //     case Some(u) => u.pure[F]
-      //   }
 
     }
 
@@ -348,61 +321,12 @@ object Database extends Codecs {
       .contramap[OrcidAccess ~ OrcidPerson] {
         case access ~ person =>
           access.orcidId                   ~
-          access.accessToken               ~ // TODO: epiration
+          access.accessToken               ~ // TODO: expiration
           person.name.givenName            ~
           person.name.creditName           ~
           person.name.familyName           ~
           person.primaryEmail.map(_.email)
       }
-
-
-  // /**
-  //  * Query that reads a single standard user as a list of triples. The first two values are
-  //  * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
-  //  * role, from which the active and other roles must be selected.
-  //  */
-  // private val SelectStandardUser: Query[User.Id, StandardUser ~ StandardRole] =
-  //   sql"""
-  //     SELECT u.user_id,
-  //            u.orcid_id,
-  //            u.orcid_given_name,
-  //            u.orcid_credit_name,
-  //            u.orcid_family_name,
-  //            u.orcid_email,
-  //            r.role_id,
-  //            r.role_type,
-  //            r.role_ngo
-  //     FROM   lucuma_user u
-  //     JOIN   lucuma_role r
-  //     ON     u.user_id = r.user_id
-  //     WHERE  u.user_id = $user_id
-  //     AND    u.user_type = 'standard' -- sanity check
-  //   """
-  //     .query(
-  //       (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
-  //         case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
-  //         StandardUser(
-  //           id         = id,
-  //           role       = null, // TODO
-  //           otherRoles = Nil, // TODO
-  //           profile    = OrcidProfile(
-  //             orcidId      = orcidId,
-  //             givenName    = givenName,
-  //             creditName   = creditName,
-  //             familyName   = familyName,
-  //             primaryEmail = email
-  //           )
-  //         )
-  //       } ~
-  //       (role_id ~ role_type ~ partner.opt).map {
-  //         // we really need emap here
-  //         case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id)
-  //         case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id)
-  //         case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p)
-  //         case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id)
-  //         case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
-  //       }
-  //     )
 
   /**
    * Query that reads a single standard user as a list of triples. The first two values are
@@ -460,7 +384,7 @@ object Database extends Codecs {
       DELETE FROM lucuma_user WHERE user_id = $user_id
     """.command
 
-  private val CanonicalizeRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
+  private val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
     sql"""
       INSERT INTO lucuma_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})

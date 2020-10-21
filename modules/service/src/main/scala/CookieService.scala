@@ -6,7 +6,7 @@ package lucuma.sso.service
 import cats.data.OptionT
 import cats.MonadError
 import cats.syntax.all._
-import org.http4s.{ Request, Response, ResponseCookie, HttpDate, SameSite }
+import org.http4s.{ Request, Response, ResponseCookie, SameSite }
 import org.http4s.RequestCookie
 import java.util.UUID
 import cats.Applicative
@@ -70,8 +70,7 @@ trait CookieWriter[F[_]] {
   def sessionCookie(token: SessionToken): F[ResponseCookie]
 
   /** Construct an empty and expired session cookie. */
-  def revocation: F[ResponseCookie]
-
+  def removeCookie(res: Response[F]): F[Response[F]]
 
 }
 
@@ -95,18 +94,8 @@ object CookieWriter {
           path     = Some("/"),
         ).pure[F]
 
-      def revocation: F[ResponseCookie] = ???
-        ResponseCookie(
-          name     = CookieName,
-          content  = "",
-          domain   = domain,
-          sameSite = SameSite.None,
-          secure   = false,
-          httpOnly = false,
-          path     = Some("/"),
-          expires  = Some(HttpDate.Epoch),
-          maxAge   = Some(0L)
-        ).pure[F]
+      def removeCookie(res: Response[F]): F[Response[F]] =
+        res.removeCookie(CookieName).pure[F]
 
     }
 
@@ -129,6 +118,6 @@ object CookieService {
         def findSessionToken(res: Response[F]): F[Option[SessionToken]] = reader.findSessionToken(res)
         def sessionCookie(token: SessionToken): F[ResponseCookie] = writer.sessionCookie(token)
         def getSessionToken(res: Response[F]): F[SessionToken] = reader.getSessionToken(res)
-        def revocation: F[ResponseCookie] = writer.revocation
+        def removeCookie(res: Response[F]): F[Response[F]] = writer.removeCookie(res)
       }
 }
