@@ -14,6 +14,7 @@ import lucuma.sso.client.SsoJwtReader
 import io.chrisdavenport.log4cats.Logger
 import lucuma.sso.service.config.OrcidConfig
 import lucuma.sso.service.config.Environment
+import org.http4s.client.middleware.CookieJar
 
 object SsoSimulator {
 
@@ -22,23 +23,33 @@ object SsoSimulator {
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
       val config = Config.local(null) // no ORCID config since we're faking ORCID
       FMain.databasePoolResource[F](config.database).map { pool =>
-
         val sessionPool = pool.map(Database.fromSession(_))
-
         (sessionPool, sim, Routes[F](
           dbPool    = sessionPool,
           orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
-          cookies   = CookieService[F](Some("gemini.edu"))
+          cookies   = CookieService[F](Some("lucuma.xyz"))
         ), config.ssoJwtReader)
     }
   }
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */
-  def apply[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F])] =
-    httpRoutes[F].map { case (pool, sim, routes, reader) =>
-      (pool, sim, Client.fromHttpApp(Router("/" -> routes).orNotFound), reader)
+  def apply[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F])] = {
+    httpRoutes[F].flatMap { case (pool, sim, routes, reader) =>
+      val client = Client.fromHttpApp(Router("/" -> routes).orNotFound)
+      val clientʹ = Client[F] { req =>
+        for {
+          _   <- Resource.liftF(Logger[F].debug(s"""Request(method=${req.method}, uri=${req.uri}, headers=${req.headers})"""))
+          res <- client.run(req)
+          _   <- Resource.liftF(Logger[F].debug(s"""Response(status=${res.status}, headers=${res.headers})"""))
+        } yield res
+      }
+      Resource.liftF(CookieJar.impl[F](clientʹ)).map { client =>
+        (pool, sim, client, reader)
+      }
     }
+  }
 
 }
+

@@ -31,6 +31,8 @@ trait Database[F[_]] {
 
   def getStandardUserFromToken(token: SessionToken): F[StandardUser]
 
+  def findUserFromToken(token: SessionToken): F[Option[User]]
+
   def getUserFromToken(token: SessionToken): F[User]
 
   def canonicalizeUser(
@@ -82,13 +84,16 @@ object Database extends Codecs {
         findGuestUserFromToken(token)
           .flatMap(_.toRight(new RuntimeException(s"No guest user for session token: ${token.value}")).liftTo[F])
 
-      def getUserFromToken(token: SessionToken): F[User] =
+      def findUserFromToken(token: SessionToken): F[Option[User]] =
         s.transaction.use { _ =>
           OptionT(findStandardUserFromToken(token).widen[Option[User]])
             .orElse(OptionT(findGuestUserFromToken(token).widen[Option[User]]))
             .value
-            .flatMap(_.toRight(new RuntimeException(s"No user for session token: ${token.value}")).liftTo[F])
         }
+
+      def getUserFromToken(token: SessionToken): F[User] =
+        findUserFromToken(token)
+          .flatMap(_.toRight(new RuntimeException(s"No user for session token: ${token.value}")).liftTo[F])
 
       def promoteGuestUser(
         access:    OrcidAccess,
@@ -98,7 +103,7 @@ object Database extends Codecs {
       ) : F[(Option[User.Id], SessionToken)] =
         s.transaction.use { _ =>
 
-          // See if we can update the ORCID profile. If we can then it means it already exists.
+          // Try to update the user profile.
           updateProfile(access, person).flatMap {
 
             // In this case the user has logged in as someone who already exists in the database.
@@ -106,18 +111,25 @@ object Database extends Codecs {
               for {
                 rid <- canonicalizeRole(existingUserId, role) // find or create requested role
                 tok <- createStandardUserSessionToken(rid)    // create a session token
-              } yield (Some(existingUserId), tok)     // return the existing user's id if we're promiting a guest user, plus the token
+                _   <- deleteUser(gid)                        // guest account is no longer needed (session will cascade-delete)
+              } yield (Some(existingUserId), tok)             // include the existing user's id since we need to chown the guest's old stuff
 
             // Promote the guest user.
             case None =>
               for {
+                _   <- deleteAllSessionTokensForUser(gid)      // delete old session
                 rid <- promoteGuest(access, person, gid, role) // promote the guest user
-                tok <- createStandardUserSessionToken(rid)     // create a session token
-              } yield (None, tok)
+                tok <- createStandardUserSessionToken(rid)     // create a new one
+              } yield (None, tok)                              // no need to chown, user id hasn't changed
 
           }
 
         }
+
+      def deleteAllSessionTokensForUser(uid: User.Id): F[Unit] =
+        s.prepare(sql"DELETE FROM lucuma_session WHERE user_id = $user_id".command)
+          .use(_.execute(uid))
+          .void
 
       def canonicalizeUser(
         access:    OrcidAccess,

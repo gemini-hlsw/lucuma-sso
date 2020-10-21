@@ -85,8 +85,8 @@ object Config {
       keyPair.getPrivate,
       8080,
       None,
-      Uri.Scheme.http,
-      "localhost",
+      Uri.Scheme.https,
+      "local.lucuma.xyz",
       None
     )
 
