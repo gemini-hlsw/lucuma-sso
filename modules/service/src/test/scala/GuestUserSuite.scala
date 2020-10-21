@@ -8,6 +8,7 @@ import lucuma.core.model.GuestRole
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.headers.Location
 import lucuma.core.model.User
+import lucuma.core.model.StandardUser
 
 object GuestUserSuite extends SsoSuite with Fixture {
 
@@ -77,6 +78,39 @@ object GuestUserSuite extends SsoSuite with Fixture {
 
       }
 
+  }
+
+  simpleTest("Log in as guest, then as existing user.") {
+    SsoSimulator[IO].use { case (db, sim, sso, _) =>
+      val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
+      for {
+
+        // Log in as Bob, who is new.
+        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, None)
+        tok1   <- sso.get(stage2)(CookieReader[IO].getSessionToken)
+        user1  <- db.use(_.getStandardUserFromToken(tok1))
+
+        // Log in as a guest. This will give us a new session cookie.
+        gtok   <- sso.run(
+                    Request(
+                      method = Method.POST,
+                      uri    = SsoRoot / "api" / "v1" / "auth-as-guest"
+                    )
+                  ).use { CookieReader[IO].getSessionToken }
+
+        // Log in as Bob, who is now an existing user.
+        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, Option(user1).collect { case StandardUser(_, _, _, p) => p.orcidId })
+        tok2   <- sso.get(stage2)(CookieReader[IO].getSessionToken)
+        user2  <- db.use(_.getStandardUserFromToken(tok2))
+
+        // Ensure the guest token doesn't work anymore
+        op     <- db.use(_.findUserFromToken(gtok))
+
+      } yield expect(user1 == user2) && // same user
+              expect(op.isEmpty)        // guest user session is invalid
+    }
   }
 
 }
