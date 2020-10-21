@@ -15,7 +15,7 @@ lazy val client = project
   .settings(
     name := "lucuma-sso-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"       %% "lucuma-core"    % "0.5.1",
+      "edu.gemini"       %% "lucuma-core"    % "0.5.2",
       "io.circe"         %% "circe-generic"  % "0.13.0",
       "com.pauldijou"    %% "jwt-circe"      % "4.3.0",
       "com.pauldijou"    %% "jwt-core"       % "4.3.0",
