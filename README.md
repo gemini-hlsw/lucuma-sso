@@ -86,9 +86,7 @@ Use `docker-compose` to wrangle a dev database. It's way easier than dealing wit
 
 ### Working on the Schema
 
-When the database is **created** the container will run all the migrations in `modules/service/src/main/resources/db/migration/` in alphabetic order. This means you need to do `down` and then `up` if you make a schema change. It's helpful to run `up` in the foreground (i.e., without `-d`) when you're messing with the schema because an error will cause the database to fail to come up (in which case you need to do `down` and then `up` again).
-
-The app runs these migrations on startup as well, so you don't need to do the down/up dance if you're running the app.
+The app runs the migrations in `/modules/service/src/main/resources/db/migration` on startup.
 
 ### Connecting to the Database
 
