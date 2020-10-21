@@ -79,7 +79,8 @@ object CookieWriter {
   private[service] val CookieName = CookieReader.CookieName
 
   def apply[F[_]: Applicative](
-    domain: String
+    domain: String,
+    secure: Boolean,
   ): CookieWriter[F] =
     new CookieWriter[F] {
 
@@ -88,14 +89,24 @@ object CookieWriter {
           name     = CookieName,
           content  = token.value.toString(),
           domain   = Some(domain),
-          sameSite = SameSite.None,
-          secure   = true,
-          httpOnly = true,
+          sameSite = if (secure) SameSite.None else SameSite.Lax,
+          secure   = secure,
+          httpOnly = secure,
           path     = Some("/"),
         ).pure[F]
 
       def removeCookie(res: Response[F]): F[Response[F]] =
-        res.removeCookie(CookieName).pure[F]
+        res.putHeaders(
+          ResponseCookie(
+            name     = CookieName,
+            content  = "",
+            domain   = Some(domain),
+            sameSite = if (secure) SameSite.None else SameSite.Lax,
+            secure   = secure,
+            httpOnly = secure,
+            path     = Some("/"),
+          ).clearCookie
+        ).pure[F]
 
     }
 
@@ -107,11 +118,12 @@ trait CookieService[F[_]]
 
 object CookieService {
     def apply[F[_]: MonadError[*[_], Throwable]](
-      domain: String
+      domain: String,
+      secure: Boolean,
     ): CookieService[F] =
       new CookieService[F] {
         val reader = CookieReader[F]
-        val writer = CookieWriter[F](domain)
+        val writer = CookieWriter[F](domain, secure)
         def findCookie(req: Request[F]): F[Option[RequestCookie]] = reader.findCookie(req)
         def findSessionToken(req: Request[F]): F[Option[SessionToken]] = reader.findSessionToken(req)
         def findCookie(res: Response[F]): F[Option[ResponseCookie]] = reader.findCookie(res)

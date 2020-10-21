@@ -73,6 +73,12 @@ Add `lucuma-sso-client` as a dependency.
 
 ## Local Development QuickStart
 
+Edit `/etc/hosts` to add `local.lucuma.xyz` as an alias of localhost.
+
+```
+127.0.0.1       localhost local.lucuma.xyz
+```
+
 Use `docker-compose` to wrangle a dev database. It's way easier than dealing with a real installation.
 
 | Command                                                               | Description                                    |
@@ -83,6 +89,9 @@ Use `docker-compose` to wrangle a dev database. It's way easier than dealing wit
 | `docker-compose stop`                                                 | stop the test database                         |
 | `docker-compose down`                                                 | destroy the database                           |
 
+Docker-compose also starts up a local nginx server that serves an example client application at:
+
+- http://local.lucuma.xyz:8081/playground.html
 
 ### Working on the Schema
 
