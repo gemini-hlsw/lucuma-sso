@@ -1,3 +1,5 @@
+import sbtcrossproject.CrossType
+
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
@@ -6,28 +8,30 @@ inThisBuild(Seq(
     "com.disneystreaming" %% "weaver-scalacheck" % "0.5.0" % Test,
   ),
   testFrameworks += new TestFramework("weaver.framework.TestFramework"),
-) ++ gspPublishSettings)
+) ++ lucumaPublishSettings)
 
 skip in publish := true
 
-lazy val frontendClient = project
+lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Full)
   .in(file("modules/frontend-client"))
   .settings(
     name := "lucuma-sso-frontend-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"    %% "lucuma-core"         % "0.5.3",
-      "io.circe"      %% "circe-generic"       % "0.13.0",
-      "edu.gemini"    %% "lucuma-core-testkit" % "0.5.3"  % Test,
-      "org.scalameta" %% "munit"               % "0.7.14" % Test,
-      "org.scalameta" %% "munit-scalacheck"    % "0.7.14" % Test,
-      "org.typelevel" %% "discipline-munit"    % "0.3.0"  % Test,
+      "edu.gemini"    %%% "lucuma-core"         % "0.5.3",
+      "io.circe"      %%% "circe-generic"       % "0.13.0",
+      "edu.gemini"    %%% "lucuma-core-testkit" % "0.5.3"  % Test,
+      "org.scalameta" %%% "munit"               % "0.7.14" % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % "0.7.14" % Test,
+      "org.typelevel" %%% "discipline-munit"    % "0.3.0"  % Test,
     ),
-    testFrameworks += new TestFramework("munit.Framework")
+    testFrameworks += new TestFramework("munit.Framework"),
+    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   )
 
 lazy val backendClient = project
   .in(file("modules/backend-client"))
-  .dependsOn(frontendClient)
+  .dependsOn(frontendClient.jvm)
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
