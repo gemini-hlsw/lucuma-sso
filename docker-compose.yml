@@ -4,6 +4,7 @@ services:
     image: postgres:11
     command: -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key
     volumes:
+      # this is necessary for CI but can cause confusion locally, sorry
       - ./modules/service/src/main/resources/db/migration/:/docker-entrypoint-initdb.d/
       - ./test-cert/server.crt:/var/lib/postgresql/server.crt
       - ./test-cert/server.key:/var/lib/postgresql/server.key
@@ -25,3 +26,10 @@ services:
       - 9411:9411
     environment:
       COLLECTOR_ZIPKIN_HTTP_PORT: 9411
+  nginx:
+    image: nginx
+    volumes:
+      - ./playground:/usr/share/nginx/html:ro
+    ports:
+      - 8081:80
+

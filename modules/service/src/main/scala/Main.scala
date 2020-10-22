@@ -27,6 +27,7 @@ import natchez.http4s.AnsiFilterStream
 import java.io.ByteArrayOutputStream
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
+import org.http4s.Uri.Scheme
 
 object Main extends IOApp {
 
@@ -114,12 +115,11 @@ object FMain {
     (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
       .mapN { (pool, orcid) =>
         Routes[F](
-          dbPool       = pool.map(Database.fromSession(_)),
-          orcid        = orcid,
-          publicKey    = config.publicKey,
-          cookieReader = config.cookieReader,
-          cookieWriter = config.cookieWriter,
-          publicUri    = config.publicUri,
+          dbPool    = pool.map(Database.fromSession(_)),
+          orcid     = orcid,
+          jwtWriter = config.ssoJwtWriter,
+          publicUri = config.publicUri,
+          cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https)
         )
       } .map(ServerMiddleware(config))
 
@@ -133,7 +133,7 @@ object FMain {
             |${config.versionText}
             |${config.environment} Environment at ${config.publicUri}
             |
-            |Cookie domain is ${config.cookieDomain.getOrElse("<none>")}
+            |Cookie domain is ${config.cookieDomain}
             |ORCID host is ${config.orcid.orcidHost}
             |
             |""".stripMargin

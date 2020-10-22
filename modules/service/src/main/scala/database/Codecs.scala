@@ -9,6 +9,7 @@ import skunk._
 import skunk.codec.all._
 import skunk.data.Type
 import lucuma.core.util.Enumerated
+import lucuma.sso.service.SessionToken
 
 // Codecs for some atomic types.
 trait Codecs {
@@ -44,5 +45,8 @@ trait Codecs {
 
   val partner: Codec[Partner] =
     enum[Partner](Enumerated[Partner].tag, Enumerated[Partner].fromTag, Type("lucuma_ngo"))
+
+  val session_token: Codec[SessionToken] =
+    uuid.gimap
 
 }
