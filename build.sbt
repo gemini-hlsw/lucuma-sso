@@ -10,10 +10,10 @@ inThisBuild(Seq(
 
 skip in publish := true
 
-lazy val client = project
-  .in(file("modules/client"))
+lazy val backendClient = project
+  .in(file("modules/backend-client"))
   .settings(
-    name := "lucuma-sso-client",
+    name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
       "edu.gemini"        %% "lucuma-core"    % "0.5.3",
       "io.circe"          %% "circe-generic"  % "0.13.0",
@@ -29,7 +29,7 @@ lazy val client = project
 
 lazy val service = project
   .in(file("modules/service"))
-  .dependsOn(client)
+  .dependsOn(backendClient)
   .enablePlugins(JavaAppPackaging)
   .settings(
     publish / skip := true,
