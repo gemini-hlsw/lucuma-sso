@@ -15,6 +15,7 @@ trait UserCodec {
 
   implicit val EncoderUser: Encoder[User] =
     Encoder.instance {
+
       case GuestUser(id) =>
         Json.obj(
           "type" -> "guest".asJson,
@@ -44,6 +45,12 @@ trait UserCodec {
         for {
           id <- hc.downField("id").as[User.Id]
         } yield GuestUser(id)
+
+      case "service" =>
+        for {
+          id <- hc.downField("id").as[User.Id]
+          n  <- hc.downField("name").as[String]
+        } yield ServiceUser(id, n)
 
       case "standard" =>
         for {

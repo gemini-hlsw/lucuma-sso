@@ -10,13 +10,27 @@ inThisBuild(Seq(
 
 skip in publish := true
 
+lazy val frontendClient = project
+  .in(file("modules/frontend-client"))
+  .settings(
+    name := "lucuma-sso-frontend-client",
+    libraryDependencies ++= Seq(
+      "edu.gemini"    %% "lucuma-core"         % "0.5.3",
+      "io.circe"      %% "circe-generic"       % "0.13.0",
+      "edu.gemini"    %% "lucuma-core-testkit" % "0.5.3"  % Test,
+      "org.scalameta" %% "munit"               % "0.7.14" % Test,
+      "org.scalameta" %% "munit-scalacheck"    % "0.7.14" % Test,
+      "org.typelevel" %% "discipline-munit"    % "0.3.0"  % Test,
+    ),
+    testFrameworks += new TestFramework("munit.Framework")
+  )
+
 lazy val backendClient = project
   .in(file("modules/backend-client"))
+  .dependsOn(frontendClient)
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"        %% "lucuma-core"    % "0.5.3",
-      "io.circe"          %% "circe-generic"  % "0.13.0",
       "com.pauldijou"     %% "jwt-circe"      % "4.3.0",
       "com.pauldijou"     %% "jwt-core"       % "4.3.0",
       "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.66",
