@@ -43,7 +43,7 @@ lazy val service = project
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"   %% "natchez-jaeger"      % "0.0.13",
       "org.tpolecat"   %% "skunk-core"          % "0.0.21",
-      "org.flywaydb"   % "flyway-core"          % "6.5.7",
+      "org.flywaydb"   % "flyway-core"          % "7.0.4",
       "org.postgresql" % "postgresql"           % "42.2.18",
     ),
   )
