@@ -10,11 +10,10 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
 import java.security.SecureRandom
-import lucuma.sso.client.SsoCookieReader
-import lucuma.sso.service.SsoCookieWriter
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.service.SsoJwtWriter
 import lucuma.sso.client.util.JwtDecoder
 import lucuma.sso.service.util.JwtEncoder
-import cats.MonadError
 import scala.concurrent.duration._
 import org.http4s.Uri
 import org.http4s.Uri.RegName
@@ -28,7 +27,7 @@ final case class Config(
   publicKey:    PublicKey,
   privateKey:   PrivateKey,
   httpPort:     Int,
-  cookieDomain: Option[String],
+  cookieDomain: String,
   scheme:       Uri.Scheme,
   hostname:     String,
   heroku:       Option[HerokuConfig],
@@ -46,11 +45,11 @@ final case class Config(
   // TODO: parameterize
   val JwtLifetime    = 10.minutes
 
-  def cookieReader[F[_]: MonadError[?[_], Throwable]] =
-    SsoCookieReader(JwtDecoder.withPublicKey[F](publicKey))
+  def ssoJwtReader[F[_]: Sync] =
+    SsoJwtReader(JwtDecoder.withPublicKey[F](publicKey))
 
-  def cookieWriter[F[_]: Sync] =
-    SsoCookieWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime, cookieDomain)
+  def ssoJwtWriter[F[_]: Sync] =
+    SsoJwtWriter(JwtEncoder.withPrivateKey[F](privateKey), JwtLifetime)
 
   def publicUri: Uri =
     Uri(
@@ -85,9 +84,9 @@ object Config {
       keyPair.getPublic,
       keyPair.getPrivate,
       8080,
-      None,
+      "lucuma.xyz",
       Uri.Scheme.http,
-      "localhost",
+      "local.lucuma.xyz",
       None
     )
 
@@ -109,8 +108,8 @@ object Config {
           envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
           envOrProp("GPG_SSO_PRIVATE_KEY").redacted,
           envOrProp("GPG_SSO_PASSPHRASE").redacted,
-          (envOrProp("LUCUMA_SSO_COOKIE_DOMAIN") or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")).map(_.some),
-          (envOrProp("LUCUMA_SSO_HOSTNAME")      or env("HEROKU_APP_NAME").map(_ + ".herokuapp.com")),
+          envOrProp("LUCUMA_SSO_COOKIE_DOMAIN"),
+          envOrProp("LUCUMA_SSO_HOSTNAME"),
           HerokuConfig.config.option,
         ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku) =>
           for {

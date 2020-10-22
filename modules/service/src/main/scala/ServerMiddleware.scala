@@ -7,8 +7,6 @@ import natchez.http4s.implicits._
 import natchez.Trace
 import cats._
 import org.http4s.HttpRoutes
-import lucuma.sso.client.RequestLogger
-import lucuma.sso.client.SsoCookieReader
 import cats.effect._
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
@@ -25,12 +23,6 @@ object ServerMiddleware {
   /** A middleware that adds distributed tracing. */
   def natchez[F[_]: Bracket[*[_], Throwable]: Trace]: Middleware[F] =
     natchezMiddleware[F]
-
-  /** A middleware that logs the user making the request (if any). */
-  def userLogging[F[_]: Sync](
-    cookieReader: SsoCookieReader[F],
-  ): Middleware[F] =
-    RequestLogger(cookieReader)
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
   def logging[F[_]: Concurrent: ContextShift](
@@ -55,21 +47,15 @@ object ServerMiddleware {
       serviceErrorLogAction   = Logger[F].error(_)(_)
     )
 
-  // Our base CORS config says you can send the cookie back
-  val CorsConfig =
-    CORS.DefaultCORSConfig.copy(
-      allowedMethods = Some(Set("GET", "PUT"))
-    )
-
   /** A middleware that adds CORS headers. In production the origin must match the cookie domain. */
   def cors[F[_]: Monad](env: Environment, domain: Option[String]): Middleware[F] = routes =>
     CORS(
       routes,
       env match {
         case Local | Review | Staging =>
-          CorsConfig
+          CORS.DefaultCORSConfig
         case Production =>
-          CorsConfig.copy(
+          CORS.DefaultCORSConfig.copy(
             anyOrigin      = false,
             allowedOrigins = domain.contains
           )
@@ -81,10 +67,9 @@ object ServerMiddleware {
     config: Config,
   ): Middleware[F] =
     List[Middleware[F]](
+      cors(config.environment, Some(config.cookieDomain)),
       logging(config.environment),
-      cors(config.environment, config.cookieDomain),
       natchez,
-      userLogging(config.cookieReader),
       errorReporting,
     ).reduce(_ andThen _) // N.B. the monoid for Endo uses `compose`
 
