@@ -6,7 +6,7 @@ Single sign-on service and support libries for Lucuma.
 
 ### Initialization
 
-- Hit `/api/v1/refresh-token`
+- Post to `/api/v1/refresh-token`
   - If you get a `302 Forbidden` you are not logged in.
     - Continue with **Login** below.
   - If you get a `200 Ok`
