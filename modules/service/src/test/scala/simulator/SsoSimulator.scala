@@ -29,7 +29,8 @@ object SsoSimulator {
           orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
-          cookies   = CookieService[F]("lucuma.xyz", false)
+          cookies   = CookieService[F]("lucuma.xyz", false),
+          publicKey = config.publicKey,
         ), config.ssoJwtReader)
     }
   }

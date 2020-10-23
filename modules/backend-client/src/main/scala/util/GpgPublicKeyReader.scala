@@ -12,6 +12,11 @@ import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
 import java.{util => ju}
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import java.io.ByteArrayOutputStream
+import org.http4s.EntityDecoder
+import cats.effect.Sync
+import org.http4s.DecodeResult
+import org.http4s.MalformedMessageBodyFailure
+import org.http4s.EntityEncoder
 
 /** Methods to convert between GPG ASCII-amored text and JCA `PublicKey`. */
 object GpgPublicKeyReader {
@@ -45,6 +50,20 @@ object GpgPublicKeyReader {
       Right(new String(baos.toByteArray(), "US-ASCII"))
     } catch {
       case NonFatal(e) => Left(e)
+    }
+
+  def entityDecoder[F[_]: Sync]: EntityDecoder[F, PublicKey] =
+    EntityDecoder.text[F].map(publicKey).flatMapR {
+      case Left(err)     => DecodeResult.failure(MalformedMessageBodyFailure("Invalid public key.", Some(err)))
+      case Right(pubKey) => DecodeResult.success(pubKey)
+    }
+
+  def entityEncoder[F[_]]: EntityEncoder[F, PublicKey] =
+    EntityEncoder[F, String].contramap { pubKey =>
+      armorText(pubKey) match {
+        case Left(err)        => throw err // not great
+        case Right(armorText) => armorText
+      }
     }
 
 }
