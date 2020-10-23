@@ -66,4 +66,15 @@ lazy val service = project
     ),
   )
 
-
+lazy val backendExample = project
+  .in(file("modules/backend-example"))
+  .dependsOn(backendClient)
+  .settings(
+    publish / skip := true,
+    name := "lucuma-sso-backend-example",
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-ember-client" % "0.21.8",
+      "org.http4s" %% "http4s-ember-server" % "0.21.8",
+      "org.slf4j"  %  "slf4j-simple"        % "1.7.30",
+    )
+  )

@@ -2,7 +2,9 @@
   <title>LUCUMA-SSO LOCAL PLAYGROUND</title>
   <script>
 
-    var ssoRootUri = "http://local.lucuma.xyz:8080"
+    var ssoRootUri     = "http://local.lucuma.xyz:8080"
+    var exampleRootUri = "http://local.lucuma.xyz:8082"
+
     var jwt = null
 
     function parseJwt(token) {
@@ -15,11 +17,10 @@
     }
 
     function authAsGuest() {
+      document.getElementById("greeting").innerHTML = ""
       var xhttp = new XMLHttpRequest()
-      xhttp.onreadystatechange = function() {
-        if (this.readyState == 4) {
-          setJwt(xhttp.responseText);
-        }
+      xhttp.onload = function() {
+        setJwt(xhttp.responseText);
       }
       xhttp.open("POST", ssoRootUri + "/api/v1/auth-as-guest", true);
       xhttp.withCredentials = true
@@ -31,11 +32,10 @@
     }
 
     function logout() {
+      document.getElementById("greeting").innerHTML = ""
       var xhttp = new XMLHttpRequest()
-      xhttp.onreadystatechange = function() {
-        if (this.readyState == 4) {
-          init()
-        }
+      xhttp.onload = function() {
+        init()
       }
       xhttp.open("POST", ssoRootUri + "/api/v1/logout", true);
       xhttp.withCredentials = true
@@ -43,16 +43,16 @@
     }
 
     function init() {
+      jwt = null
       document.getElementById("ssoRootUri").innerHTML = ssoRootUri
-
+      document.getElementById("exampleRootUri").innerHTML = exampleRootUri
+      document.getElementById("greeting").innerHTML = ""
       var xhttp = new XMLHttpRequest()
-      xhttp.onreadystatechange = function() {
-        if (this.readyState == 4) {
-          if (xhttp.status == 403) {
-            document.getElementById("whoami").innerHTML = "Not logged in."
-          } else {
-            setJwt(xhttp.responseText)
-          }
+      xhttp.onload = function() {
+        if (xhttp.status == 403) {
+          document.getElementById("jwtContent").innerHTML = "Not logged in."
+        } else {
+          setJwt(xhttp.responseText)
         }
       }
       xhttp.open("POST", ssoRootUri + "/api/v1/refresh-token", true);
@@ -62,9 +62,25 @@
 
     function setJwt(newJwt) {
       jwt = newJwt
-      var parsed    = parseJwt(jwt) // an object
+      var parsed = parseJwt(jwt) // an object
       var formatted = JSON.stringify(parsed, null, 4)
-      document.getElementById("whoami").innerHTML = formatted
+      document.getElementById("jwtContent").innerHTML = formatted
+    }
+
+    function greet() {
+      document.getElementById("greeting").innerHTML = ""
+      var xhttp = new XMLHttpRequest()
+      xhttp.onload = function() {
+        if (xhttp.status == 403) {
+            document.getElementById("greeting").innerHTML = "Forbidden!"
+        } else {
+          document.getElementById("greeting").innerHTML = xhttp.responseText
+        }
+      }
+      xhttp.open("GET", exampleRootUri + "/echo/Hello ", true);
+      if (jwt) xhttp.setRequestHeader("Authorization", "Bearer " + jwt)
+      xhttp.withCredentials = true
+      xhttp.send(null);
     }
 
   </script>
@@ -88,20 +104,31 @@
 
     <h1>LUCUMA-SSO PLAYGROUND</h1>
 
-    <div>
-      This page is hitting the SSO server at <span style="font-weight: bold;" id="ssoRootUri"></span>.
-    </div>
+    <h3>Configuration</h3>
+    Edit the page source to change these.
+    <ul>
+      <li>The SSO server is at <span style="font-weight: bold;" id="ssoRootUri"></span>.</li>
+      <li>The example service is at <span style="font-weight: bold;" id="exampleRootUri"></span>.</li>
+    </ul>
 
-    <div>
-      <div id="whoami" class="preformatted">
-      </div>
-    </div>
-
+    <h3>Possibilities</h3>
     <ul>
       <li><a href="javascript:authAsGuest()">Log in as guest.</a></li>
       <li><a href="javascript:authOrcid()">Log in with ORCID.</a></li>
       <li><a href="javascript:logout()">Log out.</a></li>
+      <li><a href="javascript:greet()">Attempt a greeting via an authenticated service.</a></li>
     </li>
+
+    <div>
+      <h3>JWT Content</h3>
+      <div id="jwtContent" class="preformatted"></div>
+    </div>
+
+    <div>
+      <h3>Greeting</h3>
+      <div id="greeting" class="preformatted"></div>
+    </div>
+
 
   </body>
 </html>

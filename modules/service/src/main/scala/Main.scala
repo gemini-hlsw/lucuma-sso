@@ -119,7 +119,8 @@ object FMain {
           orcid     = orcid,
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
-          cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https)
+          cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
+          publicKey = config.publicKey,
         )
       } .map(ServerMiddleware(config))
 
