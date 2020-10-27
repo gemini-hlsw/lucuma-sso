@@ -114,9 +114,11 @@ object FMain {
   def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config): Resource[F, HttpRoutes[F]] =
     (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
       .mapN { (pool, orcid) =>
+        val dbPool = pool.map(Database.fromSession(_))
         Routes[F](
-          dbPool    = pool.map(Database.fromSession(_)),
+          dbPool    = dbPool,
           orcid     = orcid,
+          jwtReader = config.ssoJwtReader,
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),

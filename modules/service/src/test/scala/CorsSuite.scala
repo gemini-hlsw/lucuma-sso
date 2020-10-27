@@ -12,6 +12,7 @@ object CorsSuite extends SsoSuite {
       Routes[IO](
         dbPool    = null,
         orcid     = null,
+        jwtReader = null,
         jwtWriter = null,
         publicUri = uri"http://unused",
         cookies   = null,

@@ -58,7 +58,7 @@ trait Database[F[_]] {
   // def promoteUser(id: User.Id, profile: OrcidProfile, role: RoleRequest): F[StandardUser]
 
   def createApiKey(roleId: StandardRole.Id): F[ApiKey]
-  def getStandardUserFromApiKey(apiKey: ApiKey): F[StandardUser]
+  def findStandardUserFromApiKey(apiKey: ApiKey): F[Option[StandardUser]]
   def deleteApiKey(keyId: PosLong): F[Unit]
 
 }
@@ -256,12 +256,6 @@ object Database extends Codecs {
                   (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
               }
           }
-        }
-
-    def getStandardUserFromApiKey(apiKey: ApiKey): F[StandardUser] =
-      findStandardUserFromApiKey(apiKey).flatMap {
-          case None => Sync[F].raiseError(new RuntimeException(s"Invalid API Key"))
-          case Some(u) => u.pure[F]
         }
 
     def findStandardUserFromApiKey(

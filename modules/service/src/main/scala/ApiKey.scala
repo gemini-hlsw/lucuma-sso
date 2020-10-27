@@ -13,6 +13,8 @@ import eu.timepit.refined.types.numeric.PosLong
 import monocle.Prism
 import org.http4s.{ DecodeResult, EntityDecoder, EntityEncoder, MalformedMessageBodyFailure }
 import scala.util.matching.Regex
+import org.http4s.QueryParamDecoder
+import org.http4s.ParseFailure
 
 /**
  * An API key consists of an id (a positive Long) and a cleartext body (a 96-char lowecase hex
@@ -51,5 +53,10 @@ object ApiKey {
       case Some(ak) => DecodeResult.success(ak)
       case None     => DecodeResult.failure(MalformedMessageBodyFailure("Invalid API Key"))
     }
+
+  implicit val queryParamDecoder: QueryParamDecoder[ApiKey] =
+    QueryParamDecoder[String]
+      .map(fromString.getOption)
+      .emap(_.toRight(ParseFailure("<redacted>", "Invalid API Key")))
 
 }

@@ -13,13 +13,24 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import java.security.PublicKey
 import lucuma.sso.client.util.GpgPublicKeyReader
+import lucuma.sso.client.SsoJwtReader
+import io.chrisdavenport.log4cats.Logger
+import scala.concurrent.duration._
+import lucuma.core.model.StandardRole
+import lucuma.core.util.Gid
 
 object Routes {
 
+  implicit def gidQueryParamDecoder[A: Gid]: QueryParamDecoder[A] =
+    QueryParamDecoder[String].emap { s =>
+      Gid[A].fromString.getOption(s).toRight(ParseFailure("<gid>", "Invalid GID"))
+    }
+
   // This is the main event. Here are the routes we're serving.
-  def apply[F[_]: Sync: Timer](
+  def apply[F[_]: Sync: Timer: Logger](
     dbPool:    Resource[F, Database[F]],
     orcid:     OrcidService[F],
+    jwtReader: SsoJwtReader[F],
     jwtWriter: SsoJwtWriter[F],
     cookies:   CookieService[F],
     publicUri: Uri,
@@ -36,6 +47,8 @@ object Routes {
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
+    object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
+    object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
 
     // Entity encoder for public keys.
     implicit val pubKeyEntityEncoder = GpgPublicKeyReader.entityEncoder[F]
@@ -75,6 +88,30 @@ object Routes {
       // Log out. TODO: If it's a guest user, delete that user.
       case POST -> Root / "api" / "v1" / "logout" =>
         Ok("Logged out.").flatMap(cookies.removeCookie)
+
+      // Create an API key
+      case r@(POST -> Root / "api" / "v1" / "create-api-key" :? Role(rid)) =>
+        jwtReader.findStandardUser(r).flatMap {
+          case None    => Forbidden("Standard user required.")
+          case Some(u) =>
+            if (u.role.id === rid || u.otherRoles.exists(_.id === rid))
+              dbPool.use(_.createApiKey(u.role.id)).flatMap(Created(_))
+            else
+              Forbidden("Role is not owned by user.")
+        }
+
+      // Exchange an API key for a JWT
+      case r@(GET -> Root / "api" / "v1" / "exchange-api-key" :? Key(apiKey)) =>
+        jwtReader.findServiceUser(r).flatMap {
+          case None     => Forbidden("Service user required.")
+          case Some(su) =>
+            dbPool.use(_.findStandardUserFromApiKey(apiKey)).flatMap {
+              case None => Forbidden("Invalid API Key")
+              case Some(u) =>
+                Logger[F].info(s"API key ${apiKey.id} for ${u.displayName} (${u.id}) exchanged by ${su.displayName}.") *>
+                jwtWriter.newJwt(u, Some(3.hours)).flatMap(Ok(_))
+            }
+        }
 
       // Authentication Stage 1: Send the user to ORCID.
       case GET -> Root / "auth" / "v1" / "stage1" :? RedirectUri(redirectUrl) =>

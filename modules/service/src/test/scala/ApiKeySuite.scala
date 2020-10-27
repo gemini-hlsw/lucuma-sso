@@ -4,27 +4,57 @@ import cats.effect._
 import cats.implicits._
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.headers.Location
+import org.http4s.Request
+import org.http4s.Method
+import org.http4s.headers.Authorization
+import org.http4s.util.CaseInsensitiveString
+import org.http4s.Credentials
+import org.http4s.Headers
+import lucuma.core.util.Gid
+import org.http4s.QueryParamEncoder
+import lucuma.core.model.StandardRole
+import eu.timepit.refined.auto._
+import org.http4s.Status
 
 object ApiKeySuite extends SsoSuite with Fixture {
 
+  implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
+    QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
+
   simpleTest("Create and redeem an API key.") {
-    SsoSimulator[IO].use { case (db, sim, sso, _) =>
+    SsoSimulator[IO].use { case (db, sim, sso, reader) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
         // Log in as Bob
         redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
-        tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
-        user   <- db.use(_.getStandardUserFromToken(tok))
+        _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
+
+        // Exchange cookie for JWT
+        jwt    <- sso.expect[String](
+          Request[IO](
+            method = Method.POST,
+            uri = SsoRoot / "api" / "v1" / "refresh-token",
+          )
+        )
+
+        // Get the user out of the JWT
+        user   <- reader.decodeStandardUser(jwt)
 
         // Create an API Key
-        apiKey <- db.use(_.createApiKey(user.role.id))
+        apiKey <- sso.expect[ApiKey](
+          Request[IO](
+            method  = Method.POST,
+            uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", user.role.id),
+            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), jwt))),
+          )
+        )
 
-        // Redeem it
-        user2  <- db.use(_.getStandardUserFromApiKey(apiKey))
+        // Redeem it (TODO: use API but we need a service user to do it)
+        user  <- db.use(_.findStandardUserFromApiKey(apiKey))
 
-      } yield expect(user == user2)
+      } yield expect(user.exists(_.displayName == "Bob Dobbs"))
     } .onError(e => IO(println(e)))
   }
 
@@ -46,10 +76,40 @@ object ApiKeySuite extends SsoSuite with Fixture {
         _      <- db.use(_.deleteApiKey(apiKey.id))
 
         // Try to redeem it, should fail
-        ex     <- db.use(_.getStandardUserFromApiKey(apiKey)).attempt
+        user2  <- db.use(_.findStandardUserFromApiKey(apiKey))
 
-      } yield expect(ex.isLeft)
+      } yield expect(user2.isEmpty)
     } .onError(e => IO(println(e)))
   }
 
+  simpleTest("Can't create an API key for someone else!") {
+    SsoSimulator[IO].use { case (_, sim, sso, _) =>
+      val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
+      for {
+
+        // Log in as Bob
+        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, None)
+        _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
+
+        // Exchange cookie for JWT
+        jwt    <- sso.expect[String](
+          Request[IO](
+            method = Method.POST,
+            uri = SsoRoot / "api" / "v1" / "refresh-token",
+          )
+        )
+
+        // Create an API Key
+        status <- sso.status(
+          Request[IO](
+            method  = Method.POST,
+            uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", StandardRole.Id(1L)), // no real role with id=1
+            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), jwt))),
+          )
+        )
+
+      } yield expect(status == Status.Forbidden)
+    } .onError(e => IO(println(e)))
+  }
 }

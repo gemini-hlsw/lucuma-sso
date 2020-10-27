@@ -27,6 +27,7 @@ object SsoSimulator {
         (sessionPool, sim, Routes[F](
           dbPool    = sessionPool,
           orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
+          jwtReader = config.ssoJwtReader,
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F]("lucuma.xyz", false),

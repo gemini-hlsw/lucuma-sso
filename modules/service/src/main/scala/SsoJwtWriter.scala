@@ -21,12 +21,8 @@ import org.http4s.util.CaseInsensitiveString
 
 trait SsoJwtWriter[F[_]] {
 
-  // Claims
-  def newClaim(user: User): F[JwtClaim]
-  def renewedClaim(claim: JwtClaim): F[JwtClaim]
-
   // Encoded JWTs
-  def newJwt(user: User): F[String]
+  def newJwt(user: User, timeout: Option[FiniteDuration] = None): F[String]
 
   def addAuthorizationHeader(user: User, req: Request[F]): F[Request[F]]
 
@@ -48,35 +44,33 @@ object SsoJwtWriter {
       val now: F[Instant] =
         Sync[F].delay(Instant.now)
 
-        val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CaseInsensitiveString("Bearer")
 
-      def newClaim(content: String, subject: Option[String]): F[JwtClaim] =
+      def newClaim(content: String, subject: Option[String], timeout: FiniteDuration): F[JwtClaim] =
         now.map { inst =>
           JwtClaim(
             content    = content,
             issuer     = Some("lucuma-sso"),
             subject    = subject,
             audience   = Some(Set("lucuma")),
-            expiration = Some(inst.plusSeconds(jwtTimeout.toSeconds).getEpochSecond),
+            expiration = Some(inst.plusSeconds(timeout.toSeconds).getEpochSecond),
             notBefore  = Some(inst.getEpochSecond),
             issuedAt   = Some(inst.getEpochSecond),
           )
         }
 
-      def newClaim(user: User): F[JwtClaim] =
+      def newClaim(user: User, timeout: FiniteDuration): F[JwtClaim] =
         newClaim(
           content = Json.obj(lucumaUser -> user.asJson).spaces2,
-          subject = Some(user.id.value.toString())
+          subject = Some(user.id.value.toString()),
+          timeout = timeout,
         )
 
-      def renewedClaim(claim: JwtClaim): F[JwtClaim] =
-        newClaim(claim.content, claim.subject)
-
-      def newJwt(user: User): F[String] =
-        newClaim(user).flatMap(jwtEncoder.encode)
+      def newJwt(user: User, timeout: Option[FiniteDuration]): F[String] =
+        newClaim(user, timeout.getOrElse(jwtTimeout)).flatMap(jwtEncoder.encode)
 
       def addAuthorizationHeader(user: User, req: Request[F]): F[Request[F]] =
-         newJwt(user).map(jwt => req.putHeaders(Authorization(Credentials.Token(Bearer, jwt))))
+         newJwt(user, None).map(jwt => req.putHeaders(Authorization(Credentials.Token(Bearer, jwt))))
 
     }
 

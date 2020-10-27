@@ -15,6 +15,9 @@ import org.http4s.util.CaseInsensitiveString
 import org.http4s.EntityDecoder
 import cats.effect.Sync
 import org.http4s.InvalidMessageBodyFailure
+import lucuma.core.model.User
+import lucuma.core.model.ServiceUser
+import lucuma.core.model.StandardUser
 
 trait SsoJwtReader[F[_]] { outer =>
 
@@ -27,11 +30,27 @@ trait SsoJwtReader[F[_]] { outer =>
   /** Retrieve the JWT from the `Authorization: Bearer <jwt>` header, if present. */
   def attemptFindClaim(req: Request[F]): F[Option[Either[JwtException, SsoJwtClaim]]]
 
+  /** Retrieve the User from the `Authorization: Bearer <jwt>` header, if present. */
+  def findUser(req: Request[F]): F[Option[User]]
+
+  /** Retrieve the StandardUser from the `Authorization: Bearer <jwt>` header, if present. */
+  def findStandardUser(req: Request[F]): F[Option[StandardUser]]
+
+  /** Retrieve the ServiceUser from the `Authorization: Bearer <jwt>` header, if present. */
+  def findServiceUser(req: Request[F]): F[Option[ServiceUser]]
+
   /** Retrieve the JWT from the response body. */
   def findClaim(res: Response[F]): F[SsoJwtClaim]
 
   // import this!
   implicit def entityDecoder: EntityDecoder[F, SsoJwtClaim]
+
+
+  def decodeClaim(jwt: String): F[SsoJwtClaim]
+
+  def decodeUser(jwt: String): F[User]
+
+  def decodeStandardUser(jwt: String): F[StandardUser]
 
 }
 
@@ -55,6 +74,18 @@ object SsoJwtReader {
 
       val Bearer = CaseInsensitiveString("Bearer")
 
+      def decodeClaim(jwt: String): F[SsoJwtClaim] =
+        jwtDecoder.decode(jwt).map(SsoJwtClaim(_))
+
+      def decodeUser(jwt: String): F[User] =
+        decodeClaim(jwt).map(_.getUser).flatMap(_.liftTo[F])
+
+      def decodeStandardUser(jwt: String): F[StandardUser] =
+        decodeUser(jwt).flatMap {
+          case u: StandardUser => u.pure[F]
+          case _ => Sync[F].raiseError(new RuntimeException("Not a standard user."))
+        }
+
       def attemptFindClaim(req: Request[F]): F[Option[Either[JwtException, SsoJwtClaim]]] =
         findBearerAuthorization(req).flatMap {
           case None    => none.pure[F]
@@ -73,6 +104,15 @@ object SsoJwtReader {
 
       def findClaim(res: Response[F]): F[SsoJwtClaim] =
         res.as[SsoJwtClaim]
+
+      def findUser(req: Request[F]): F[Option[User]] =
+        findClaim(req).map(_.flatMap(_.getUser.toOption))
+
+      def findServiceUser(req: Request[F]): F[Option[ServiceUser]] =
+        findUser(req).map(_.collect { case u: ServiceUser => u })
+
+      def findStandardUser(req: Request[F]): F[Option[StandardUser]] =
+        findUser(req).map(_.collect { case u: StandardUser => u })
 
 
     }
