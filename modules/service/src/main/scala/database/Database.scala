@@ -8,12 +8,13 @@ import lucuma.core.model._
 import skunk._
 import skunk.implicits._
 import skunk.codec.all._
-import lucuma.sso.service.SessionToken
+import lucuma.sso.service._
 import lucuma.sso.service.orcid.OrcidAccess
 import lucuma.sso.service.orcid.OrcidPerson
 import cats.data.OptionT
 import skunk.data.Completion.Delete
 import cats.effect.Sync
+import eu.timepit.refined.types.numeric.PosLong
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
 trait Database[F[_]] {
@@ -56,12 +57,22 @@ trait Database[F[_]] {
   // // Promote
   // def promoteUser(id: User.Id, profile: OrcidProfile, role: RoleRequest): F[StandardUser]
 
+  def createApiKey(roleId: StandardRole.Id): F[ApiKey]
+  def getStandardUserFromApiKey(apiKey: ApiKey): F[StandardUser]
+  def deleteApiKey(keyId: PosLong): F[Unit]
+
 }
 
 object Database extends Codecs {
 
   def fromSession[F[_]: Sync](s: Session[F]): Database[F] =
     new Database[F] {
+
+      def createApiKey(roleId: StandardRole.Id): F[ApiKey] =
+        s.prepare(CreateApiKey).use(_.unique(roleId))
+
+      def deleteApiKey(keyId: PosLong): F[Unit] =
+        s.prepare(DeleteApiKey).use(_.execute(keyId)).void
 
       def createGuestUser: F[GuestUser] =
         s.unique(InsertGuestUser)
@@ -247,6 +258,27 @@ object Database extends Codecs {
           }
         }
 
+    def getStandardUserFromApiKey(apiKey: ApiKey): F[StandardUser] =
+      findStandardUserFromApiKey(apiKey).flatMap {
+          case None => Sync[F].raiseError(new RuntimeException(s"Invalid API Key"))
+          case Some(u) => u.pure[F]
+        }
+
+    def findStandardUserFromApiKey(
+        apiKey: ApiKey
+      ): F[Option[StandardUser]] =
+        s.prepare(SelectStandardUserByApiKey).use { pq =>
+          pq.stream(apiKey, 64).compile.toList flatMap {
+            case Nil => none[StandardUser].pure[F]
+            case all @ ((roleId ~ user ~ _) :: _) =>
+              val roles = all.map(_._2)
+              roles.find(_.id === roleId) match {
+                case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user associated with API key: ${apiKey.id}"))
+                case Some(activeRole) =>
+                  (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
+              }
+          }
+        }
     }
 
   private val InsertGuestUser: Query[Void, GuestUser] =
@@ -345,7 +377,7 @@ object Database extends Codecs {
    * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
    * role, from which the active and other roles must be selected.
    */
-  val SelectStandardUserByToken: Query[SessionToken, StandardRole.Id ~ StandardUser ~ StandardRole] =
+  private val SelectStandardUserByToken: Query[SessionToken, StandardRole.Id ~ StandardUser ~ StandardRole] =
     sql"""
       SELECT
         s.role_id,
@@ -391,6 +423,52 @@ object Database extends Codecs {
       )
 
 
+  val SelectStandardUserByApiKey: Query[ApiKey, StandardRole.Id ~ StandardUser ~ StandardRole] =
+    sql"""
+      SELECT
+        k.role_id,
+        u.user_id,
+        u.orcid_id,
+        u.orcid_given_name,
+        u.orcid_credit_name,
+        u.orcid_family_name,
+        u.orcid_email,
+        r.role_id,
+        r.role_type,
+        r.role_ngo
+      FROM lucuma_api_key k
+      JOIN lucuma_user    u on u.user_id = k.user_id
+      JOIN lucuma_role    r on r.user_id = k.user_id
+      WHERE k.api_key_id = $varchar
+      AND   k.api_key_hash = md5($varchar);
+    """
+      .contramap[ApiKey](k => k.id.value.toHexString ~ k.body)
+      .query(
+        role_id ~
+        (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
+          case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
+          StandardUser(
+            id         = id,
+            role       = null, // NOTE
+            otherRoles = Nil,  // NOTE
+            profile    = OrcidProfile(
+              orcidId      = orcidId,
+              givenName    = givenName,
+              creditName   = creditName,
+              familyName   = familyName,
+              primaryEmail = email
+            )
+          )
+        } ~
+        (role_id ~ role_type ~ partner.opt).emap {
+          case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id).asRight
+          case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id).asRight
+          case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p).asRight
+          case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id).asRight
+          case hmm                           => s"Invalid: $hmm".asLeft
+        }
+      )
+
   private val DeleteUser: Command[User.Id] =
     sql"""
       DELETE FROM lucuma_user WHERE user_id = $user_id
@@ -432,5 +510,20 @@ object Database extends Codecs {
       WHERE user_type = 'guest'
       AND   refresh_token = $session_token
     """.query(user_id).map(GuestUser(_))
+
+  private val CreateApiKey: Query[StandardRole.Id, ApiKey] =
+    sql"""
+      SELECT insert_api_key(user_id, role_id)
+      FROM   lucuma_role
+      WHERE  role_id = $role_id
+    """.query(api_key)
+
+  private val DeleteApiKey: Command[PosLong] =
+    sql"""
+      DELETE FROM lucuma_api_key
+      WHERE  api_key_id = $varchar
+    """
+      .contramap[PosLong](_.value.toHexString)
+      .command
 
 }
