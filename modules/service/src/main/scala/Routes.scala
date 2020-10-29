@@ -18,6 +18,7 @@ import io.chrisdavenport.log4cats.Logger
 import scala.concurrent.duration._
 import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid
+import lucuma.sso.client._
 
 object Routes {
 

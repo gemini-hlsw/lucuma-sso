@@ -1,10 +1,10 @@
 // Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
-package lucuma.sso.service
+package lucuma.sso.client
 
+import cats.Order
 import cats.effect.Sync
-import cats.Eq
 import cats.implicits._
 import eu.timepit.refined._
 import eu.timepit.refined.cats._
@@ -12,9 +12,10 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.numeric.PosLong
 import monocle.Prism
 import org.http4s.{ DecodeResult, EntityDecoder, EntityEncoder, MalformedMessageBodyFailure }
-import scala.util.matching.Regex
-import org.http4s.QueryParamDecoder
 import org.http4s.ParseFailure
+import org.http4s.QueryParamDecoder
+import scala.util.matching.Regex
+import org.http4s.QueryParamEncoder
 
 /**
  * An API key consists of an id (a positive Long) and a cleartext body (a 96-char lowecase hex
@@ -42,8 +43,11 @@ object ApiKey {
       s"${k.id.value.toHexString}.${k.body}"
     }
 
-  implicit val EqSessionToken: Eq[ApiKey] =
-    Eq.by(k => (k.id, k.body))
+  implicit val OrderApiKey: Order[ApiKey] =
+    Order.by(k => (k.id, k.body))
+
+  implicit val OrderingApiKey: Ordering[ApiKey] =
+    OrderApiKey.toOrdering
 
   implicit def entityEncoder[F[_]]: EntityEncoder[F, ApiKey] =
     EntityEncoder[F, String].contramap(fromString.reverseGet)
@@ -58,5 +62,8 @@ object ApiKey {
     QueryParamDecoder[String]
       .map(fromString.getOption)
       .emap(_.toRight(ParseFailure("<redacted>", "Invalid API Key")))
+
+  implicit val queryParamEncoder: QueryParamEncoder[ApiKey] =
+    QueryParamEncoder[String].contramap(fromString.reverseGet)
 
 }

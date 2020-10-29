@@ -19,7 +19,7 @@ import org.http4s.client.middleware.CookieJar
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
-  private def httpRoutes[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F])] =
+  private def httpRoutes[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
       val config = Config.local(null) // no ORCID config since we're faking ORCID
       FMain.databasePoolResource[F](config.database).map { pool =>
@@ -32,13 +32,13 @@ object SsoSimulator {
           publicUri = config.publicUri,
           cookies   = CookieService[F]("lucuma.xyz", false),
           publicKey = config.publicKey,
-        ), config.ssoJwtReader)
+        ), config.ssoJwtReader, config.ssoJwtWriter)
     }
   }
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */
-  def apply[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F])] = {
-    httpRoutes[F].flatMap { case (pool, sim, routes, reader) =>
+  def apply[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F], SsoJwtWriter[F])] = {
+    httpRoutes[F].flatMap { case (pool, sim, routes, reader, writer) =>
       val client = Client.fromHttpApp(Router("/" -> routes).orNotFound)
       val clientʹ = Client[F] { req =>
         for {
@@ -48,7 +48,7 @@ object SsoSimulator {
         } yield res
       }
       Resource.liftF(CookieJar.impl[F](clientʹ)).map { client =>
-        (pool, sim, client, reader)
+        (pool, sim, client, reader, writer)
       }
     }
   }

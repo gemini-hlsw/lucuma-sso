@@ -10,7 +10,7 @@ import skunk.codec.all._
 import skunk.data.Type
 import lucuma.core.util.Enumerated
 import lucuma.sso.service.SessionToken
-import lucuma.sso.service.ApiKey
+import lucuma.sso.client.ApiKey
 
 // Codecs for some atomic types.
 trait Codecs {

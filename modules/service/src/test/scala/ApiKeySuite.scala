@@ -15,6 +15,10 @@ import org.http4s.QueryParamEncoder
 import lucuma.core.model.StandardRole
 import eu.timepit.refined.auto._
 import org.http4s.Status
+import lucuma.sso.client.ApiKey
+import lucuma.sso.client.SsoJwtClaim
+import lucuma.core.model.ServiceUser
+import lucuma.core.model.User
 
 object ApiKeySuite extends SsoSuite with Fixture {
 
@@ -22,7 +26,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
 
   simpleTest("Create and redeem an API key.") {
-    SsoSimulator[IO].use { case (db, sim, sso, reader) =>
+    SsoSimulator[IO].use { case (db, sim, sso, reader, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
@@ -59,7 +63,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
   }
 
   simpleTest("Delete an API key and try to re-use it.") {
-    SsoSimulator[IO].use { case (db, sim, sso, _) =>
+    SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
@@ -83,7 +87,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
   }
 
   simpleTest("Can't create an API key for someone else!") {
-    SsoSimulator[IO].use { case (_, sim, sso, _) =>
+    SsoSimulator[IO].use { case (_, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
@@ -112,4 +116,63 @@ object ApiKeySuite extends SsoSuite with Fixture {
       } yield expect(status == Status.Forbidden)
     } .onError(e => IO(println(e)))
   }
+
+
+  simpleTest("Promote an API key.") {
+    SsoSimulator[IO].use { case (db, sim, sso, reader, writer) =>
+      val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
+      val Bearer = CaseInsensitiveString("Bearer")
+      import reader.entityDecoder
+      for {
+
+        // Log in as Bob
+        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, None)
+        tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
+        user   <- db.use(_.getStandardUserFromToken(tok))
+
+        // Create an API Key
+        apiKey <- db.use(_.createApiKey(user.role.id))
+
+        // Promote it to a JWT
+
+        serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L), "bogus")) // need to call as a service user
+
+        jwt <- sso.expect[SsoJwtClaim](
+                Request[IO](
+                  uri     = (SsoRoot / "api" / "v1" / "exchange-api-key").withQueryParam("key", apiKey),
+                  headers = Headers.of(Authorization(Credentials.Token(Bearer, serviceJwt)))
+                )
+              )
+
+      } yield expect(jwt.getUser == Right(user))
+    } .onError(e => IO(println(e)))
+  }
+
+  simpleTest("Can't promote an API key without a user.") {
+    SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
+      val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
+      for {
+
+        // Log in as Bob
+        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, None)
+        tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
+        user   <- db.use(_.getStandardUserFromToken(tok))
+
+        // Create an API Key
+        apiKey <- db.use(_.createApiKey(user.role.id))
+
+        // Promote it to a JWT
+        status <- sso.status(
+                    Request[IO](
+                      uri = (SsoRoot / "api" / "v1" / "exchange-api-key").withQueryParam("key", apiKey),
+                    )
+                  )
+
+
+      } yield expect(status == Status.Forbidden)
+    } .onError(e => IO(println(e)))
+  }
+
 }

@@ -15,6 +15,7 @@ import cats.data.OptionT
 import skunk.data.Completion.Delete
 import cats.effect.Sync
 import eu.timepit.refined.types.numeric.PosLong
+import lucuma.sso.client.ApiKey
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
 trait Database[F[_]] {
