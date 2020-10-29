@@ -1,2 +1,2 @@
-web: ./modules/service/target/universal/stage/bin/main serve
-create-service-user: ./modules/service/target/universal/stage/bin/main create-service-user
+web: ./modules/service/target/universal/stage/bin/lucuma-sso-service serve
+create-service-user: ./modules/service/target/universal/stage/bin/lucuma-sso-service create-service-user
