@@ -11,8 +11,6 @@ import lucuma.sso.service.orcid.OrcidService
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
-import java.security.PublicKey
-import lucuma.sso.client.util.GpgPublicKeyReader
 import lucuma.sso.client.SsoJwtReader
 import io.chrisdavenport.log4cats.Logger
 import scala.concurrent.duration._
@@ -35,7 +33,6 @@ object Routes {
     jwtWriter: SsoJwtWriter[F],
     cookies:   CookieService[F],
     publicUri: Uri,
-    publicKey: PublicKey,
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -51,14 +48,7 @@ object Routes {
     object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
     object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
 
-    // Entity encoder for public keys.
-    implicit val pubKeyEntityEncoder = GpgPublicKeyReader.entityEncoder[F]
-
     HttpRoutes.of[F] {
-
-      // Allow clients to ask for our public key.
-      case GET -> Root / "api" / "v1" / "public-key" =>
-        Ok(publicKey)
 
       // If the user has a refresh token, return a new JWT. Otherwise 403.
       case r@(POST -> Root / "api" / "v1" / "refresh-token") =>

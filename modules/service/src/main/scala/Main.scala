@@ -156,7 +156,6 @@ object FMain {
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-          publicKey = config.publicKey,
         )
       } .map(ServerMiddleware(config))
 
