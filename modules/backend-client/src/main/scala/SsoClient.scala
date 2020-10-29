@@ -87,8 +87,8 @@ object SsoClient {
     httpClient:  Client[F],
     ssoRoot:     Uri,
     jwtReader:   SsoJwtReader[F],
-    gracePeriod: FiniteDuration = 5.minutes,
     serviceJwt:  String,
+    gracePeriod: FiniteDuration = 5.minutes,
   ): F[SsoClient[F, UserInfo]] =
     Ref[F].of(TreeMap.empty[ApiKey, UserInfo]).map { ref =>
 
