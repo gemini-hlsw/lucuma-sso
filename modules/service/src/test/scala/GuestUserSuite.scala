@@ -14,7 +14,7 @@ object GuestUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Guest Login.") {
     SsoSimulator[IO]
-      .flatMap { case (pool, _, sso, jwtReader) => pool.map(db => (db, sso, jwtReader)) }
+      .flatMap { case (pool, _, sso, jwtReader, _) => pool.map(db => (db, sso, jwtReader)) }
       .use { case (db, sso, jwtReader) =>
         sso.run(
           Request(
@@ -39,7 +39,7 @@ object GuestUserSuite extends SsoSuite with Fixture {
   simpleTest("Guest user promotion.") {
     val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
     SsoSimulator[IO]
-      .flatMap { case (pool, sim, sso, jwtReader) => pool.map(db => (db, sim, sso, jwtReader)) }
+      .flatMap { case (pool, sim, sso, jwtReader, _) => pool.map(db => (db, sim, sso, jwtReader)) }
       .use { case (db, sim, sso, jwtReader) =>
 
         val loginAsGuest: IO[(User.Id, SessionToken)] =
@@ -81,7 +81,7 @@ object GuestUserSuite extends SsoSuite with Fixture {
   }
 
   simpleTest("Log in as guest, then as existing user.") {
-    SsoSimulator[IO].use { case (db, sim, sso, _) =>
+    SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 

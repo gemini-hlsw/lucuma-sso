@@ -19,7 +19,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
-import skunk._
+import skunk.{ Command => _, _ }
 import io.chrisdavenport.log4cats.Logger
 import cats.data.Kleisli
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
@@ -28,16 +28,50 @@ import java.io.ByteArrayOutputStream
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import org.http4s.Uri.Scheme
+import com.monovore.decline.effect.CommandIOApp
+import com.monovore.decline._
+import lucuma.core.model.ServiceUser
+import lucuma.core.model.User
+import eu.timepit.refined.auto._
+import scala.concurrent.duration._
 
-object Main extends IOApp {
+object Main extends CommandIOApp(
+  name    = "lucuma-sso",
+  header  =
+    s"""|╦  ╦ ╦╔═╗╦ ╦╔╦╗╔═╗   ╔═╗╔═╗╔═╗
+        |║  ║ ║║  ║ ║║║║╠═╣───╚═╗╚═╗║ ║
+        |╩═╝╚═╝╚═╝╚═╝╩ ╩╩ ╩   ╚═╝╚═╝╚═╝
+        |
+        |This is the Lucuma SSO service, which also has a few utility commands that must be invoked
+        |here because they cannot appear in the public API.
+        |
+        |Configuration is entirely by environment variable or by Java system property.
+        |""".stripMargin,
+) {
 
-  /** A logger we can use everywhere. */
+  def main: Opts[IO[ExitCode]] =
+    command
+
   implicit val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromName("lucuma-sso")
 
-  /** Our main program, which runs forever, and can be stopped with ^C. */
-  def run(args: List[String]): IO[ExitCode] =
-    FMain.main[IO]
+  lazy val serve =
+    Command(
+      name   = "serve",
+      header = "Run the SSO service.",
+    )(FMain.serve[IO].pure[Opts])
+
+  lazy val createServiceUser =
+    Command(
+      name   = "create-service-user",
+      header = "Create a new service user."
+    )(Opts.argument[String](metavar = "name").map(FMain.createServiceUser[IO](_)))
+
+  lazy val command =
+    Opts.subcommands(
+      serve,
+      createServiceUser
+    )
 
 }
 
@@ -114,9 +148,11 @@ object FMain {
   def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config): Resource[F, HttpRoutes[F]] =
     (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
       .mapN { (pool, orcid) =>
+        val dbPool = pool.map(Database.fromSession(_))
         Routes[F](
-          dbPool    = pool.map(Database.fromSession(_)),
+          dbPool    = dbPool,
           orcid     = orcid,
+          jwtReader = config.ssoJwtReader,
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
@@ -156,10 +192,10 @@ object FMain {
     Logger[F].mapK(Kleisli.liftK)
 
   /**
-   * Our main program, as a resource that starts up our server on acquire and shuts it all down
+   * Our main server, as a resource that starts up our server on acquire and shuts it all down
    * in cleanup, yielding an `ExitCode`. Users will `use` this resource and hold it forever.
    */
-  def rmain[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, ExitCode] =
+  def server[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, ExitCode] =
     for {
       c  <- Resource.liftF(Config.config.load[F])
       _  <- Resource.liftF(banner[F](c))
@@ -169,9 +205,38 @@ object FMain {
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
-  /** Our main program, which runs forever. */
-  def main[F[_]: Concurrent: ContextShift: Timer: Logger]: F[ExitCode] =
-    rmain.use(_ => Concurrent[F].never[ExitCode])
+  /** Our main server, which runs forever. */
+  def serve[F[_]: Concurrent: ContextShift: Timer: Logger]: F[ExitCode] =
+    server.use(_ => Concurrent[F].never[ExitCode])
+
+  /** Standalone single-use database instance for one-off commands. */
+  def standaloneDatabase[F[_]: Concurrent: ContextShift: Timer: Logger](
+    config: DatabaseConfig
+  ): Resource[F, Database[F]] = {
+    import Trace.Implicits.noop
+    databasePoolResource(config).flatten.map(Database.fromSession(_))
+  }
+
+  /** A one-off command that creates a service user. */
+  def createServiceUser[F[_]: Concurrent: ContextShift: Timer: Logger](
+    name: String
+  ): F[ExitCode] =
+    Config.config.load[F].flatMap { config =>
+      standaloneDatabase(config.database).use { _ =>
+        for {
+          _    <- Sync[F].unit
+          user  = ServiceUser(User.Id(1L), name)
+          _    <- Sync[F].delay(println())
+          _    <- Sync[F].delay(println(s"⚠️  JWT for service user '${user.name}' (${user.id}) is valid for 20 years."))
+          _    <- Sync[F].delay(println(s"⚠️  Place this value in your service configuration and do not replicate it elsewhere."))
+          _    <- Sync[F].delay(println(s"⚠️  If it is lost you may re-run this command to get a new one."))
+          _    <- Sync[F].delay(println())
+          jwt  <- config.ssoJwtWriter.newJwt(user, Some((365 * 20).days)) // 20 years should be enough
+          _    <- Sync[F].delay(println(s"${Console.GREEN}$jwt${Console.RESET}"))
+          _    <- Sync[F].delay(println())
+        } yield ExitCode.Success
+      }
+    }
 
 }
 

@@ -10,11 +10,11 @@ import skunk.codec.all._
 import skunk.data.Type
 import lucuma.core.util.Enumerated
 import lucuma.sso.service.SessionToken
+import lucuma.sso.client.ApiKey
 
 // Codecs for some atomic types.
 trait Codecs {
 
-  // TODO: change this to URI in the database schema
   val orcid_id: Codec[OrcidId] =
     Codec.simple[OrcidId](
       _.value.toString(),
@@ -48,5 +48,8 @@ trait Codecs {
 
   val session_token: Codec[SessionToken] =
     uuid.gimap
+
+  val api_key: Decoder[ApiKey] =
+    text.map(ApiKey.fromString.getOption).emap(_.toRight("Invalid API Key"))
 
 }

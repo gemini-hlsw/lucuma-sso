@@ -120,13 +120,3 @@ object Config {
       }
 
 }
-
-object ConfigTest extends IOApp {
-
-  def run(args: List[String]): IO[ExitCode] =
-    for {
-      cfg <- Config.config.load[IO]
-      _   <- IO(println(cfg))
-    } yield ExitCode.Success
-
-}

@@ -10,7 +10,7 @@ import lucuma.core.model.Access
 object NewUserSuite extends SsoSuite with Fixture {
 
   simpleTest("Bob logs in via ORCID as a new lucuma user.") {
-    SsoSimulator[IO].use { case (db, sim, sso, _) =>
+    SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 

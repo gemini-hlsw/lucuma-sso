@@ -41,6 +41,7 @@ lazy val backendClient = project
       "org.http4s"        %% "http4s-circe"   % "0.21.8",
       "org.http4s"        %% "http4s-circe"   % "0.21.8",
       "org.http4s"        %% "http4s-dsl"     % "0.21.8",
+      "org.http4s"        %% "http4s-client"  % "0.21.8",
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
     ),
   )
@@ -63,7 +64,9 @@ lazy val service = project
       "org.tpolecat"   %% "skunk-core"          % "0.0.21",
       "org.flywaydb"   % "flyway-core"          % "6.5.7",
       "org.postgresql" % "postgresql"           % "42.2.18",
-    ),
+      "com.monovore"   %% "decline-effect"      % "1.3.0",
+      "com.monovore"   %% "decline"             % "1.3.0",
+    )
   )
 
 lazy val backendExample = project

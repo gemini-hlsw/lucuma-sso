@@ -7,6 +7,7 @@ import pdi.jwt.JwtClaim
 import lucuma.core.model.User
 import lucuma.sso.client.codec.user._
 import io.circe.parser.parse
+import java.time.Instant
 
 final case class SsoJwtClaim(jwtClaim: JwtClaim) {
   import SsoJwtClaim._
@@ -16,6 +17,9 @@ final case class SsoJwtClaim(jwtClaim: JwtClaim) {
       json  <- parse(jwtClaim.content)
       user  <- json.hcursor.downField(lucumaUser).as[User]
     } yield user
+
+  def expiration: Instant =
+    jwtClaim.expiration.fold(Instant.MAX)(Instant.ofEpochSecond)
 
 }
 
