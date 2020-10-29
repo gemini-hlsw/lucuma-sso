@@ -64,7 +64,9 @@ lazy val service = project
       "org.tpolecat"   %% "skunk-core"          % "0.0.21",
       "org.flywaydb"   % "flyway-core"          % "6.5.7",
       "org.postgresql" % "postgresql"           % "42.2.18",
-    ),
+      "com.monovore"   %% "decline-effect"      % "1.3.0",
+      "com.monovore"   %% "decline"             % "1.3.0",
+    )
   )
 
 lazy val backendExample = project
