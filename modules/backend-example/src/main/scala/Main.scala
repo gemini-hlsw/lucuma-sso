@@ -5,27 +5,18 @@ package lucuma.sso.example
 
 import cats._
 import cats.effect._
-import cats.syntax.all._
-import io.chrisdavenport.log4cats.Logger
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import java.security.PublicKey
 import lucuma.core.model.User
-import lucuma.sso.client.SsoMiddleware
-import lucuma.sso.client.util.GpgPublicKeyReader
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server.middleware.CORS
-import org.http4s.server.middleware.Logger.{ httpRoutes => log }
 import org.http4s.server.Server
+import lucuma.sso.client.SsoClient
 
 object Main extends IOApp {
 
-  implicit val logger: Logger[IO] =
-    Slf4jLogger.getLoggerFromName("lucuma-sso-example")
-
+  // A normal server.
   def serverResource[F[_]: Concurrent: ContextShift: Timer](
     port: Int,
     app:  HttpApp[F]
@@ -37,43 +28,35 @@ object Main extends IOApp {
       .withPort(port)
       .build
 
-  def routes[F[_]: Defer: Applicative]: AuthedRoutes[User, F] = {
+  // Our routes use an `SsoClient` that knows how to extract a `User`.
+  def routes[F[_]: Defer: Applicative](
+    userClient: SsoClient[F, User]
+  ): HttpRoutes[F] = {
     object dsl extends Http4sDsl[F]; import dsl._
-    AuthedRoutes.of[User, F] {
-      case GET -> Root / "echo" / greeting as user =>
-        Ok(s"$greeting ${user.displayName}")
+    HttpRoutes.of[F] {
+      case r@(GET -> Root / "echo" / greeting) =>
+        userClient.require(r) { user =>
+          Ok(s"$greeting ${user.displayName}")
+        } // otherwise we will respond 403 Forbidden
     }
   }
 
-  def fetchSsoPublicKey[F[_]: Concurrent: Timer: ContextShift](ssoRoot: Uri): F[PublicKey] =
-    EmberClientBuilder.default[F].build.use { client =>
-      implicit val decoder = GpgPublicKeyReader.entityDecoder[F]
-      client.expect[PublicKey](ssoRoot / "api" / "v1" / "public-key")
-    }
-
-  def serverMiddleware[F[_]: Concurrent: Logger](
-    pubKey: PublicKey)
-  : AuthedRoutes[User, F] => HttpRoutes[F] =
-    SsoMiddleware(pubKey) andThen // this adds a check for the Authorization header
-    CORS.httpRoutes[F]    andThen // this is needed by some browsers
-    log[F](                       // log what we're doing
-      logHeaders        = true,
-      logBody           = false,
-      redactHeadersWhen = _ => false
-    )
-
-  def runF[F[_]: Concurrent: Timer: ContextShift: Logger](cfg: Config) =
+  // Our main program as a resource.
+  def runR[F[_]: Concurrent: Timer: ContextShift](
+    cfg: Config
+  ): Resource[F, Server[F]] =
     for {
-      pub <- fetchSsoPublicKey(cfg.ssoRoot)
-      app  = serverMiddleware(pub).apply(routes[F]).orNotFound
-      a   <- serverResource(cfg.port, app).use(_ => Concurrent[F].never[ExitCode])
-    } yield a
+      ssoClient <- cfg.ssoClient[F]
+      userClient = ssoClient.map(_.user) // we only want part of the UserInfo
+      httpApp    = CORS.httpRoutes(routes[F](userClient)).orNotFound
+      server    <- serverResource(cfg.port, httpApp)
+    } yield server
 
-  def run(args: List[String]): IO[ExitCode] = {
-    val cfg = Config.Local
-    IO(println(s"My URI is ${cfg.uri}"))     *>
-    IO(println(s"   SSO is ${cfg.ssoRoot}")) *>
-    runF[IO](cfg)
-  }
+  // Specialize to IO and we're done.
+  def run(args: List[String]): IO[ExitCode] =
+    for {
+      cfg <- Config.fromCiris.load[IO]
+      _   <- runR[IO](cfg).use(_ => IO.never.void)
+    } yield ExitCode.Success
 
 }

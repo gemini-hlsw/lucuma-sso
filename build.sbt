@@ -76,6 +76,7 @@ lazy val backendExample = project
     publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
+      "is.cir"     %% "ciris"               % "1.2.1",
       "org.http4s" %% "http4s-ember-client" % "0.21.8",
       "org.http4s" %% "http4s-ember-server" % "0.21.8",
       "org.slf4j"  %  "slf4j-simple"        % "1.7.30",
