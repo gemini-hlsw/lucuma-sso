@@ -1,11 +1,15 @@
 <html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
   <title>LUCUMA-SSO LOCAL PLAYGROUND</title>
   <script>
 
-    var ssoRootUri     = "http://local.lucuma.xyz:8080"
+    var ssoRootUri     = "https://sso.gpp.lucuma.xyz"
     var exampleRootUri = "http://local.lucuma.xyz:8082"
 
     var jwt = null
+    var user = null
 
     function parseJwt(token) {
       var base64Url = token.split('.')[1];
@@ -47,6 +51,7 @@
       document.getElementById("ssoRootUri").innerHTML = ssoRootUri
       document.getElementById("exampleRootUri").innerHTML = exampleRootUri
       document.getElementById("greeting").innerHTML = ""
+      document.getElementById("apiKey").innerHTML = ""
       var xhttp = new XMLHttpRequest()
       xhttp.onload = function() {
         if (xhttp.status == 403) {
@@ -63,6 +68,7 @@
     function setJwt(newJwt) {
       jwt = newJwt
       var parsed = parseJwt(jwt) // an object
+      user = parsed["lucuma-user"]
       var formatted = JSON.stringify(parsed, null, 4)
       document.getElementById("jwtContent").innerHTML = formatted
     }
@@ -72,7 +78,7 @@
       var xhttp = new XMLHttpRequest()
       xhttp.onload = function() {
         if (xhttp.status == 403) {
-            document.getElementById("greeting").innerHTML = "Forbidden!"
+          document.getElementById("greeting").innerHTML = "Forbidden!"
         } else {
           document.getElementById("greeting").innerHTML = xhttp.responseText
         }
@@ -81,6 +87,26 @@
       if (jwt) xhttp.setRequestHeader("Authorization", "Bearer " + jwt)
       xhttp.withCredentials = true
       xhttp.send(null);
+    }
+
+    function createApiKey() {
+      document.getElementById("apiKey").innerHTML = ""
+      if (user && user.role) {
+        var xhttp = new XMLHttpRequest()
+        xhttp.onload = function() {
+          if (xhttp.status == 403) {
+            document.getElementById("apiKey").innerHTML = "Forbidden!"
+          } else {
+            document.getElementById("apiKey").innerHTML = "curl -i -H \"Authorization: Bearer " + xhttp.responseText + "\" " + exampleRootUri + "/echo/Hello"
+          }
+        }
+        xhttp.open("POST", ssoRootUri + "/api/v1/create-api-key?role=" + user.role.id, true);
+        xhttp.setRequestHeader("Authorization", "Bearer " + jwt)
+        xhttp.withCredentials = true
+        xhttp.send(null);
+      } else {
+        alert("You must be logged in as a standard user (i.e., through ORCID).")
+      }
     }
 
   </script>
@@ -115,6 +141,7 @@
     <ul>
       <li><a href="javascript:authAsGuest()">Log in as guest.</a></li>
       <li><a href="javascript:authOrcid()">Log in with ORCID.</a></li>
+      <li><a href="javascript:createApiKey()">Create an API key (must be logged in as a real user).</a></li>
       <li><a href="javascript:logout()">Log out.</a></li>
       <li><a href="javascript:greet()">Attempt a greeting via an authenticated service.</a></li>
     </li>
@@ -123,6 +150,12 @@
       <h3>JWT Content</h3>
       <div id="jwtContent" class="preformatted"></div>
     </div>
+
+    <div>
+      <h3>API Key Example</h3>
+      <div id="apiKey" class="preformatted"></div>
+    </div>
+
 
     <div>
       <h3>Greeting</h3>

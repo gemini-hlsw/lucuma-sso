@@ -30,8 +30,6 @@ import java.io.PrintWriter
 import org.http4s.Uri.Scheme
 import com.monovore.decline.effect.CommandIOApp
 import com.monovore.decline._
-import lucuma.core.model.ServiceUser
-import lucuma.core.model.User
 import eu.timepit.refined.auto._
 import scala.concurrent.duration._
 
@@ -156,7 +154,6 @@ object FMain {
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-          publicKey = config.publicKey,
         )
       } .map(ServerMiddleware(config))
 
@@ -222,14 +219,13 @@ object FMain {
     name: String
   ): F[ExitCode] =
     Config.config.load[F].flatMap { config =>
-      standaloneDatabase(config.database).use { _ =>
+      standaloneDatabase(config.database).use { db =>
         for {
-          _    <- Sync[F].unit
-          user  = ServiceUser(User.Id(1L), name)
+          user <- db.canonicalizeServiceUser(name)
           _    <- Sync[F].delay(println())
           _    <- Sync[F].delay(println(s"⚠️  JWT for service user '${user.name}' (${user.id}) is valid for 20 years."))
           _    <- Sync[F].delay(println(s"⚠️  Place this value in your service configuration and do not replicate it elsewhere."))
-          _    <- Sync[F].delay(println(s"⚠️  If it is lost you may re-run this command to get a new one."))
+          _    <- Sync[F].delay(println(s"⚠️  If it is lost you may re-run this command with the same service name."))
           _    <- Sync[F].delay(println())
           jwt  <- config.ssoJwtWriter.newJwt(user, Some((365 * 20).days)) // 20 years should be enough
           _    <- Sync[F].delay(println(s"${Console.GREEN}$jwt${Console.RESET}"))

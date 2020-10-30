@@ -20,6 +20,8 @@ import lucuma.sso.client.ApiKey
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
 trait Database[F[_]] {
 
+  def canonicalizeServiceUser(serviceName: String): F[ServiceUser]
+
   def createGuestUser: F[GuestUser]
   def createGuestUserSessionToken(guestUser: GuestUser): F[SessionToken]
   def createGuestUserAndSessionToken: F[(GuestUser, SessionToken)]
@@ -68,6 +70,9 @@ object Database extends Codecs {
 
   def fromSession[F[_]: Sync](s: Session[F]): Database[F] =
     new Database[F] {
+
+      def canonicalizeServiceUser(serviceName: String): F[ServiceUser] =
+        s.prepare(CanonicalizeServiceUser).use(_.unique(serviceName))
 
       def createApiKey(roleId: StandardRole.Id): F[ApiKey] =
         s.prepare(CreateApiKey).use(_.unique(roleId))
@@ -520,5 +525,16 @@ object Database extends Codecs {
     """
       .contramap[PosLong](_.value.toHexString)
       .command
+
+  val CanonicalizeServiceUser: Query[String, ServiceUser] =
+    sql"""
+      INSERT INTO lucuma_user (user_type, service_name)
+      VALUES ('service', $varchar)
+      ON CONFLICT (service_name) DO
+        UPDATE SET service_name=EXCLUDED.service_name
+      RETURNING user_id, service_name
+    """
+      .query(user_id ~ varchar)
+      .gmap[ServiceUser]
 
 }

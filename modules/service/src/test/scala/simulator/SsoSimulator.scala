@@ -31,7 +31,6 @@ object SsoSimulator {
           jwtWriter = config.ssoJwtWriter,
           publicUri = config.publicUri,
           cookies   = CookieService[F]("lucuma.xyz", false),
-          publicKey = config.publicKey,
         ), config.ssoJwtReader, config.ssoJwtWriter)
     }
   }
