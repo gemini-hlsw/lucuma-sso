@@ -28,8 +28,6 @@ HTTP Only cookies are not accessible from Javascript and are only sent with secu
 
 ## API Keys
 
-> not implemented yet
-
 Advanced users can request an API key, which functions much like a JWT but does not expire and must be revoked explicitly. It is otherwise equivalent from the user's point of view and is passed in the same `Authorization: Bearer` header.
 
 API servers validate API keys with SSO, receiving user identities in response. These results are cached locally for 3h.
@@ -44,9 +42,7 @@ Users accept responsibility for protecting API keys.
 
 ## Service Accounts
 
-> not implemented yet
-
-Services which need to communicate directly (outside forwarded requests on behalf of a user) use service accounts that are created via a one-off program that is unavailable through any web API and must be invoked via `heroku run`. This program responds with a non-expiring JWT that can be provided to the API service on startup.
+Services which need to communicate directly (outside forwarded requests on behalf of a user) use service accounts that are created via a one-off program that is unavailable through any web API and must be invoked via `heroku run -a <sso-app> create-service-user <service-name>`. This program responds with a non-expiring JWT that can be provided to the API service on startup.
 
 #### Discussion
 
