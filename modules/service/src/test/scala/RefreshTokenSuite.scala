@@ -3,6 +3,7 @@ package lucuma.sso.service
 import cats.effect._
 import org.http4s._
 import lucuma.sso.service.simulator.SsoSimulator
+import org.http4s.headers.Cookie
 
 object RefreshTokenSuite extends SsoSuite with Fixture {
 
@@ -38,6 +39,20 @@ object RefreshTokenSuite extends SsoSuite with Fixture {
         _  <- sso.status(Request[IO](Method.POST, SsoRoot / "api" / "v1" / "logout"))
         s  <- sso.status(Request[IO](Method.POST, SsoRoot / "api" / "v1" / "refresh-token"))
       } yield expect(s == Status.Forbidden)
+    }
+  }
+
+  simpleTest("Invalid cookie should yield 403.") {
+    SsoSimulator[IO].use { case (_, _, sso, _, _) =>
+      sso.status {
+        Request[IO](
+          method  = Method.POST,
+          uri     = SsoRoot / "api" / "v1" / "refresh-token",
+          headers = Headers.of(Cookie(RequestCookie("lucuma-refresh-token", "8241D73F-EE0B-44D3-A05F-A15416F039DE")))
+        )
+      } map { status =>
+        expect(status == Status.Forbidden)
+      }
     }
   }
 
