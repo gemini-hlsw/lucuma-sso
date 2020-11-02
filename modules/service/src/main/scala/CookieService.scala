@@ -10,6 +10,7 @@ import org.http4s.{ Request, Response, ResponseCookie, SameSite }
 import org.http4s.RequestCookie
 import java.util.UUID
 import cats.Applicative
+import org.http4s.HttpDate
 
 trait CookieReader[F[_]] {
 
@@ -24,6 +25,8 @@ trait CookieReader[F[_]] {
 
   /** Find the session cookie in `req`, if any. */
   def findCookie(res: Response[F]): F[Option[ResponseCookie]]
+
+  def getCookie(res: Response[F]): F[ResponseCookie]
 
   /**
    * Find the session cookie in `res`, if any, and decode it as a SessionToken. If the cookie's content is
@@ -44,6 +47,9 @@ object CookieReader {
 
       def findCookie(req: Request[F]): F[Option[RequestCookie]] =
         req.cookies.find(_.name == CookieName).pure[F]
+
+      def getCookie(res: Response[F]): F[ResponseCookie] =
+        findCookie(res).flatMap(_.toRight(new RuntimeException(s"Missing cookie.")).liftTo[F])
 
       def findSessionToken(req: Request[F]): F[Option[SessionToken]] =
         OptionT(findCookie(req)).semiflatMap { c =>
@@ -84,29 +90,25 @@ object CookieWriter {
   ): CookieWriter[F] =
     new CookieWriter[F] {
 
-      def sessionCookie(token: SessionToken): F[ResponseCookie] =
+      val emptyCookie: ResponseCookie =
         ResponseCookie(
           name     = CookieName,
-          content  = token.value.toString(),
           domain   = Some(domain),
-          sameSite = if (secure) SameSite.None else SameSite.Lax,
+          content  = "",
+          sameSite = if (secure) SameSite.Strict else SameSite.Lax,
           secure   = secure,
           httpOnly = secure,
           path     = Some("/"),
+        )
+
+      def sessionCookie(token: SessionToken): F[ResponseCookie] =
+        emptyCookie.copy(
+          content = token.value.toString(),
+          expires = Some(HttpDate.MaxValue),
         ).pure[F]
 
       def removeCookie(res: Response[F]): F[Response[F]] =
-        res.putHeaders(
-          ResponseCookie(
-            name     = CookieName,
-            content  = "",
-            domain   = Some(domain),
-            sameSite = if (secure) SameSite.None else SameSite.Lax,
-            secure   = secure,
-            httpOnly = secure,
-            path     = Some("/"),
-          ).clearCookie
-        ).pure[F]
+        res.putHeaders(emptyCookie.clearCookie).pure[F]
 
     }
 
@@ -125,6 +127,7 @@ object CookieService {
         val reader = CookieReader[F]
         val writer = CookieWriter[F](domain, secure)
         def findCookie(req: Request[F]): F[Option[RequestCookie]] = reader.findCookie(req)
+        def getCookie(res: Response[F]): F[ResponseCookie] = reader.getCookie(res)
         def findSessionToken(req: Request[F]): F[Option[SessionToken]] = reader.findSessionToken(req)
         def findCookie(res: Response[F]): F[Option[ResponseCookie]] = reader.findCookie(res)
         def findSessionToken(res: Response[F]): F[Option[SessionToken]] = reader.findSessionToken(res)
