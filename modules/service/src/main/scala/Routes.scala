@@ -56,11 +56,10 @@ object Routes {
           case None => Forbidden("Not logged in.")
           case Some(tok) =>
             dbPool.use { db =>
-              for {
-                user <- db.getUserFromToken(tok)
-                jwt  <- jwtWriter.newJwt(user)
-                res  <- Ok(jwt)
-              } yield res
+              db.findUserFromToken(tok).flatMap {
+                case None    => Forbidden("Invalid session token.")
+                case Some(u) => jwtWriter.newJwt(u).flatMap(Ok(_))
+              }
             }
         }
 
