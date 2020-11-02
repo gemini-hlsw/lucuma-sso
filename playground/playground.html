@@ -5,7 +5,7 @@
   <title>LUCUMA-SSO LOCAL PLAYGROUND</title>
   <script>
 
-    var ssoRootUri     = "https://sso.gpp.lucuma.xyz"
+    var ssoRootUri     = "http://local.lucuma.xyz:8080" // "https://sso.gpp.lucuma.xyz"
     var exampleRootUri = "http://local.lucuma.xyz:8082"
 
     var jwt = null
@@ -139,6 +139,7 @@
 
     <h3>Possibilities</h3>
     <ul>
+      <li><a href="javascript:init()">Refresh token.</a></li>
       <li><a href="javascript:authAsGuest()">Log in as guest.</a></li>
       <li><a href="javascript:authOrcid()">Log in with ORCID.</a></li>
       <li><a href="javascript:createApiKey()">Create an API key (must be logged in as a real user).</a></li>
