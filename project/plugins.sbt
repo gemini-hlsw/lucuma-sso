@@ -1,4 +1,4 @@
-addSbtPlugin("com.geirsson"       % "sbt-ci-release"           % "1.5.3")
+addSbtPlugin("com.geirsson"       % "sbt-ci-release"           % "1.5.4")
 addSbtPlugin("com.timushev.sbt"   % "sbt-updates"              % "0.5.1")
 addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.7.6")
 addSbtPlugin("edu.gemini"         % "sbt-lucuma"               % "0.3.1")
