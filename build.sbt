@@ -21,9 +21,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "edu.gemini"    %%% "lucuma-core"         % "0.5.3",
       "io.circe"      %%% "circe-generic"       % "0.13.0",
       "edu.gemini"    %%% "lucuma-core-testkit" % "0.5.3"  % Test,
-      "org.scalameta" %%% "munit"               % "0.7.14" % Test,
-      "org.scalameta" %%% "munit-scalacheck"    % "0.7.14" % Test,
-      "org.typelevel" %%% "discipline-munit"    % "1.0.0"  % Test,
+      "org.scalameta" %%% "munit"               % "0.7.16" % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % "0.7.16" % Test,
+      "org.typelevel" %%% "discipline-munit"    % "0.3.0"  % Test,
     ),
     testFrameworks += new TestFramework("munit.Framework"),
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
