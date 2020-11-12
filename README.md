@@ -7,12 +7,11 @@ Single sign-on service and support libries for Lucuma.
 ### Initialization
 
 - Post to `/api/v1/refresh-token`
-  - If you get a `302 Forbidden` you are not logged in.
+  - If you get a `403 Forbidden` you are not logged in.
     - Continue with **Login** below.
   - If you get a `200 Ok`
     - You are logged in.
     - The response body will contain a new JWT.
-    - An http-only refresh cookie will also be set.
     - Set a timer to run **Initialization** again one minute before the JWT expires.
     - Continue with **Normal Operation** below.
 
@@ -23,23 +22,30 @@ The user must be allowed to choose to log in with ORCID or log in as a guest.
 #### Guest Login
 
 - Post to `/api/v1/auth-as-guest`
-  - The response will be `201 Created` and the body will contain a JWT. An http-only refresh cookie will be set.
-    - Continue with **Normal Operation** below.
+  - The response will be `201 Created`.
+  - The body will contain a JWT.
+  - An http-only refresh cookie will be set.
+  - Continue with **Normal Operation** below.
 
 #### ORCID Login
 
 - Perform a client-side redirect to `/auth/v1/stage1?state=APP_URI`
   - On success the user will be redirected to `APP_URI`.
+    - An http-only refresh cookie will be set.
     - Continue with **Initialization** above.
 
 ### Normal Operation
 
 - Store the JWT in a variable and pass it to all API requests in the header as `Authorization: Bearer <jwt>`.
-- Decode the JWT body as a `lucuma.core.model.User`.
+- Decode the JWT body as a `lucuma.core.model.User`. A circe codec is provided by the `lucuma-sso-frontend-client` artifact.
 - If the user has insufficient privileges to view the application, there are three possibilities that should be presented.
-    - If the user is currently a Guest, allow the user to upgrade their guest account (**ORCID Login** above).
-    - If the user has other roles that _are_ sufficient (via the `otherRoles` member on `StandardUser`) provide a menu that allows the user to select one of these roles and continue with **Set Role** below.
-    - Offer the option to log out. Continue with **Log Out** below.
+    - If the user is currently a Guest
+      - allow the user to upgrade their guest account (**ORCID Login** above).
+    - If the user has other roles that _are_ sufficient (via the `otherRoles` member on `StandardUser`)
+      - Provide a menu that allows the user to select one of these roles
+      - Continue with **Set Role** below.
+    - Offer the option to log out.
+      - Continue with **Log Out** below.
 - Display a user menu with the user's `displayName` shown.
   - If the user is a guest, offer an option to log in via ORCID.
   - If the user is a standard user, offer the option to change role.
@@ -53,6 +59,8 @@ The user must be allowed to choose to log in with ORCID or log in as a guest.
 
 ### Set Role
 
+> This is not implemented yet.
+
 - Post to `/api/v1/setRole?role=<role-id>` to switch the user's current role.
   - Be sure to pass the `Authorization` header.
   - The response body will contain a new JWT.
@@ -61,15 +69,28 @@ The user must be allowed to choose to log in with ORCID or log in as a guest.
 
 ## Back-End Service Workflow
 
-> Note: this is not implemented yet.
+- See the `backend-client-example` module for an example of what follows.
+- Add `lucuma-sso-backend-client` as a dependency.
+- Ensure that your app is provided with the following configuration information:
+  - Your SSO server's root URL (`https://sso.foo.com` for example)
+  - Your SSO server's public key in GPG ASCII-armored format. For now you can grab this from the SSO server's Heroku configuration. We may change this to use a keyserver.
+  - Your service JWT (see below).
+- Construct an `SsoClient` using this configuration and make it available to your HTTP routes.
+- Use the `SsoClient` to extract the requesting user from the http `Request` as needed.
 
-Add `lucuma-sso-client` as a dependency.
+### Obtaining a Service JWT
 
-### Initialization
+Each back-end service must have its own service JWT for communicating with other services. `SsoClient` must communicate with SSO to exchange API tokens, so `SsoClient` users need a service token. You can obtain one by running a one-off Heroku dyno command from your SSO server. The `service-name` argument is arbitrary but should identify your application for logging purposes (`observing-database`, `facility-service`, etc).
 
-- Get `/api/v1/public-key` and decode the body as a `PublicKey`.
-- Pass this value to the `SsoMiddleware` constructor.
-- Use this to wrap routes that must be authenticated. `SsoMiddleware` is an `AuthedMiddleware` that will provide a `User`, or will reject the request with `403 Forbidden`.
+```
+heroku run -a <sso-app-name> create-service-user <service-name>
+```
+
+### Discussion
+
+It is possible to implement authentication as a middleware, but this makes composition of routes via `<+>` difficult because the middleware can either (a) reject unauthorized requests with `403 Forbidden`, which means no following routes can possibly match; or (b) ignore unauthorized requests, which means the user will see a `404 Not Found` instead of `403 Forbidden`. So the recommended strategy for now is to check authorization on each route as described above.
+
+
 
 ## Local Development QuickStart
 
