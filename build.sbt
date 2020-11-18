@@ -62,7 +62,7 @@ lazy val service = project
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"   %% "natchez-jaeger"      % "0.0.13",
       "org.tpolecat"   %% "skunk-core"          % "0.0.21",
-      "org.flywaydb"   % "flyway-core"          % "6.5.7",
+      "org.flywaydb"   % "flyway-core"          % "7.2.1",
       "org.postgresql" % "postgresql"           % "42.2.18",
       "com.monovore"   %% "decline-effect"      % "1.3.0",
       "com.monovore"   %% "decline"             % "1.3.0",
