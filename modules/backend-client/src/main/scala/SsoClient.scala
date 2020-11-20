@@ -25,6 +25,12 @@ trait SsoClient[F[_], A] {
   def find(req: Request[F]): F[Option[A]]
 
   /**
+   * Find authorization information in the specified bearer authorization (typically the value
+   * associated with an `Authorization` header, in the form `bearer <jwt or api-key>`), if valid.
+   */
+  def find(bearerAuthorization: String): F[Option[A]]
+
+  /**
    * Find authorization information and pass it to the specified response handler, responding with
    * `403 Forbidden` if the information is not present. This is a common use case for `find` and is
    * provided as a convenience.
@@ -118,7 +124,7 @@ object SsoClient {
           _     <- ref.update(m => m + (apiKey -> info))
         } yield info
 
-      def getApiInfo(apiKey: ApiKey): F[UserInfo] =
+      def getOrFetchApiInfo(apiKey: ApiKey): F[UserInfo] =
         OptionT(getCachedApiInfo(apiKey)).getOrElseF(fetchApiInfo(apiKey))
 
       def findBearerAuthorization(req: Request[F]): F[Option[String]]  =
@@ -126,24 +132,32 @@ object SsoClient {
           case Authorization(Authorization(Credentials.Token(Bearer, token))) => token
         } .pure[F]
 
-      def findApiKey(req: Request[F]): F[Option[ApiKey]] =
-        findBearerAuthorization(req).map(_.flatMap(ApiKey.fromString.getOption))
+      def getApiKey(bearerAuthorization: String): Option[ApiKey] =
+        ApiKey.fromString.getOption(bearerAuthorization)
 
-      def findApiInfo(req: Request[F]): F[Option[UserInfo]] =
-        OptionT(findApiKey(req)).semiflatMap(getApiInfo).value
+      def getApiInfo(bearerAuthorization: String): F[Option[UserInfo]] =
+        getApiKey(bearerAuthorization).traverse(getOrFetchApiInfo)
 
-      def findJwtInfo(req: Request[F]): F[Option[UserInfo]] =
-        OptionT(findBearerAuthorization(req)).semiflatMap { jwt =>
-          for {
-            claim <- jwtReader.decodeClaim(jwt)
-            user  <- claim.getUser.liftTo[F]
-            info   = UserInfo(user, claim, authorization(jwt))
-          } yield info
-        } .value
+      def getJwtInfo(bearerAuthorization: String): F[Option[UserInfo]] = {
+        for {
+          claim <- jwtReader.decodeClaim(bearerAuthorization)
+          user  <- claim.getUser.liftTo[F]
+          info   = UserInfo(user, claim, authorization(bearerAuthorization))
+        } yield info
+      } .attempt.map(_.toOption)
 
       new AbstractSsoClient2[F, UserInfo] {
-        def find(req: Request[F]): F[Option[UserInfo]] =
-          (OptionT(findApiInfo(req)) <+> OptionT(findJwtInfo(req))).value
+
+        def find(bearerAuthorization: String): F[Option[UserInfo]] =
+          (OptionT(getApiInfo(bearerAuthorization)) <+> OptionT(getJwtInfo(bearerAuthorization))).value
+
+        def find(req: Request[F]): F[Option[UserInfo]] = {
+          for {
+            ba <- OptionT(findBearerAuthorization(req))
+            ui <- OptionT(find(ba))
+          } yield ui
+        } .value
+
       }
 
     }
@@ -159,6 +173,7 @@ object SsoClient {
     private def transform[B](f: Option[A] => Option[B]): SsoClient[F, B] =
       new AbstractSsoClient2[F, B] {
         def find(req: Request[F]) = outer.find(req).map(f)
+        def find(bearerAuthorization: String) = outer.find(bearerAuthorization).map(f)
       }
 
     final def map[B](f: A => B): SsoClient[F, B] = transform(_ map f)
