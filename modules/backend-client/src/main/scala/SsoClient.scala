@@ -17,12 +17,16 @@ import org.http4s.headers.Authorization
 import org.http4s.util.CaseInsensitiveString
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration._
+import org.http4s.Credentials.Token
 
 /** An SSO client that extracts user information of type `A` from API keys and JWTs. */
 trait SsoClient[F[_], A] {
 
   /** Find authorization information in the specified request, if present and valid. */
   def find(req: Request[F]): F[Option[A]]
+
+  /** Get authorization information from the specified Authorization header, if valid. */
+  def get(authorization: Authorization): F[Option[A]]
 
   /**
    * Find authorization information and pass it to the specified response handler, responding with
@@ -118,32 +122,40 @@ object SsoClient {
           _     <- ref.update(m => m + (apiKey -> info))
         } yield info
 
-      def getApiInfo(apiKey: ApiKey): F[UserInfo] =
+      def getOrFetchApiInfo(apiKey: ApiKey): F[UserInfo] =
         OptionT(getCachedApiInfo(apiKey)).getOrElseF(fetchApiInfo(apiKey))
 
-      def findBearerAuthorization(req: Request[F]): F[Option[String]]  =
-        req.headers.collectFirst {
-          case Authorization(Authorization(Credentials.Token(Bearer, token))) => token
-        } .pure[F]
+      def getApiKey(bearerAuthorization: String): Option[ApiKey] =
+        ApiKey.fromString.getOption(bearerAuthorization)
 
-      def findApiKey(req: Request[F]): F[Option[ApiKey]] =
-        findBearerAuthorization(req).map(_.flatMap(ApiKey.fromString.getOption))
+      def getApiInfo(bearerAuthorization: String): F[Option[UserInfo]] =
+        getApiKey(bearerAuthorization).traverse(getOrFetchApiInfo)
 
-      def findApiInfo(req: Request[F]): F[Option[UserInfo]] =
-        OptionT(findApiKey(req)).semiflatMap(getApiInfo).value
+      def getJwtInfo(bearerAuthorization: String): F[Option[UserInfo]] = {
+        for {
+          claim <- jwtReader.decodeClaim(bearerAuthorization)
+          user  <- claim.getUser.liftTo[F]
+          info   = UserInfo(user, claim, authorization(bearerAuthorization))
+        } yield info
+      } .attempt.map(_.toOption)
 
-      def findJwtInfo(req: Request[F]): F[Option[UserInfo]] =
-        OptionT(findBearerAuthorization(req)).semiflatMap { jwt =>
-          for {
-            claim <- jwtReader.decodeClaim(jwt)
-            user  <- claim.getUser.liftTo[F]
-            info   = UserInfo(user, claim, authorization(jwt))
-          } yield info
-        } .value
+      def getUserInfo(bearerAuthorization: String): F[Option[UserInfo]] =
+        (OptionT(getApiInfo(bearerAuthorization)) <+> OptionT(getJwtInfo(bearerAuthorization))).value
 
       new AbstractSsoClient2[F, UserInfo] {
+
+        def get(authorization: Authorization): F[Option[UserInfo]] =
+          authorization.credentials match {
+            case Token(Bearer, ba) => getUserInfo(ba)
+            case _                 => none.pure[F]
+          }
+
         def find(req: Request[F]): F[Option[UserInfo]] =
-          (OptionT(findApiInfo(req)) <+> OptionT(findJwtInfo(req))).value
+          req.headers.get(Authorization) match {
+            case Some(a) => get(a)
+            case None    => none.pure[F]
+          }
+
       }
 
     }
@@ -159,6 +171,7 @@ object SsoClient {
     private def transform[B](f: Option[A] => Option[B]): SsoClient[F, B] =
       new AbstractSsoClient2[F, B] {
         def find(req: Request[F]) = outer.find(req).map(f)
+        def get(authorization: Authorization) = outer.get(authorization).map(f)
       }
 
     final def map[B](f: A => B): SsoClient[F, B] = transform(_ map f)
