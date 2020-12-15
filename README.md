@@ -2,7 +2,7 @@
 
 Single sign-on service and support libries for Lucuma.
 
-## Server Comfiguration
+## Server Configuration
 
 
 SSO requires the following configuration in staging/production.
