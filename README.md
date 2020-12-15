@@ -10,7 +10,7 @@ SSO requires the following configuration in staging/production.
 ##### SSO App Config
 
 | Variable | Value |
-|---|--|--|
+|----------|-------|
 | `LUCUMA_ORCID_CLIENT_ID` | ORCID Client Id |
 | `LUCUMA_ORCID_CLIENT_SECRET` | ORCID secret |
 | `LUCUMA_SSO_COOKIE_DOMAIN` | Domain for refresh token cookie (`gemini.edu`) |
@@ -22,7 +22,7 @@ SSO requires the following configuration in staging/production.
 SSO signs JWTs with a private key. Client applications verify JWTs with a public key.
 
 | Variable | Value |
-|---|--|--|
+|----------|-------|
 | `GPG_SSO_PUBLIC_KEY` | GPG ASCII-armored public key. |
 | `GPG_SSO_PRIVATE_KEY` | GPG ASCII-armored private key. |
 | `GPG_SSO_PASSPHRASE` | Passphrase to read private key. |
@@ -34,7 +34,7 @@ The following configuration is provided by Heroku. You must enable the [`runtime
 extension](https://devcenter.heroku.com/articles/dyno-metadata) to get the full set.
 
 | Variable |
-|---|
+|----|
 | `DATABASE_URL` |
 | `HEROKU_APP_ID` |
 | `HEROKU_APP_NAME` |
