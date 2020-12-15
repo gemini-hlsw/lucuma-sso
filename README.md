@@ -148,8 +148,8 @@ You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` eit
       "args"       : [],
       "buildTarget": "service",
       "jvmOptions" : [
-        "-DLUCUMA_ORCID_CLIENT_ID=APP-XCUB4VY7YAN9U6BH",
-        "-DLUCUMA_ORCID_CLIENT_SECRET=265b63e5-a924-4512-a1e8-573fcfefa92d",
+        "-DLUCUMA_ORCID_CLIENT_ID=<client-id>",
+        "-DLUCUMA_ORCID_CLIENT_SECRET=<client-secret>",
       ],
     }
   ]
