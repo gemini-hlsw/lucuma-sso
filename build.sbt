@@ -35,8 +35,8 @@ lazy val backendClient = project
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"     %% "jwt-circe"      % "4.3.0",
-      "com.pauldijou"     %% "jwt-core"       % "4.3.0",
+      "com.pauldijou"     %% "jwt-circe"      % "5.0.0",
+      "com.pauldijou"     %% "jwt-core"       % "5.0.0",
       "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.67",
       "org.http4s"        %% "http4s-circe"   % "0.21.15",
       "org.http4s"        %% "http4s-circe"   % "0.21.15",
