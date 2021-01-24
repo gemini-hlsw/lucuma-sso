@@ -37,11 +37,11 @@ lazy val backendClient = project
     libraryDependencies ++= Seq(
       "com.pauldijou"     %% "jwt-circe"      % "4.3.0",
       "com.pauldijou"     %% "jwt-core"       % "4.3.0",
-      "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.68",
-      "org.http4s"        %% "http4s-circe"   % "0.21.15",
-      "org.http4s"        %% "http4s-circe"   % "0.21.15",
-      "org.http4s"        %% "http4s-dsl"     % "0.21.15",
-      "org.http4s"        %% "http4s-client"  % "0.21.15",
+      "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.67",
+      "org.http4s"        %% "http4s-circe"   % "0.21.16",
+      "org.http4s"        %% "http4s-circe"   % "0.21.16",
+      "org.http4s"        %% "http4s-dsl"     % "0.21.16",
+      "org.http4s"        %% "http4s-client"  % "0.21.16",
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
     ),
   )
@@ -56,12 +56,12 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "io.circe"       %% "circe-parser"        % "0.13.0",
       "is.cir"         %% "ciris"               % "1.2.1",
-      "org.http4s"     %% "http4s-ember-client" % "0.21.15",
-      "org.http4s"     %% "http4s-ember-server" % "0.21.15",
-      "org.http4s"     %% "http4s-scala-xml"    % "0.21.15",
+      "org.http4s"     %% "http4s-ember-client" % "0.21.16",
+      "org.http4s"     %% "http4s-ember-server" % "0.21.16",
+      "org.http4s"     %% "http4s-scala-xml"    % "0.21.16",
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat"   %% "natchez-jaeger"      % "0.0.15",
-      "org.tpolecat"   %% "skunk-core"          % "0.0.21",
+      "org.tpolecat"   %% "natchez-jaeger"      % "0.0.18",
+      "org.tpolecat"   %% "skunk-core"          % "0.0.22",
       "org.flywaydb"   % "flyway-core"          % "6.5.7",
       "org.postgresql" % "postgresql"           % "42.2.18",
       "com.monovore"   %% "decline-effect"      % "1.3.0",
@@ -77,8 +77,8 @@ lazy val backendExample = project
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
       "is.cir"     %% "ciris"               % "1.2.1",
-      "org.http4s" %% "http4s-ember-client" % "0.21.15",
-      "org.http4s" %% "http4s-ember-server" % "0.21.15",
+      "org.http4s" %% "http4s-ember-client" % "0.21.16",
+      "org.http4s" %% "http4s-ember-server" % "0.21.16",
       "org.slf4j"  %  "slf4j-simple"        % "1.7.30",
     )
   )
