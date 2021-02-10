@@ -18,9 +18,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "lucuma-sso-frontend-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"    %%% "lucuma-core"         % "0.7.4",
+      "edu.gemini"    %%% "lucuma-core"         % "0.7.6",
       "io.circe"      %%% "circe-generic"       % "0.13.0",
-      "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.4"  % Test,
+      "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.6"  % Test,
       "org.scalameta" %%% "munit"               % "0.7.20" % Test,
       "org.scalameta" %%% "munit-scalacheck"    % "0.7.20" % Test,
       "org.typelevel" %%% "discipline-munit"    % "1.0.4"  % Test,
