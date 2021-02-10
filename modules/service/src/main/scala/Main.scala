@@ -14,6 +14,7 @@ import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
 import natchez.jaeger.Jaeger
 import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.output.MigrateResult
 import org.http4s._
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
@@ -105,7 +106,7 @@ object FMain {
       .withHost("0.0.0.0")
       .withHttpApp(app)
       .withPort(port)
-      .withOnError { t =>
+      .withErrorHandler { t =>
         // TODO: don't show this in production
         val baos = new ByteArrayOutputStream
         val fs   = new AnsiFilterStream(baos)
@@ -118,7 +119,7 @@ object FMain {
         baos.close()
         Response[F](
           status = Status.InternalServerError,
-        ).withEntity(new String(baos.toByteArray, "UTF-8"))
+        ).withEntity(new String(baos.toByteArray, "UTF-8")).pure[F]
       }
       .build
 
@@ -175,7 +176,7 @@ object FMain {
   }
 
   /** A startup action that runs database migrations using Flyway. */
-  def migrateDatabase[F[_]: Sync](config: DatabaseConfig): F[Int] =
+  def migrateDatabase[F[_]: Sync](config: DatabaseConfig): F[MigrateResult] =
     Sync[F].delay {
       Flyway
         .configure()
