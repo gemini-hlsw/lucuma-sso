@@ -9,10 +9,10 @@ import cats.implicits._
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.orcid.OrcidService
-import io.jaegertracing.Configuration.{ ReporterConfiguration, SamplerConfiguration }
 import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
-import natchez.jaeger.Jaeger
+import natchez.honeycomb.Honeycomb
+import natchez.log.Log
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
 import org.http4s._
@@ -79,6 +79,9 @@ object FMain {
   // TODO: put this in the config
   val MaxConnections = 10
 
+  // The name we're know by in the tracing back end.
+  val ServiceName = "lucuma-sso"
+
   /** A resource that yields a Skunk session pool. */
   def databasePoolResource[F[_]: Concurrent: ContextShift: Trace](
     config: DatabaseConfig
@@ -123,16 +126,20 @@ object FMain {
       }
       .build
 
-  /** A resource that yields a Natchez tracing entry point. */
-  def entryPointResource[F[_]: Sync]: Resource[F, EntryPoint[F]] = {
-    Jaeger.entryPoint[F]("lucuma-sso") { c =>
-      Sync[F].delay {
-        c.withSampler(SamplerConfiguration.fromEnv)
-         .withReporter(ReporterConfiguration.fromEnv)
-         .getTracer
-      }
+  /**
+   * A resource that yields a Natchez tracing entry point, either a Honeycomb endpoint if `config`
+   * is defined, otherwise a log endpoint.
+   */
+  def entryPointResource[F[_]: Sync: Logger](config: Option[HoneycombConfig]): Resource[F, EntryPoint[F]] =
+    config.fold(Log.entryPoint(ServiceName).pure[Resource[F, *]]) { cfg =>
+      Honeycomb.entryPoint(ServiceName) { cb =>
+          Sync[F].delay {
+            cb.setWriteKey(cfg.writeKey)
+            cb.setDataset(cfg.dataset)
+            cb.build()
+          }
+        }
     }
-  }
 
   /** A resource that yields an OrcidService. */
   def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift](config: OrcidConfig) =
@@ -198,7 +205,7 @@ object FMain {
       c  <- Resource.liftF(Config.config.load[F])
       _  <- Resource.liftF(banner[F](c))
       _  <- Resource.liftF(migrateDatabase[F](c.database))
-      ep <- entryPointResource
+      ep <- entryPointResource(c.honeycomb)
       ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success

@@ -31,6 +31,7 @@ final case class Config(
   scheme:       Uri.Scheme,
   hostname:     String,
   heroku:       Option[HerokuConfig],
+  honeycomb:    Option[HoneycombConfig],
 ) {
 
   def versionText: String =
@@ -66,7 +67,7 @@ final case class Config(
 
 object Config {
 
-  def local(orcid: OrcidConfig): Config = {
+  def local(orcid: OrcidConfig, honeycomb: Option[HoneycombConfig]): Config = {
 
     // Generate a random key pair. This basically means nobody is going to be able to validate keys
     // issued here because they have no way to get the public key. It may end up being better to use
@@ -87,7 +88,8 @@ object Config {
       "lucuma.xyz",
       Uri.Scheme.http,
       "local.lucuma.xyz",
-      None
+      None,
+      honeycomb,
     )
 
   }
@@ -99,7 +101,7 @@ object Config {
       .flatMap {
 
         case Local =>
-          OrcidConfig.config(Local).map(local)
+          (OrcidConfig.config(Local), HoneycombConfig.config.option).parMapN(local)
 
         case envi => (
           envOrProp("PORT").as[Int],
@@ -111,10 +113,11 @@ object Config {
           envOrProp("LUCUMA_SSO_COOKIE_DOMAIN"),
           envOrProp("LUCUMA_SSO_HOSTNAME"),
           HerokuConfig.config.option,
-        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku) =>
+          HoneycombConfig.config.option,
+        ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku, honeycomb) =>
           for {
             skey <- default(text).as[PrivateKey](privateKey(pass))
-          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host, heroku)
+          } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host, heroku, honeycomb)
         }
 
       }
