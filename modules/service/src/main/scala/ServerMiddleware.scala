@@ -3,7 +3,6 @@
 
 package lucuma.sso.service
 
-import natchez.http4s.implicits._
 import natchez.Trace
 import cats._
 import org.http4s.HttpRoutes
@@ -14,6 +13,7 @@ import org.http4s.server.middleware.ErrorAction
 import io.chrisdavenport.log4cats.Logger
 import org.http4s.server.middleware.CORS
 import lucuma.sso.service.config.Config
+import natchez.http4s.NatchezMiddleware
 
 /** A module of all the middlewares we apply to the server routes. */
 object ServerMiddleware {
@@ -22,7 +22,7 @@ object ServerMiddleware {
 
   /** A middleware that adds distributed tracing. */
   def natchez[F[_]: Bracket[*[_], Throwable]: Trace]: Middleware[F] =
-    natchezMiddleware[F]
+    NatchezMiddleware[F]
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
   def logging[F[_]: Concurrent: ContextShift](
