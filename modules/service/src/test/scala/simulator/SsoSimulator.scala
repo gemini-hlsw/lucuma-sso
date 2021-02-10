@@ -22,7 +22,7 @@ object SsoSimulator {
   // The exact same routes and database used by SSO, but a fake ORCID back end
   private def httpRoutes[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
-      val config = Config.local(null).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
+      val config = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
       FMain.databasePoolResource[F](config.database).map { pool =>
         val sessionPool = pool.map(Database.fromSession(_))
         (sessionPool, sim, Routes[F](
