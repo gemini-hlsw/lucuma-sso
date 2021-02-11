@@ -14,6 +14,7 @@ import orcid.lucuma.sso.service.orcid.OrcidException
 import org.http4s.Uri.Scheme
 import org.http4s.Uri.Authority
 import org.http4s.Uri.Host
+import natchez.Trace
 
 trait OrcidService[F[_]] {
 
@@ -48,7 +49,7 @@ trait OrcidService[F[_]] {
 
 object OrcidService {
 
-  def apply[F[_]: Sync](
+  def apply[F[_]: Sync: Trace](
     orcidHost:         Host,
     orcidClientId:     String,
     orcidClientSecret: String,
@@ -83,28 +84,33 @@ object OrcidService {
           )).pure[F]
 
       def getAccessToken(redirect: Uri, authenticationCode: String): F[OrcidAccess] =
-        httpClient.expectOr(
-          Method.POST(
-            UrlForm(
-              "client_id"     -> orcidClientId,
-              "client_secret" -> orcidClientSecret,
-              "grant_type"    -> "authorization_code",
-              "redirect_uri"  -> redirect.toString,
-              "code"          -> authenticationCode,
-            ),
-            orcidUri("/oauth/token"),
-            Accept(MediaType.application.json)
-          )
-        )(_.as[OrcidException].widen)
+        Trace[F].span("getAccessToken") {
+          httpClient.expectOr(
+            Method.POST(
+              UrlForm(
+                "client_id"     -> orcidClientId,
+                "client_secret" -> orcidClientSecret,
+                "grant_type"    -> "authorization_code",
+                "redirect_uri"  -> redirect.toString,
+                "code"          -> authenticationCode,
+              ),
+              orcidUri("/oauth/token"),
+              Accept(MediaType.application.json)
+            )
+          )(_.as[OrcidException].widen)
+        }
 
       def getPerson(access: OrcidAccess): F[OrcidPerson] =
-        httpClient.expectOr[OrcidPerson](
-          Method.GET(
-            Uri.unsafeFromString(s"https://pub.$orcidHost/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
-            Accept(MediaType.application.json),
-            Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
-          )
-        )(_.as[OrcidException].widen)
+        Trace[F].span("getPerson") {
+          Trace[F].put("orcidId" -> access.orcidId.value) *>
+          httpClient.expectOr[OrcidPerson](
+            Method.GET(
+              Uri.unsafeFromString(s"https://pub.$orcidHost/v3.0/${access.orcidId.value}/person"), // safe, heh-heh
+              Accept(MediaType.application.json),
+              Authorization(Credentials.Token(AuthScheme.Bearer, access.accessToken.toString))
+            )
+          )(_.as[OrcidException].widen)
+        }
 
     }
 
