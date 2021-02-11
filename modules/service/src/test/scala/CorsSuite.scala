@@ -4,6 +4,7 @@ import cats.effect._
 import org.http4s._
 import org.http4s.implicits._
 import lucuma.sso.service.config.Environment
+import natchez.Trace.Implicits.noop
 
 object CorsSuite extends SsoSuite {
 

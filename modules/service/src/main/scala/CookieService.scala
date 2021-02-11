@@ -95,7 +95,7 @@ object CookieWriter {
           name     = CookieName,
           domain   = Some(domain),
           content  = "",
-          sameSite = if (secure) SameSite.Strict else SameSite.Lax,
+          sameSite = SameSite.Strict,
           secure   = secure,
           httpOnly = secure,
           path     = Some("/"),

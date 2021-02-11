@@ -142,7 +142,7 @@ object FMain {
     }
 
   /** A resource that yields an OrcidService. */
-  def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift](config: OrcidConfig) =
+  def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift: Trace](config: OrcidConfig) =
     EmberClientBuilder.default[F].build.map(org.http4s.client.middleware.Logger[F](
       logHeaders = true,
       logBody    = true,

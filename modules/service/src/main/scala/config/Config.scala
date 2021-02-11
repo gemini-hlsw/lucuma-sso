@@ -85,7 +85,7 @@ object Config {
       keyPair.getPublic,
       keyPair.getPrivate,
       8080,
-      "lucuma.xyz",
+      "local.lucuma.xyz",
       Uri.Scheme.http,
       "local.lucuma.xyz",
       None,

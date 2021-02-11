@@ -14,9 +14,10 @@ import org.http4s.headers.Location
 import lucuma.sso.client.SsoJwtReader
 import io.chrisdavenport.log4cats.Logger
 import scala.concurrent.duration._
-import lucuma.core.model.StandardRole
+import lucuma.core.model.{ StandardRole, User }
 import lucuma.core.util.Gid
 import lucuma.sso.client._
+import natchez.Trace
 
 object Routes {
 
@@ -26,7 +27,7 @@ object Routes {
     }
 
   // This is the main event. Here are the routes we're serving.
-  def apply[F[_]: Sync: Timer: Logger](
+  def apply[F[_]: Sync: Timer: Logger: Trace](
     dbPool:    Resource[F, Database[F]],
     orcid:     OrcidService[F],
     jwtReader: SsoJwtReader[F],
@@ -48,17 +49,25 @@ object Routes {
     object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
     object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
 
+    def traceUser(u: User, prefix: String = "lucuma"): F[Unit] =
+      Trace[F].put(
+        s"$prefix.user"      -> u.displayName,
+        s"$prefix.user.id"   -> u.id.toString,
+        s"$prefix.user.role" -> u.role.name,
+      )
+
     HttpRoutes.of[F] {
 
       // If the user has a refresh token, return a new JWT. Otherwise 403.
       case r@(POST -> Root / "api" / "v1" / "refresh-token") =>
+        Logger[F].info(s"==> remote is ${r.remote}, remoteAddr = ${r.remoteAddr}") *>
         cookies.findSessionToken(r).flatMap {
           case None => Forbidden("Not logged in.")
           case Some(tok) =>
             dbPool.use { db =>
               db.findUserFromToken(tok).flatMap {
                 case None    => Forbidden("Invalid session token.")
-                case Some(u) => jwtWriter.newJwt(u).flatMap(Ok(_))
+                case Some(u) => traceUser(u) *> jwtWriter.newJwt(u).flatMap(Ok(_))
               }
             }
         }
@@ -68,6 +77,7 @@ object Routes {
         dbPool.use { db =>
           db.createGuestUserAndSessionToken.flatMap { case (user, token) =>
             for {
+              _   <- traceUser(user)
               jwt <- jwtWriter.newJwt(user)
               res <- Created(jwt)
               coo <- cookies.sessionCookie(token)
@@ -77,6 +87,7 @@ object Routes {
 
       // Log out. TODO: If it's a guest user, delete that user.
       case POST -> Root / "api" / "v1" / "logout" =>
+        // TODO: get the user so we can trace this!
         Ok("Logged out.").flatMap(cookies.removeCookie)
 
       // Create an API key
@@ -84,10 +95,12 @@ object Routes {
         jwtReader.findStandardUser(r).flatMap {
           case None    => Forbidden("Standard user required.")
           case Some(u) =>
-            if (u.role.id === rid || u.otherRoles.exists(_.id === rid))
-              dbPool.use(_.createApiKey(u.role.id)).flatMap(Created(_))
-            else
-              Forbidden("Role is not owned by user.")
+            traceUser(u) *> {
+              if (u.role.id === rid || u.otherRoles.exists(_.id === rid))
+                dbPool.use(_.createApiKey(u.role.id)).flatMap(Created(_))
+              else
+                Forbidden("Role is not owned by user.")
+            }
         }
 
       // Exchange an API key for a JWT
@@ -95,9 +108,10 @@ object Routes {
         jwtReader.findServiceUser(r).flatMap {
           case None     => Forbidden("Service user required.")
           case Some(su) =>
-            dbPool.use(_.findStandardUserFromApiKey(apiKey)).flatMap {
+            traceUser(su) *> dbPool.use(_.findStandardUserFromApiKey(apiKey)).flatMap {
               case None => Forbidden("Invalid API Key")
               case Some(u) =>
+                traceUser(u, "lucuma.apikey") *>
                 Logger[F].info(s"API key ${apiKey.id} for ${u.displayName} (${u.id}) exchanged by ${su.displayName}.") *>
                 jwtWriter.newJwt(u, Some(3.hours)).flatMap(Ok(_))
             }
@@ -119,8 +133,10 @@ object Routes {
             person   <- orcid.getPerson(access)
             otoken   <- cookies.findSessionToken(r)
             oguest   <- otoken.flatTraverse(db.findGuestUserFromToken)
+            _        <- oguest.traverse(traceUser(_))
             token    <-
               oguest match {
+                // TODO: neither case below tells us who the user is, so we can't trace it. They just give us the SessionToken
                 case None =>
                   db.canonicalizeUser(access, person, RoleRequest.Pi)
                 case Some(g) =>
