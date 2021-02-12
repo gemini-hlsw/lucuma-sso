@@ -29,7 +29,11 @@ services:
   nginx:
     image: nginx
     volumes:
-      - ./playground:/usr/share/nginx/html:ro
+      - ./playground/nginx.conf:/etc/nginx/nginx.conf
+      - ./playground/site:/usr/share/nginx/html:ro
+      - ./playground/local.lucuma.xyz.crt:/etc/nginx/local.lucuma.xyz.crt
+      - ./playground/local.lucuma.xyz.key:/etc/nginx/local.lucuma.xyz.key
     ports:
       - 8081:80
+      - 8443:443
 
