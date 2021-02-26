@@ -45,7 +45,7 @@ lazy val backendClient = project
       "org.http4s"        %% "http4s-circe"   % "0.21.19",
       "org.http4s"        %% "http4s-dsl"     % "0.21.19",
       "org.http4s"        %% "http4s-client"  % "0.21.19",
-      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+      "org.typelevel" %% "log4cats-slf4j" % "1.2.0",
       "org.tpolecat"      %% "natchez-http4s" % "0.0.3",
     ),
   )
