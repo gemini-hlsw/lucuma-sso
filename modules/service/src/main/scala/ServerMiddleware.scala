@@ -22,7 +22,7 @@ object ServerMiddleware {
 
   /** A middleware that adds distributed tracing. */
   def natchez[F[_]: Bracket[*[_], Throwable]: Trace]: Middleware[F] =
-    NatchezMiddleware[F]
+    NatchezMiddleware.server[F]
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
   def logging[F[_]: Concurrent: ContextShift](

@@ -18,12 +18,16 @@ import org.http4s.Uri
 import org.http4s.client.Client
 import ciris._
 import java.security.PublicKey
+import natchez.Trace
+import natchez.http4s.NatchezMiddleware
 
 case class Config(
   port:         Int,       // Our port, nothing fancy.
   ssoRoot:      Uri,       // Root URI for the SSO server we're using.
   ssoPublicKey: PublicKey, // We need to verify user JWTs, which requires the SSO server's public key.
   serviceJwt:   String,    // Only service users can exchange API keys, so we need a service user JWT.
+  hcWriteKey:   String,    // Honeycomb API key
+  hcDataset:    String,    // Honeycomb dataset
 ) {
 
   // People send us their JWTs. We need to be able to extract them from the request, decode them,
@@ -37,13 +41,13 @@ case class Config(
     EmberClientBuilder.default[F].build
 
   // SSO Client resource (has to be a resource because it owns an HTTP client).
-  def ssoClient[F[_]: Concurrent: Timer: ContextShift]: Resource[F, SsoClient[F, UserInfo]] =
+  def ssoClient[F[_]: Concurrent: Timer: ContextShift: Trace]: Resource[F, SsoClient[F, UserInfo]] =
     httpClientResource[F].evalMap { httpClient =>
       SsoClient.initial(
         serviceJwt = serviceJwt,
         ssoRoot    = ssoRoot,
         jwtReader  = jwtReader[F],
-        httpClient = httpClient,
+        httpClient = NatchezMiddleware.client(httpClient), // Note!
       )
     }
 
@@ -70,6 +74,8 @@ object Config {
     envOrProp("EXAMPLE_SSO_ROOT").as[Uri],
     envOrProp("EXAMPLE_SSO_PUBLIC_KEY").as[PublicKey],
     envOrProp("EXAMPLE_SERVICE_JWT"),
+    envOrProp("EXAMPLE_HONEYCOMB_WRITE_KEY"),
+    envOrProp("EXAMPLE_HONEYCOMB_DATASET"),
   ).parMapN(Config.apply)
 
 }
