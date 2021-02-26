@@ -14,9 +14,10 @@ import org.http4s.headers.Location
 import lucuma.sso.client.SsoJwtReader
 import io.chrisdavenport.log4cats.Logger
 import scala.concurrent.duration._
-import lucuma.core.model.{ StandardRole, User }
+import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid
 import lucuma.sso.client._
+import lucuma.sso.client.SsoMiddleware.traceUser
 import natchez.Trace
 
 object Routes {
@@ -48,13 +49,6 @@ object Routes {
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
     object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
     object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
-
-    def traceUser(u: User, prefix: String = "lucuma"): F[Unit] =
-      Trace[F].put(
-        s"$prefix.user"      -> u.displayName,
-        s"$prefix.user.id"   -> u.id.toString,
-        s"$prefix.user.role" -> u.role.name,
-      )
 
     HttpRoutes.of[F] {
 

@@ -13,6 +13,12 @@ import org.http4s.implicits._
 import org.http4s.server.middleware.CORS
 import org.http4s.server.Server
 import lucuma.sso.client.SsoClient
+import natchez.Trace
+import lucuma.sso.client.SsoMiddleware
+import natchez.EntryPoint
+import natchez.http4s.implicits._
+import natchez.honeycomb.Honeycomb
+import natchez.http4s.NatchezMiddleware
 
 object Main extends IOApp {
 
@@ -29,7 +35,7 @@ object Main extends IOApp {
       .build
 
   // Our routes use an `SsoClient` that knows how to extract a `User`.
-  def routes[F[_]: Defer: Applicative](
+  def routes[F[_]: Defer: Applicative: Trace](
     userClient: SsoClient[F, User]
   ): HttpRoutes[F] = {
     object dsl extends Http4sDsl[F]; import dsl._
@@ -41,15 +47,33 @@ object Main extends IOApp {
     }
   }
 
+  // Our routes, with middleware
+  def wrappedRoutes[F[_]: Concurrent: Timer: ContextShift: Trace](
+    cfg: Config
+  ): Resource[F, HttpRoutes[F]] =
+    cfg.ssoClient[F].map { ssoClient =>
+      val userClient = ssoClient.map(_.user) // we only want part of the UserInfo
+      CORS.httpRoutes(NatchezMiddleware.server(SsoMiddleware(userClient)(routes[F](userClient))))
+    }
+
+  def entryPoint[F[_]: Sync](cfg: Config): Resource[F, EntryPoint[F]] =
+    Honeycomb.entryPoint("backend-example") { cb =>
+      Sync[F].delay {
+        cb.setWriteKey(cfg.hcWriteKey)
+        cb.setDataset(cfg.hcDataset)
+        cb.build()
+      }
+    }
+
   // Our main program as a resource.
   def runR[F[_]: Concurrent: Timer: ContextShift](
     cfg: Config
   ): Resource[F, Server[F]] =
     for {
-      ssoClient <- cfg.ssoClient[F]
-      userClient = ssoClient.map(_.user) // we only want part of the UserInfo
-      httpApp    = CORS.httpRoutes(routes[F](userClient)).orNotFound
-      server    <- serverResource(cfg.port, httpApp)
+      ep      <- entryPoint[F](cfg)
+      routes  <- ep.liftR(wrappedRoutes(cfg))
+      httpApp  = CORS.httpRoutes(routes).orNotFound
+      server  <- serverResource(cfg.port, httpApp)
     } yield server
 
   // Specialize to IO and we're done.

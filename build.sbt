@@ -43,6 +43,7 @@ lazy val backendClient = project
       "org.http4s"        %% "http4s-dsl"     % "0.21.19",
       "org.http4s"        %% "http4s-client"  % "0.21.19",
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+      "org.tpolecat"      %% "natchez-http4s" % "0.0.3",
     ),
   )
 
@@ -82,5 +83,6 @@ lazy val backendExample = project
       "org.http4s" %% "http4s-ember-client" % "0.21.19",
       "org.http4s" %% "http4s-ember-server" % "0.21.19",
       "org.slf4j"  %  "slf4j-simple"        % "1.7.30",
+      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.19",
     )
   )
