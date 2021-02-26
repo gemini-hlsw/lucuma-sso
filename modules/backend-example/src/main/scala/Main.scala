@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.example
@@ -35,7 +35,7 @@ object Main extends IOApp {
       .build
 
   // Our routes use an `SsoClient` that knows how to extract a `User`.
-  def routes[F[_]: Defer: Applicative: Trace](
+  def routes[F[_]: Defer: Applicative](
     userClient: SsoClient[F, User]
   ): HttpRoutes[F] = {
     object dsl extends Http4sDsl[F]; import dsl._

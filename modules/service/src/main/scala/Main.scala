@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service
@@ -215,7 +215,7 @@ object FMain {
     server.use(_ => Concurrent[F].never[ExitCode])
 
   /** Standalone single-use database instance for one-off commands. */
-  def standaloneDatabase[F[_]: Concurrent: ContextShift: Timer: Logger](
+  def standaloneDatabase[F[_]: Concurrent: ContextShift](
     config: DatabaseConfig
   ): Resource[F, Database[F]] = {
     import Trace.Implicits.noop
@@ -223,7 +223,7 @@ object FMain {
   }
 
   /** A one-off command that creates a service user. */
-  def createServiceUser[F[_]: Concurrent: ContextShift: Timer: Logger](
+  def createServiceUser[F[_]: Concurrent: ContextShift](
     name: String
   ): F[ExitCode] =
     Config.config.load[F].flatMap { config =>

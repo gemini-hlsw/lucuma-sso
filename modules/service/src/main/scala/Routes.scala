@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service
@@ -28,7 +28,7 @@ object Routes {
     }
 
   // This is the main event. Here are the routes we're serving.
-  def apply[F[_]: Sync: Timer: Logger: Trace](
+  def apply[F[_]: Sync: Logger: Trace](
     dbPool:    Resource[F, Database[F]],
     orcid:     OrcidService[F],
     jwtReader: SsoJwtReader[F],

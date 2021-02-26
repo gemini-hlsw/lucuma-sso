@@ -1,3 +1,6 @@
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
+// For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
+
 package lucuma.sso.service
 package simulator
 
@@ -20,7 +23,7 @@ import org.http4s.Uri
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
-  private def httpRoutes[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
+  private def httpRoutes[F[_]: Concurrent: ContextShift: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
     Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
       val config = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
       FMain.databasePoolResource[F](config.database).map { pool =>
