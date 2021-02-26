@@ -24,9 +24,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "edu.gemini"    %%% "lucuma-core"         % "0.7.8",
       "io.circe"      %%% "circe-generic"       % "0.13.0",
       "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.8"  % Test,
-      "org.scalameta" %%% "munit"               % "0.7.21" % Test,
-      "org.scalameta" %%% "munit-scalacheck"    % "0.7.21" % Test,
-      "org.typelevel" %%% "discipline-munit"    % "1.0.5"  % Test,
+      "org.scalameta" %%% "munit"               % "0.7.22" % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % "0.7.22" % Test,
+      "org.typelevel" %%% "discipline-munit"    % "1.0.6"  % Test,
     ),
     testFrameworks += new TestFramework("munit.Framework"),
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -66,7 +66,7 @@ lazy val service = project
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
       "org.tpolecat"   %% "natchez-honeycomb"   % "0.0.20",
       "org.tpolecat"   %% "natchez-log"         % "0.0.20",
-      "org.tpolecat"   %% "natchez-http4s"      % "0.0.2",
+      "org.tpolecat"   %% "natchez-http4s"      % "0.0.3",
       "org.tpolecat"   %% "skunk-core"          % "0.0.24",
       "org.flywaydb"   %  "flyway-core"         % "7.5.4",
       "org.postgresql" %  "postgresql"          % "42.2.19",
@@ -82,10 +82,10 @@ lazy val backendExample = project
     publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
-      "is.cir"     %% "ciris"               % "1.2.1",
-      "org.http4s" %% "http4s-ember-client" % "0.21.19",
-      "org.http4s" %% "http4s-ember-server" % "0.21.19",
-      "org.slf4j"  %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.19",
+      "is.cir"       %% "ciris"               % "1.2.1",
+      "org.http4s"   %% "http4s-ember-client" % "0.21.19",
+      "org.http4s"   %% "http4s-ember-server" % "0.21.19",
+      "org.slf4j"    %  "slf4j-simple"        % "1.7.30",
+      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.20",
     )
   )
