@@ -1,5 +1,8 @@
 import sbtcrossproject.CrossType
 
+// If we don't do this we get a spurious warning about an unused key.
+Global / excludeLintKeys += scalaJSLinkerConfig
+
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full),
