@@ -12,7 +12,7 @@ import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import lucuma.sso.client.SsoJwtReader
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import scala.concurrent.duration._
 import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid

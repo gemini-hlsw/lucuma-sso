@@ -14,7 +14,7 @@ import lucuma.sso.service.config.Config
 import natchez.Trace.Implicits.noop
 import lucuma.sso.service.database.Database
 import lucuma.sso.client.SsoJwtReader
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import lucuma.sso.service.config.OrcidConfig
 import lucuma.sso.service.config.Environment
 import org.http4s.client.middleware.CookieJar

@@ -10,7 +10,7 @@ import cats.effect._
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
 import org.http4s.server.middleware.ErrorAction
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import org.http4s.server.middleware.CORS
 import lucuma.sso.service.config.Config
 import natchez.http4s.NatchezMiddleware
