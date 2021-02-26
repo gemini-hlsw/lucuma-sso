@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service.orcid
@@ -36,7 +36,7 @@ object OrcidPerson {
       "emails" -> Json.obj("email" -> p.emails.asJson)
     )
 
-  implicit def entityEncoderOrcidPerson[F[_]: Sync]: EntityEncoder[F, OrcidPerson] =
+  implicit def entityEncoderOrcidPerson[F[_]]: EntityEncoder[F, OrcidPerson] =
     EntityEncoder[F, Json].contramap(_.asJson)
 
 }

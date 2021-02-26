@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2021 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service
@@ -25,7 +25,7 @@ object ServerMiddleware {
     NatchezMiddleware.server[F]
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
-  def logging[F[_]: Concurrent: ContextShift](
+  def logging[F[_]: Concurrent](
     env:          Environment,
   ): Middleware[F] =
     org.http4s.server.middleware.Logger.httpRoutes[F](
@@ -63,7 +63,7 @@ object ServerMiddleware {
     )
 
   /** A middleware that composes all the others defined in this module. */
-  def apply[F[_]: Concurrent: ContextShift: Trace: Logger](
+  def apply[F[_]: Concurrent: Trace: Logger](
     config: Config,
   ): Middleware[F] =
     List[Middleware[F]](
