@@ -142,7 +142,7 @@ object SsoClient {
       def getUserInfo(bearerAuthorization: String): F[Option[UserInfo]] =
         (OptionT(getApiInfo(bearerAuthorization)) <+> OptionT(getJwtInfo(bearerAuthorization))).value
 
-      new AbstractSsoClient2[F, UserInfo] {
+      new AbstractSsoClient[F, UserInfo] {
 
         def get(authorization: Authorization): F[Option[UserInfo]] =
           authorization.credentials match {
@@ -160,7 +160,7 @@ object SsoClient {
 
     }
 
-  private abstract class AbstractSsoClient2[F[_]: Monad, A] extends SsoClient[F, A] { outer =>
+  abstract class AbstractSsoClient[F[_]: Monad, A] extends SsoClient[F, A] { outer =>
 
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -169,7 +169,7 @@ object SsoClient {
       OptionT(find(req)).cataF(Forbidden(), f)
 
     private def transform[B](f: Option[A] => Option[B]): SsoClient[F, B] =
-      new AbstractSsoClient2[F, B] {
+      new AbstractSsoClient[F, B] {
         def find(req: Request[F]) = outer.find(req).map(f)
         def get(authorization: Authorization) = outer.get(authorization).map(f)
       }
