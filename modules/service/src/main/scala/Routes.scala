@@ -19,6 +19,11 @@ import lucuma.core.util.Gid
 import lucuma.sso.client._
 import lucuma.sso.client.SsoMiddleware.traceUser
 import natchez.Trace
+import io.circe.Json
+import io.circe.ParsingFailure
+import org.http4s.circe._
+import edu.gemini.grackle.Mapping
+import lucuma.core.model.StandardUser
 
 object Routes {
 
@@ -35,6 +40,7 @@ object Routes {
     jwtWriter: SsoJwtWriter[F],
     cookies:   CookieService[F],
     publicUri: Uri,
+    graphQL:   StandardUser => Mapping[F],
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -44,17 +50,32 @@ object Routes {
     val Stage2Uri: Uri =
       publicUri.copy(path = "/auth/v1/stage2")
 
+    // Inexplicably this doesn't already exist elsewhere.
+    implicit val jsonQPDecoder: QueryParamDecoder[Json] =
+      QueryParamDecoder[String].emap { s =>
+        io.circe.parser.parse(s).leftMap {
+          case ParsingFailure(msg, _) => ParseFailure("Invalid variables", msg)
+        }
+      }
+
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
     object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
     object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
 
+    // GraphQL matchers
+    object QueryMatcher         extends QueryParamDecoderMatcher[String]("query")
+    object OperationNameMatcher extends OptionalQueryParamDecoderMatcher[String]("operationName")
+    object VariablesMatcher     extends OptionalValidatingQueryParamDecoderMatcher[Json]("variables")
+
+    // GraphQL uses a local SSO client to handle API keys.
+    val localClient = LocalSsoClient(jwtReader, dbPool)
+
     HttpRoutes.of[F] {
 
       // If the user has a refresh token, return a new JWT. Otherwise 403.
       case r@(POST -> Root / "api" / "v1" / "refresh-token") =>
-        Logger[F].info(s"==> remote is ${r.remote}, remoteAddr = ${r.remoteAddr}") *>
         cookies.findSessionToken(r).flatMap {
           case None => Forbidden("Not logged in.")
           case Some(tok) =>
@@ -144,6 +165,33 @@ object Routes {
             cookie   <- cookies.sessionCookie(token)
             res      <- Found(Location(redir))
           } yield res.addCookie(cookie)
+        }
+
+      // GraphQL query is embedded in the URI query string when queried via GET
+      case req @ GET -> Root / "graphql" :?  QueryMatcher(query) +& OperationNameMatcher(op) +& VariablesMatcher(vars0) =>
+        localClient.collect { case u: StandardUser => u } .require(req) { user =>
+          vars0.sequence.fold(
+            errors => BadRequest(errors.map(_.sanitized).mkString_("", ",", "")),
+            vars =>
+              for {
+                result <- graphQL(user).compileAndRun(query, op, vars)
+                resp   <- Ok(result)
+              } yield resp
+            )
+        }
+
+      // GraphQL query is embedded in a Json request body when queried via POST
+      case req @ POST -> Root / "graphql" =>
+        localClient.collect { case u: StandardUser => u } .require(req) { user =>
+          for {
+            body   <- req.as[Json]
+            obj    <- body.asObject.liftTo[F](InvalidMessageBodyFailure("Invalid GraphQL query"))
+            query  <- obj("query").flatMap(_.asString).liftTo[F](InvalidMessageBodyFailure("Missing query field"))
+            op     =  obj("operationName").flatMap(_.asString)
+            vars   =  obj("variables")
+            result <- graphQL(user).compileAndRun(query, op, vars)
+            resp   <- Ok(result)
+          } yield resp
         }
 
     }
