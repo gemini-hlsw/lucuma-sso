@@ -19,25 +19,28 @@ import lucuma.sso.service.config.OrcidConfig
 import lucuma.sso.service.config.Environment
 import org.http4s.client.middleware.CookieJar
 import org.http4s.Uri
+import lucuma.sso.service.graphql.SsoMapping
+import edu.gemini.grackle.skunk.SkunkMonitor
 
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
   private def httpRoutes[F[_]: Concurrent: ContextShift: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
-    Resource.liftF(OrcidSimulator[F]).flatMap { sim =>
-      val config = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
-      FMain.databasePoolResource[F](config.database).map { pool =>
-        val sessionPool = pool.map(Database.fromSession(_))
-        (sessionPool, sim, Routes[F](
-          dbPool    = sessionPool,
-          orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
-          jwtReader = config.ssoJwtReader,
-          jwtWriter = config.ssoJwtWriter,
-          publicUri = config.publicUri,
-          cookies   = CookieService[F]("lucuma.xyz", true),
-        ), config.ssoJwtReader, config.ssoJwtWriter)
-    }
-  }
+    for {
+      sim     <- Resource.liftF(OrcidSimulator[F])
+      config   = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
+      pool    <- FMain.databasePoolResource[F](config.database)
+      dbPool   = pool.map(Database.fromSession(_))
+      graphQL <- Resource.liftF(SsoMapping(pool, SkunkMonitor.noopMonitor))
+    } yield (dbPool, sim, Routes[F](
+        dbPool    = dbPool,
+        orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
+        jwtReader = config.ssoJwtReader,
+        jwtWriter = config.ssoJwtWriter,
+        publicUri = config.publicUri,
+        cookies   = CookieService[F]("lucuma.xyz", true),
+        graphQL   = graphQL,
+      ), config.ssoJwtReader, config.ssoJwtWriter)
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */
   def apply[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F], SsoJwtWriter[F])] = {
