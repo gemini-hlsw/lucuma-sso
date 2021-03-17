@@ -6,8 +6,10 @@ package lucuma.sso.service
 import cats._
 import cats.effect._
 import cats.implicits._
+import edu.gemini.grackle.skunk.SkunkMonitor
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
+import lucuma.sso.service.graphql.SsoMapping
 import lucuma.sso.service.orcid.OrcidService
 import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
@@ -20,6 +22,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
+import org.http4s.server.staticcontent._
 import skunk.{ Command => _, _ }
 import io.chrisdavenport.log4cats.Logger
 import cats.data.Kleisli
@@ -151,19 +154,22 @@ object FMain {
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
-  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config): Resource[F, HttpRoutes[F]] =
-    (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
-      .mapN { (pool, orcid) =>
-        val dbPool = pool.map(Database.fromSession(_))
-        Routes[F](
-          dbPool    = dbPool,
-          orcid     = orcid,
-          jwtReader = config.ssoJwtReader,
-          jwtWriter = config.ssoJwtWriter,
-          publicUri = config.publicUri,
-          cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-        )
-      } .map(ServerMiddleware(config))
+  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config, blocker: Blocker): Resource[F, HttpRoutes[F]] =
+    for {
+      pool    <- databasePoolResource[F](config.database)
+      orcid   <- orcidServiceResource(config.orcid)
+      graphql <- Resource.liftF(SsoMapping(pool, SkunkMonitor.noopMonitor[F]))
+    } yield ServerMiddleware[F](config).apply {
+      Routes[F](
+        dbPool    = pool.map(Database.fromSession(_)),
+        orcid     = orcid,
+        jwtReader = config.ssoJwtReader,
+        jwtWriter = config.ssoJwtWriter,
+        publicUri = config.publicUri,
+        cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
+        graphQL   = graphql,
+      ) <+> resourceService[F](ResourceService.Config("/assets", blocker))
+    }
 
   /** A startup action that prints a banner. */
   def banner[F[_]: Applicative: Logger](config: Config): F[Unit] = {
@@ -206,7 +212,8 @@ object FMain {
       _  <- Resource.liftF(banner[F](c))
       _  <- Resource.liftF(migrateDatabase[F](c.database))
       ep <- entryPointResource(c.honeycomb)
-      ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
+      b  <- Blocker[F]
+      ap <- ep.liftR(routesResource(c, b)).map(_.orNotFound)
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 

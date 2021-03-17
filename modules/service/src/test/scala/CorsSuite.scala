@@ -20,6 +20,7 @@ object CorsSuite extends SsoSuite {
         jwtWriter = null,
         publicUri = uri"http://unused",
         cookies   = null,
+        graphQL   = null,
       )
     )
 

@@ -72,6 +72,8 @@ lazy val service = project
       "org.postgresql" %  "postgresql"          % "42.2.19",
       "com.monovore"   %% "decline-effect"      % "1.3.0",
       "com.monovore"   %% "decline"             % "1.3.0",
+      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.43",
+      "io.circe"       %% "circe-literal"       % "0.13.0" % "test",
     )
   )
 
