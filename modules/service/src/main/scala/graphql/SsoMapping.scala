@@ -15,22 +15,9 @@ import edu.gemini.grackle.skunk.SkunkMapping
 import edu.gemini.grackle.Schema
 import scala.io.Source
 import scala.util.Using
-import org.tpolecat.sourcepos.SourcePos
-import edu.gemini.grackle.NamedType
-import edu.gemini.grackle.Directive
 import lucuma.core.model.StandardUser
 
 object SsoMapping {
-
-  // Does this make sense?
-  implicit class SchemaOps(self: Schema) {
-    def ++(other: Schema)(implicit sp: SourcePos): Schema =
-      new Schema {
-        val pos: SourcePos = sp
-        def types: List[NamedType] = self.types ++ other.types
-        def directives: List[Directive] = self.directives ++ other.directives
-      }
-  }
 
   // In principle this is a pure operation because resources are constant values, but the potential
   // for error in dev is high and it's nice to handle failures in `F`.
