@@ -24,9 +24,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "edu.gemini"    %%% "lucuma-core"         % "0.7.9",
       "io.circe"      %%% "circe-generic"       % "0.13.0",
       "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.9"  % Test,
-      "org.scalameta" %%% "munit"               % "0.7.22" % Test,
-      "org.scalameta" %%% "munit-scalacheck"    % "0.7.22" % Test,
-      "org.typelevel" %%% "discipline-munit"    % "1.0.6"  % Test,
+      "org.scalameta" %%% "munit"               % "0.7.23" % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % "0.7.23" % Test,
+      "org.typelevel" %%% "discipline-munit"    % "1.0.7"  % Test,
     ),
     testFrameworks += new TestFramework("munit.Framework"),
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -70,9 +70,9 @@ lazy val service = project
       "org.tpolecat"   %% "skunk-core"          % "0.0.24",
       "org.flywaydb"   %  "flyway-core"         % "7.5.4",
       "org.postgresql" %  "postgresql"          % "42.2.19",
-      "com.monovore"   %% "decline-effect"      % "1.4.0",
-      "com.monovore"   %% "decline"             % "1.4.0",
-      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.43",
+      "com.monovore"   %% "decline-effect"      % "1.3.0",
+      "com.monovore"   %% "decline"             % "1.3.0",
+      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.44",
       "io.circe"       %% "circe-literal"       % "0.13.0" % "test",
     )
   )
