@@ -5,7 +5,7 @@ Global / excludeLintKeys += scalaJSLinkerConfig
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
     "com.disneystreaming" %% "weaver-framework"  % "0.5.1" % Test,
     "com.disneystreaming" %% "weaver-scalacheck" % "0.5.1" % Test,
