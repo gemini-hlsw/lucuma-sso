@@ -64,8 +64,8 @@ lazy val service = project
       "org.http4s"     %% "http4s-ember-server" % "0.21.19",
       "org.http4s"     %% "http4s-scala-xml"    % "0.21.19",
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat"   %% "natchez-honeycomb"   % "0.0.20",
-      "org.tpolecat"   %% "natchez-log"         % "0.0.20",
+      "org.tpolecat"   %% "natchez-honeycomb"   % "0.0.25",
+      "org.tpolecat"   %% "natchez-log"         % "0.0.25",
       "org.tpolecat"   %% "natchez-http4s"      % "0.0.3",
       "org.tpolecat"   %% "skunk-core"          % "0.0.24",
       "org.flywaydb"   %  "flyway-core"         % "7.5.4",
@@ -88,6 +88,6 @@ lazy val backendExample = project
       "org.http4s"   %% "http4s-ember-client" % "0.21.19",
       "org.http4s"   %% "http4s-ember-server" % "0.21.19",
       "org.slf4j"    %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.20",
+      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.25",
     )
   )
