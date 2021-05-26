@@ -22,7 +22,7 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
     name := "lucuma-sso-frontend-client",
     libraryDependencies ++= Seq(
       "edu.gemini"    %%% "lucuma-core"         % "0.7.11",
-      "io.circe"      %%% "circe-generic"       % "0.13.0",
+      "io.circe"      %%% "circe-generic"       % "0.14.0",
       "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.11"  % Test,
       "org.scalameta" %%% "munit"               % "0.7.26" % Test,
       "org.scalameta" %%% "munit-scalacheck"    % "0.7.26" % Test,
@@ -58,7 +58,7 @@ lazy val service = project
     publish / skip := true,
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"       %% "circe-parser"        % "0.13.0",
+      "io.circe"       %% "circe-parser"        % "0.14.0",
       "is.cir"         %% "ciris"               % "1.2.1",
       "org.http4s"     %% "http4s-ember-client" % "0.21.19",
       "org.http4s"     %% "http4s-ember-server" % "0.21.19",
@@ -73,7 +73,7 @@ lazy val service = project
       "com.monovore"   %% "decline-effect"      % "1.3.0",
       "com.monovore"   %% "decline"             % "1.3.0",
       "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.44",
-      "io.circe"       %% "circe-literal"       % "0.13.0" % "test",
+      "io.circe"       %% "circe-literal"       % "0.14.0" % "test",
     )
   )
 
