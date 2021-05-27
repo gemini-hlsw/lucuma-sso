@@ -3,7 +3,7 @@
 
 package lucuma.sso.service.orcid
 
-import cats.effect.Sync
+import cats.effect.Concurrent
 import cats.implicits._
 import org.http4s._
 import org.http4s.client.Client
@@ -11,9 +11,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
 import org.http4s.headers.Authorization
 import orcid.lucuma.sso.service.orcid.OrcidException
-import org.http4s.Uri.Scheme
-import org.http4s.Uri.Authority
-import org.http4s.Uri.Host
+import org.http4s.Uri.{ Scheme, Authority, Host, Path }
 import natchez.Trace
 
 trait OrcidService[F[_]] {
@@ -49,7 +47,7 @@ trait OrcidService[F[_]] {
 
 object OrcidService {
 
-  def apply[F[_]: Sync: Trace](
+  def apply[F[_]: Concurrent: Trace](
     orcidHost:         Host,
     orcidClientId:     String,
     orcidClientSecret: String,
@@ -61,7 +59,7 @@ object OrcidService {
         Uri(
           scheme    = Some(Scheme.https),
           authority = Some(Authority(host = orcidHost)),
-          path      = path
+          path      = Path.unsafeFromString(path) // hm
         )
 
       def logoutUri(script: Option[String]): F[Uri] =

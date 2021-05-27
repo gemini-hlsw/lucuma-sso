@@ -95,7 +95,7 @@ object CookieWriter {
           name     = CookieName,
           domain   = Some(domain),
           content  = "",
-          sameSite = SameSite.Strict,
+          sameSite = Some(SameSite.Strict),
           secure   = secure,
           httpOnly = secure,
           path     = Some("/"),
@@ -108,7 +108,7 @@ object CookieWriter {
         ).pure[F]
 
       def removeCookie(res: Response[F]): F[Response[F]] =
-        res.putHeaders(emptyCookie.clearCookie).pure[F]
+        res.removeCookie(emptyCookie).pure[F]
 
     }
 

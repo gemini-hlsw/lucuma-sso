@@ -5,7 +5,7 @@ package lucuma.sso.service.simulator
 
 import cats.data.OptionT
 import cats.effect._
-import cats.effect.concurrent.Ref
+import cats.effect.Ref
 import cats.implicits._
 import lucuma.core.model.OrcidId
 import lucuma.sso.service.orcid._
@@ -29,7 +29,7 @@ object OrcidSimulator {
   type Code = String
   type Token = UUID
 
-  def apply[F[_]: Sync]: F[OrcidSimulator[F]] =
+  def apply[F[_]: Async]: F[OrcidSimulator[F]] =
     for {
 
       // Our database is a map from ORCID iDs to Person records. When we simulate authentication we add
@@ -146,7 +146,7 @@ object OrcidSimulator {
 
             } yield r.withQueryParam("code", code).withOptionQueryParam("state", s)
 
-          // TODO: all other cases raise an error
+          case req => Async[F].raiseError(new RuntimeException(s"Unexpected request: $req"))
 
         }
 

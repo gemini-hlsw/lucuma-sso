@@ -5,7 +5,7 @@ package lucuma.sso.service.config
 
 import weaver._
 import cats.effect.IO
-import cats.effect.concurrent.Semaphore
+import cats.effect.std.Semaphore
 import cats.effect.Resource
 import cats.implicits._
 
@@ -14,7 +14,7 @@ object HerokuConfigSuite extends IOSuite {
   // We need to synchronize access to system poperties because it's global.
   override type Res = Semaphore[IO]
   override def sharedResource: Resource[IO, Semaphore[IO]] =
-    Resource.liftF(Semaphore[IO](1L))
+    Resource.eval(Semaphore[IO](1L))
 
   def putSystemProperty(key: String, value: String): IO[Unit] =
     IO(System.getProperties().put(key, value)).void
@@ -34,18 +34,18 @@ object HerokuConfigSuite extends IOSuite {
     removeSystemProperty("DATABASE_URL")
 
   test("review") { sem =>
-    sem.withPermit {
+    sem.permit.use { _ =>
       for {
         _ <- reset
         _ <- putSystemProperty("HEROKU_APP_NAME", "chickenpants")
         _ <- putSystemProperty("HEROKU_BRANCH", "fix the thing")
-        _ <- HerokuConfig.review.load
+        _ <- HerokuConfig.review.load[IO]
       } yield expect(true)
     }
   }
 
   test("default") { sem =>
-    sem.withPermit {
+    sem.permit.use { _ =>
       for {
         _ <- reset
         _ <- putSystemProperty("HEROKU_APP_ID", "C637518A-1A35-4649-AB89-2CBDAC214F2D")
@@ -55,24 +55,24 @@ object HerokuConfigSuite extends IOSuite {
         _ <- putSystemProperty("HEROKU_RELEASE_VERSION", "...")
         _ <- putSystemProperty("HEROKU_SLUG_COMMIT", "...")
         _ <- putSystemProperty("HEROKU_SLUG_DESCRIPTION", "...")
-        _ <- HerokuConfig.default.load
+        _ <- HerokuConfig.default.load[IO]
       } yield expect(true)
     }
   }
 
   test("config (review)") { sem =>
-    sem.withPermit {
+    sem.permit.use { _ =>
       for {
         _ <- reset
         _ <- putSystemProperty("HEROKU_APP_NAME", "chickenpants")
         _ <- putSystemProperty("HEROKU_BRANCH", "fix the thing")
-        _ <- HerokuConfig.config.load
+        _ <- HerokuConfig.config.load[IO]
       } yield expect(true)
     }
   }
 
   test("config (staging/production)") { sem =>
-    sem.withPermit {
+    sem.permit.use { _ =>
       for {
         _ <- reset
         _ <- putSystemProperty("HEROKU_APP_ID", "C637518A-1A35-4649-AB89-2CBDAC214F2D")
@@ -82,7 +82,7 @@ object HerokuConfigSuite extends IOSuite {
         _ <- putSystemProperty("HEROKU_RELEASE_VERSION", "...")
         _ <- putSystemProperty("HEROKU_SLUG_COMMIT", "...")
         _ <- putSystemProperty("HEROKU_SLUG_DESCRIPTION", "...")
-        _ <- HerokuConfig.config.load
+        _ <- HerokuConfig.config.load[IO]
       } yield expect(true)
     }
   }

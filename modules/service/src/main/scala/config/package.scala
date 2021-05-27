@@ -14,6 +14,7 @@ import java.util.UUID
 import java.time.LocalDateTime
 import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
+import com.comcast.ip4s.Port
 
 package object config {
 
@@ -41,6 +42,9 @@ package object config {
       }
     }
 
+  implicit val port: ConfigDecoder[Int, Port] =
+    ConfigDecoder[Int].mapOption("Port")(Port.fromInt)
+
   // not implicit, we may end up with more than one of these
   val isoLocalDateTime: ConfigDecoder[String, LocalDateTime] =
     ConfigDecoder[String].mapOption("ISO local datetime") { s =>
@@ -54,7 +58,7 @@ package object config {
    * Ciris config value that is read from the environment, falling back to Java system properties
    * if the environment variable is not set.
    */
-  def envOrProp(name: String): ConfigValue[String] =
+  def envOrProp(name: String): ConfigValue[Effect, String] =
     env(name) or prop(name)
 
 }
