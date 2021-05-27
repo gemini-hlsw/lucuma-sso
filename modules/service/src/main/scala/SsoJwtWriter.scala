@@ -17,7 +17,7 @@ import lucuma.sso.client.codec.user._
 import org.http4s.Request
 import org.http4s.headers.Authorization
 import org.http4s.Credentials
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 
 trait SsoJwtWriter[F[_]] {
 
@@ -44,7 +44,7 @@ object SsoJwtWriter {
       val now: F[Instant] =
         Sync[F].delay(Instant.now)
 
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
 
       def newClaim(content: String, subject: Option[String], timeout: FiniteDuration): F[JwtClaim] =
         now.map { inst =>

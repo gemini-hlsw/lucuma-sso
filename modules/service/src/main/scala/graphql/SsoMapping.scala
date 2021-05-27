@@ -4,8 +4,9 @@
 package lucuma.sso.service.graphql
 
 import skunk._
-import cats.effect._
+import cats.effect.{ Unique => _, _ }
 import cats.syntax.all._
+import edu.gemini.grackle.Path._
 import edu.gemini.grackle.Predicate._
 import edu.gemini.grackle.Query._
 import edu.gemini.grackle.QueryCompiler
@@ -79,7 +80,7 @@ object SsoMapping {
                 SqlField("id", Role.Id, key = true),
                 SqlField("type", Role.Type),
                 SqlField("partner", Role.Partner),
-                SqlAttribute("«unused»", Role.UserId),
+                SqlField("«unused»", Role.UserId, hidden = true),
                 SqlObject("user", Join(Role.UserId, User.Id)),
               )
             ),
@@ -87,8 +88,8 @@ object SsoMapping {
               tpe = ApiKeyType,
               fieldMappings = List(
                 SqlField("id", ApiKey.Id, key = true),
-                SqlAttribute("«unused»", ApiKey.UserId),
-                SqlAttribute("«unused»", ApiKey.RoleId),
+                SqlField("«unused»", ApiKey.UserId, hidden = true),
+                SqlField("«unused»", ApiKey.RoleId, hidden = true),
                 SqlObject("user", Join(ApiKey.UserId, User.Id)),
                 SqlObject("role", Join(ApiKey.RoleId, Role.Id)),
               )
@@ -103,9 +104,9 @@ object SsoMapping {
         override val selectElaborator = new QueryCompiler.SelectElaborator(Map(
           QueryType -> {
             case Select("user", Nil, child) =>
-              Select("user", Nil, Unique(Eql(FieldPath(List("id")), Const(user.id)), child)).rightIor
+              Select("user", Nil, Unique(Eql(UniquePath(List("id")), Const(user.id)), child)).rightIor
             case Select("role", Nil, child) =>
-              Select("role", Nil, Unique(Eql(FieldPath(List("id")), Const(user.role.id)), child)).rightIor
+              Select("role", Nil, Unique(Eql(UniquePath(List("id")), Const(user.role.id)), child)).rightIor
           }
         ))
 

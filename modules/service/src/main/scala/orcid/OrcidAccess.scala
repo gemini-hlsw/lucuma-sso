@@ -10,7 +10,7 @@ import java.time.Duration
 import java.util.UUID
 import org.http4s.EntityDecoder
 import org.http4s.circe._
-import cats.effect.Sync
+import cats.effect.Concurrent
 import io.circe.Encoder
 import io.circe.Json
 import org.http4s.EntityEncoder
@@ -41,7 +41,7 @@ object OrcidAccess {
       o <- c.downField("orcid").as[OrcidId]
     } yield OrcidAccess(a, t, r, e, s, n, o)
 
-  implicit def entityDecoderOrcidAccess[F[_]: Sync]: EntityDecoder[F, OrcidAccess] =
+  implicit def entityDecoderOrcidAccess[F[_]: Concurrent]: EntityDecoder[F, OrcidAccess] =
     jsonOf[F, OrcidAccess]
 
   implicit val EncoderOrcidAccess: Encoder[OrcidAccess] = a =>

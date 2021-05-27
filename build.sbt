@@ -3,17 +3,20 @@ import sbtcrossproject.CrossType
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
+// Temporarily due to Scala-XML 2.0.0
+ThisBuild / evictionErrorLevel := Level.Info
+
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-framework"  % "0.5.1" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.5.1" % Test,
-  ),
-  testFrameworks += new TestFramework("weaver.framework.TestFramework"),
+    "com.disneystreaming" %% "weaver-cats"       % "0.7.3" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.3" % Test,
+   ),
+  testFrameworks += new TestFramework("weaver.framework.CatsEffect") ,
 ) ++ lucumaPublishSettings)
 
-skip in publish := true
+publish / skip := true
 
 lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -21,9 +24,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "lucuma-sso-frontend-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"    %%% "lucuma-core"         % "0.7.11",
-      "io.circe"      %%% "circe-generic"       % "0.13.0",
-      "edu.gemini"    %%% "lucuma-core-testkit" % "0.7.11"  % Test,
+      "edu.gemini"    %%% "lucuma-core"         % "0.8.1",
+      "io.circe"      %%% "circe-generic"       % "0.14.1",
+      "edu.gemini"    %%% "lucuma-core-testkit" % "0.8.1"  % Test,
       "org.scalameta" %%% "munit"               % "0.7.26" % Test,
       "org.scalameta" %%% "munit-scalacheck"    % "0.7.26" % Test,
       "org.typelevel" %%% "discipline-munit"    % "1.0.9"  % Test,
@@ -41,12 +44,12 @@ lazy val backendClient = project
       "com.pauldijou"     %% "jwt-circe"      % "5.0.0",
       "com.pauldijou"     %% "jwt-core"       % "5.0.0",
       "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.68",
-      "org.http4s"        %% "http4s-circe"   % "0.21.19",
-      "org.http4s"        %% "http4s-circe"   % "0.21.19",
-      "org.http4s"        %% "http4s-dsl"     % "0.21.19",
-      "org.http4s"        %% "http4s-client"  % "0.21.19",
-      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
-      "org.tpolecat"      %% "natchez-http4s" % "0.0.3",
+      "org.http4s"        %% "http4s-circe"   % "0.23.0-M1",
+      "org.http4s"        %% "http4s-circe"   % "0.23.0-M1",
+      "org.http4s"        %% "http4s-dsl"     % "0.23.0-M1",
+      "org.http4s"        %% "http4s-client"  % "0.23.0-M1",
+      "org.typelevel"     %% "log4cats-slf4j" % "2.1.1",
+      "org.tpolecat"      %% "natchez-http4s" % "0.1.0",
     ),
   )
 
@@ -58,22 +61,22 @@ lazy val service = project
     publish / skip := true,
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"       %% "circe-parser"        % "0.13.0",
-      "is.cir"         %% "ciris"               % "1.2.1",
-      "org.http4s"     %% "http4s-ember-client" % "0.21.19",
-      "org.http4s"     %% "http4s-ember-server" % "0.21.19",
-      "org.http4s"     %% "http4s-scala-xml"    % "0.21.19",
+      "io.circe"       %% "circe-parser"        % "0.14.1",
+      "is.cir"         %% "ciris"               % "2.0.0",
+      "org.http4s"     %% "http4s-ember-client" % "0.23.0-M1",
+      "org.http4s"     %% "http4s-ember-server" % "0.23.0-M1",
+      "org.http4s"     %% "http4s-scala-xml"    % "0.23.0-M1",
       "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat"   %% "natchez-honeycomb"   % "0.0.20",
-      "org.tpolecat"   %% "natchez-log"         % "0.0.20",
-      "org.tpolecat"   %% "natchez-http4s"      % "0.0.3",
-      "org.tpolecat"   %% "skunk-core"          % "0.0.24",
-      "org.flywaydb"   %  "flyway-core"         % "7.5.4",
+      "org.tpolecat"   %% "natchez-honeycomb"   % "0.1.5",
+      "org.tpolecat"   %% "natchez-log"         % "0.1.5",
+      "org.tpolecat"   %% "natchez-http4s"      % "0.1.2",
+      "org.tpolecat"   %% "skunk-core"          % "0.1.2",
+      "org.flywaydb"   %  "flyway-core"         % "7.9.1",
       "org.postgresql" %  "postgresql"          % "42.2.20",
-      "com.monovore"   %% "decline-effect"      % "1.3.0",
-      "com.monovore"   %% "decline"             % "1.3.0",
-      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.44",
-      "io.circe"       %% "circe-literal"       % "0.13.0" % "test",
+      "com.monovore"   %% "decline-effect"      % "2.0.0",
+      "com.monovore"   %% "decline"             % "2.0.0",
+      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.47+16-59a79b5f+20210527-1206-SNAPSHOT",
+      "io.circe"       %% "circe-literal"       % "0.14.1" % "test",
     )
   )
 
@@ -84,10 +87,10 @@ lazy val backendExample = project
     publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
-      "is.cir"       %% "ciris"               % "1.2.1",
-      "org.http4s"   %% "http4s-ember-client" % "0.21.19",
-      "org.http4s"   %% "http4s-ember-server" % "0.21.19",
+      "is.cir"       %% "ciris"               % "2.0.0",
+      "org.http4s"   %% "http4s-ember-client" % "0.23.0-M1",
+      "org.http4s"   %% "http4s-ember-server" % "0.23.0-M1",
       "org.slf4j"    %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat" %% "natchez-honeycomb"   % "0.0.20",
+      "org.tpolecat" %% "natchez-honeycomb"   % "0.1.5",
     )
   )

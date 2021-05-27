@@ -5,6 +5,7 @@ package lucuma.sso.example
 
 import cats._
 import cats.effect._
+import com.comcast.ip4s.{ Host, Port }
 import lucuma.core.model.User
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
@@ -22,20 +23,23 @@ import natchez.http4s.NatchezMiddleware
 
 object Main extends IOApp {
 
+  val host: Host =
+    Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
+
   // A normal server.
-  def serverResource[F[_]: Concurrent: ContextShift: Timer](
-    port: Int,
+  def serverResource[F[_]: Async](
+    port: Port,
     app:  HttpApp[F]
-  ): Resource[F, Server[F]] =
+  ): Resource[F, Server] =
     EmberServerBuilder
       .default[F]
-      .withHost("0.0.0.0")
+      .withHost(host)
       .withHttpApp(app)
       .withPort(port)
       .build
 
   // Our routes use an `SsoClient` that knows how to extract a `User`.
-  def routes[F[_]: Defer: Applicative](
+  def routes[F[_]: Monad](
     userClient: SsoClient[F, User]
   ): HttpRoutes[F] = {
     object dsl extends Http4sDsl[F]; import dsl._
@@ -48,7 +52,7 @@ object Main extends IOApp {
   }
 
   // Our routes, with middleware
-  def wrappedRoutes[F[_]: Concurrent: Timer: ContextShift: Trace](
+  def wrappedRoutes[F[_]: Async: Trace](
     cfg: Config
   ): Resource[F, HttpRoutes[F]] =
     cfg.ssoClient[F].map { ssoClient =>
@@ -66,9 +70,9 @@ object Main extends IOApp {
     }
 
   // Our main program as a resource.
-  def runR[F[_]: Concurrent: Timer: ContextShift](
+  def runR[F[_]: Async](
     cfg: Config
-  ): Resource[F, Server[F]] =
+  ): Resource[F, Server] =
     for {
       ep      <- entryPoint[F](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))

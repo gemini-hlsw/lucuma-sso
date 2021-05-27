@@ -58,13 +58,13 @@ object HerokuConfig {
     slugDescription:  String,
   ) extends HerokuConfig
 
-  val review: ConfigValue[Review] = (
+  val review: ConfigValue[Effect, Review] = (
     envOrProp("HEROKU_APP_NAME"),
     envOrProp("HEROKU_BRANCH"),
     envOrProp("HEROKU_PR_NUMBER").as[Int].option,
   ).mapN(Review)
 
-  val default: ConfigValue[Default] = (
+  val default: ConfigValue[Effect, Default] = (
     envOrProp("HEROKU_APP_ID").as[UUID],
     envOrProp("HEROKU_APP_NAME"),
     envOrProp("HEROKU_DYNO_ID").as[UUID],
@@ -74,7 +74,7 @@ object HerokuConfig {
     envOrProp("HEROKU_SLUG_DESCRIPTION"),
   ).mapN(Default)
 
-  val config: ConfigValue[HerokuConfig] =
+  val config: ConfigValue[Effect, HerokuConfig] =
     default.widen or review.widen
 
 }

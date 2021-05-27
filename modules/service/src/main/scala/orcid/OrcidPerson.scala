@@ -5,7 +5,7 @@ package lucuma.sso.service.orcid
 
 import io.circe._
 import io.circe.syntax._
-import cats.effect.Sync
+import cats.effect.Concurrent
 import org.http4s.{ EntityDecoder, EntityEncoder }
 import org.http4s.circe._
 
@@ -27,7 +27,7 @@ object OrcidPerson {
       es <- c.downField("emails").downField("email").as[List[OrcidEmail]]
     } yield OrcidPerson(n, es)
 
-  implicit def entityDecoderOrcidPerson[F[_]: Sync]: EntityDecoder[F, OrcidPerson] =
+  implicit def entityDecoderOrcidPerson[F[_]: Concurrent]: EntityDecoder[F, OrcidPerson] =
     jsonOf[F, OrcidPerson]
 
   implicit val EncoderOrcidPerson: Encoder[OrcidPerson] = p =>

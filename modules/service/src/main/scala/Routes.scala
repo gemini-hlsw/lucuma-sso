@@ -12,7 +12,7 @@ import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import lucuma.sso.client.SsoJwtReader
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import scala.concurrent.duration._
 import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid
@@ -33,7 +33,7 @@ object Routes {
     }
 
   // This is the main event. Here are the routes we're serving.
-  def apply[F[_]: Sync: Logger: Trace](
+  def apply[F[_]: Async: Logger: Trace](
     dbPool:    Resource[F, Database[F]],
     orcid:     OrcidService[F],
     jwtReader: SsoJwtReader[F],
@@ -48,7 +48,7 @@ object Routes {
     // The auth stage 2 URL is sent to ORCID, which redirects the user back. So we need to construct
     // a URL that makes sense to the user's browser!
     val Stage2Uri: Uri =
-      publicUri.copy(path = "/auth/v1/stage2")
+      publicUri.copy(path = Path.unsafeFromString("/auth/v1/stage2"))
 
     // Inexplicably this doesn't already exist elsewhere.
     implicit val jsonQPDecoder: QueryParamDecoder[Json] =

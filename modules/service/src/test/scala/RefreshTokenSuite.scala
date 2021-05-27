@@ -10,7 +10,7 @@ import org.http4s.headers.Cookie
 
 object RefreshTokenSuite extends SsoSuite with Fixture {
 
-  simpleTest("Cookie shouldn't expire.") {
+  test("Cookie shouldn't expire.") {
     SsoSimulator[IO].use { case (_, _, sso, _, _) =>
       for {
         c  <- sso.run(Request(Method.POST, SsoRoot / "api" / "v1" / "auth-as-guest")).use(CookieReader[IO].getCookie(_))
@@ -18,15 +18,15 @@ object RefreshTokenSuite extends SsoSuite with Fixture {
     }
   }
 
-  simpleTest("SomeSite should be Strict (simulator is pretending it's using https)") {
+  test("SomeSite should be Strict (simulator is pretending it's using https)") {
     SsoSimulator[IO].use { case (_, _, sso, _, _) =>
       for {
         c  <- sso.run(Request(Method.POST, SsoRoot / "api" / "v1" / "auth-as-guest")).use(CookieReader[IO].getCookie(_))
-      } yield expect(c.sameSite == SameSite.Strict)
+      } yield expect(c.sameSite == Some(SameSite.Strict))
     }
   }
 
-  simpleTest("Cookie should be removed on logout.") {
+  test("Cookie should be removed on logout.") {
     SsoSimulator[IO].use { case (_, _, sso, _, _) =>
       for {
         _  <- sso.status(Request[IO](Method.POST, SsoRoot / "api" / "v1" / "auth-as-guest"))
@@ -35,7 +35,7 @@ object RefreshTokenSuite extends SsoSuite with Fixture {
     }
   }
 
-  simpleTest("Refresh should fail after logout.") {
+  test("Refresh should fail after logout.") {
     SsoSimulator[IO].use { case (_, _, sso, _, _) =>
       for {
         _  <- sso.status(Request[IO](Method.POST, SsoRoot / "api" / "v1" / "auth-as-guest"))
@@ -45,13 +45,13 @@ object RefreshTokenSuite extends SsoSuite with Fixture {
     }
   }
 
-  simpleTest("Invalid cookie should yield 403.") {
+  test("Invalid cookie should yield 403.") {
     SsoSimulator[IO].use { case (_, _, sso, _, _) =>
       sso.status {
         Request[IO](
           method  = Method.POST,
           uri     = SsoRoot / "api" / "v1" / "refresh-token",
-          headers = Headers.of(Cookie(RequestCookie("lucuma-refresh-token", "8241D73F-EE0B-44D3-A05F-A15416F039DE")))
+          headers = Headers(Cookie(RequestCookie("lucuma-refresh-token", "8241D73F-EE0B-44D3-A05F-A15416F039DE")))
         )
       } map { status =>
         expect(status == Status.Forbidden)

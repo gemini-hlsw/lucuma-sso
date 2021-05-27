@@ -4,10 +4,8 @@
 package lucuma.sso.example
 
 import cats.effect._
-import cats.effect.ContextShift
-import cats.effect.Sync
-import cats.effect.Timer
 import cats.syntax.all._
+import com.comcast.ip4s.Port
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
 import lucuma.sso.client.SsoJwtReader
@@ -22,7 +20,7 @@ import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 
 case class Config(
-  port:         Int,       // Our port, nothing fancy.
+  port:         Port,      // Our port, nothing fancy.
   ssoRoot:      Uri,       // Root URI for the SSO server we're using.
   ssoPublicKey: PublicKey, // We need to verify user JWTs, which requires the SSO server's public key.
   serviceJwt:   String,    // Only service users can exchange API keys, so we need a service user JWT.
@@ -32,16 +30,16 @@ case class Config(
 
   // People send us their JWTs. We need to be able to extract them from the request, decode them,
   // verify the signature using the SSO server's public key, and then extract the user.
-  def jwtReader[F[_]: Sync]: SsoJwtReader[F] =
+  def jwtReader[F[_]: Concurrent]: SsoJwtReader[F] =
     SsoJwtReader(JwtDecoder.withPublicKey(ssoPublicKey))
 
   // People also send us their API keys. We need to be able to exchange them for [longer-lived] JWTs
   // via an API call to SSO, so we need an HTTP client for that.
-  def httpClientResource[F[_]: Concurrent: Timer: ContextShift]: Resource[F, Client[F]] =
+  def httpClientResource[F[_]: Async]: Resource[F, Client[F]] =
     EmberClientBuilder.default[F].build
 
   // SSO Client resource (has to be a resource because it owns an HTTP client).
-  def ssoClient[F[_]: Concurrent: Timer: ContextShift: Trace]: Resource[F, SsoClient[F, UserInfo]] =
+  def ssoClient[F[_]: Async: Trace]: Resource[F, SsoClient[F, UserInfo]] =
     httpClientResource[F].evalMap { httpClient =>
       SsoClient.initial(
         serviceJwt = serviceJwt,
@@ -66,11 +64,14 @@ object Config {
       Uri.fromString(s).toOption
     }
 
-  def envOrProp(name: String): ConfigValue[String] =
+  implicit val port: ConfigDecoder[Int, Port] =
+    ConfigDecoder[Int].mapOption("Port")(Port.fromInt)
+
+  def envOrProp(name: String): ConfigValue[Effect, String] =
     env(name) or prop(name)
 
   val fromCiris = (
-    envOrProp("EXAMPLE_PORT").as[Int],
+    envOrProp("EXAMPLE_PORT").as[Int].as[Port],
     envOrProp("EXAMPLE_SSO_ROOT").as[Uri],
     envOrProp("EXAMPLE_SSO_PUBLIC_KEY").as[PublicKey],
     envOrProp("EXAMPLE_SERVICE_JWT"),

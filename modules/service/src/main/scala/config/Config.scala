@@ -4,8 +4,9 @@
 package lucuma.sso.service.config
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import ciris._
+import com.comcast.ip4s.Port
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.KeyPairGenerator
@@ -26,7 +27,7 @@ final case class Config(
   orcid:        OrcidConfig,
   publicKey:    PublicKey,
   privateKey:   PrivateKey,
-  httpPort:     Int,
+  httpPort:     Port,
   cookieDomain: String,
   scheme:       Uri.Scheme,
   hostname:     String,
@@ -40,13 +41,13 @@ final case class Config(
   val authority: Uri.Authority =
     Uri.Authority(
       host = RegName(hostname),
-      port = Some(httpPort)
+      port = Some(httpPort.value)
     )
 
   // TODO: parameterize
   val JwtLifetime    = 10.minutes
 
-  def ssoJwtReader[F[_]: Sync] =
+  def ssoJwtReader[F[_]: Concurrent] =
     SsoJwtReader(JwtDecoder.withPublicKey[F](publicKey))
 
   def ssoJwtWriter[F[_]: Sync] =
@@ -58,7 +59,7 @@ final case class Config(
       authority = Some(
         Authority(
           host = authority.host,
-          port = if (environment == Local) Some(httpPort) else None
+          port = if (environment == Local) Some(httpPort.value) else None
         )
       )
     )
@@ -84,7 +85,7 @@ object Config {
       orcid,
       keyPair.getPublic,
       keyPair.getPrivate,
-      8080,
+      Port.fromInt(8080).getOrElse(sys.error("unpossible: invalid port")),
       "local.lucuma.xyz",
       Uri.Scheme.http,
       "local.lucuma.xyz",
@@ -94,7 +95,7 @@ object Config {
 
   }
 
-  def config: ConfigValue[Config] =
+  def config: ConfigValue[Effect, Config] =
     envOrProp("LUCUMA_SSO_ENVIRONMENT")
       .as[Environment]
       .default(Local)
@@ -104,7 +105,7 @@ object Config {
           (OrcidConfig.config(Local), HoneycombConfig.config.option).parMapN(local)
 
         case envi => (
-          envOrProp("PORT").as[Int],
+          envOrProp("PORT").as[Int].as[Port],
           DatabaseConfig.config,
           OrcidConfig.config(envi),
           envOrProp("GPG_SSO_PUBLIC_KEY").as[PublicKey],
