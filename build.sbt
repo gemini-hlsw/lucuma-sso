@@ -59,7 +59,7 @@ lazy val service = project
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
       "io.circe"       %% "circe-parser"        % "0.13.0",
-      "is.cir"         %% "ciris"               % "1.2.1",
+      "is.cir"         %% "ciris"               % "2.0.1",
       "org.http4s"     %% "http4s-ember-client" % "0.21.19",
       "org.http4s"     %% "http4s-ember-server" % "0.21.19",
       "org.http4s"     %% "http4s-scala-xml"    % "0.21.19",
@@ -84,7 +84,7 @@ lazy val backendExample = project
     publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
-      "is.cir"       %% "ciris"               % "1.2.1",
+      "is.cir"       %% "ciris"               % "2.0.1",
       "org.http4s"   %% "http4s-ember-client" % "0.21.19",
       "org.http4s"   %% "http4s-ember-server" % "0.21.19",
       "org.slf4j"    %  "slf4j-simple"        % "1.7.30",
