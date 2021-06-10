@@ -40,7 +40,7 @@ lazy val backendClient = project
     libraryDependencies ++= Seq(
       "com.pauldijou"     %% "jwt-circe"      % "5.0.0",
       "com.pauldijou"     %% "jwt-core"       % "5.0.0",
-      "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.68",
+      "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.69",
       "org.http4s"        %% "http4s-circe"   % "0.21.19",
       "org.http4s"        %% "http4s-circe"   % "0.21.19",
       "org.http4s"        %% "http4s-dsl"     % "0.21.19",
