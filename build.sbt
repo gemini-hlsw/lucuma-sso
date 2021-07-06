@@ -69,7 +69,7 @@ lazy val service = project
       "org.tpolecat"   %% "natchez-http4s"      % "0.0.3",
       "org.tpolecat"   %% "skunk-core"          % "0.0.24",
       "org.flywaydb"   %  "flyway-core"         % "7.5.4",
-      "org.postgresql" %  "postgresql"          % "42.2.22",
+      "org.postgresql" %  "postgresql"          % "42.2.23",
       "com.monovore"   %% "decline-effect"      % "1.3.0",
       "com.monovore"   %% "decline"             % "1.3.0",
       "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.44",
