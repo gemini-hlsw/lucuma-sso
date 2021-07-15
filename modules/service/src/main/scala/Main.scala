@@ -5,9 +5,13 @@ package lucuma.sso.service
 
 import cats._
 import cats.effect._
+import cats.effect.std.Console
 import cats.implicits._
+import com.comcast.ip4s.{ Host, Port }
+import edu.gemini.grackle.skunk.SkunkMonitor
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
+import lucuma.sso.service.graphql.SsoMapping
 import lucuma.sso.service.orcid.OrcidService
 import natchez.{ EntryPoint, Trace }
 import natchez.http4s.implicits._
@@ -20,10 +24,11 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
+import org.http4s.server.staticcontent._
 import skunk.{ Command => _, _ }
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import cats.data.Kleisli
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import natchez.http4s.AnsiFilterStream
 import java.io.ByteArrayOutputStream
 import java.io.OutputStreamWriter
@@ -33,6 +38,8 @@ import com.monovore.decline.effect.CommandIOApp
 import com.monovore.decline._
 import eu.timepit.refined.auto._
 import scala.concurrent.duration._
+import fs2.io.net.Network
+import scala.io.AnsiColor
 
 object Main extends CommandIOApp(
   name    = "lucuma-sso",
@@ -74,7 +81,10 @@ object Main extends CommandIOApp(
 
 }
 
-object FMain {
+object FMain extends AnsiColor {
+
+  val host: Host =
+    Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
 
   // TODO: put this in the config
   val MaxConnections = 10
@@ -83,7 +93,7 @@ object FMain {
   val ServiceName = "lucuma-sso"
 
   /** A resource that yields a Skunk session pool. */
-  def databasePoolResource[F[_]: Concurrent: ContextShift: Trace](
+  def databasePoolResource[F[_]: Temporal: Trace: Network: Console](
     config: DatabaseConfig
   ): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
@@ -100,13 +110,13 @@ object FMain {
 
 
   /** A resource that yields a running HTTP server. */
-  def serverResource[F[_]: Concurrent: ContextShift: Timer](
-    port: Int,
+  def serverResource[F[_]: Async](
+    port: Port,
     app:  HttpApp[F]
-  ): Resource[F, Server[F]] =
+  ): Resource[F, Server] =
     EmberServerBuilder
       .default[F]
-      .withHost("0.0.0.0")
+      .withHost(host)
       .withHttpApp(app)
       .withPort(port)
       .withErrorHandler { t =>
@@ -142,7 +152,7 @@ object FMain {
     }
 
   /** A resource that yields an OrcidService. */
-  def orcidServiceResource[F[_]: Concurrent: Timer: ContextShift: Trace](config: OrcidConfig) =
+  def orcidServiceResource[F[_]: Async: Trace](config: OrcidConfig) =
     EmberClientBuilder.default[F].build.map(org.http4s.client.middleware.Logger[F](
       logHeaders = true,
       logBody    = true,
@@ -151,19 +161,22 @@ object FMain {
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
-  def routesResource[F[_]: Concurrent: ContextShift: Trace: Timer: Logger](config: Config): Resource[F, HttpRoutes[F]] =
-    (databasePoolResource[F](config.database), orcidServiceResource(config.orcid))
-      .mapN { (pool, orcid) =>
-        val dbPool = pool.map(Database.fromSession(_))
-        Routes[F](
-          dbPool    = dbPool,
-          orcid     = orcid,
-          jwtReader = config.ssoJwtReader,
-          jwtWriter = config.ssoJwtWriter,
-          publicUri = config.publicUri,
-          cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-        )
-      } .map(ServerMiddleware(config))
+  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, HttpRoutes[F]] =
+    for {
+      pool    <- databasePoolResource[F](config.database)
+      orcid   <- orcidServiceResource(config.orcid)
+      graphql <- Resource.eval(SsoMapping(pool, SkunkMonitor.noopMonitor[F]))
+    } yield ServerMiddleware[F](config).apply {
+      Routes[F](
+        dbPool    = pool.map(Database.fromSession(_)),
+        orcid     = orcid,
+        jwtReader = config.ssoJwtReader,
+        jwtWriter = config.ssoJwtWriter,
+        publicUri = config.publicUri,
+        cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
+        graphQL   = graphql,
+      ) <+> resourceServiceBuilder[F]("/assets").toRoutes
+    }
 
   /** A startup action that prints a banner. */
   def banner[F[_]: Applicative: Logger](config: Config): F[Unit] = {
@@ -200,22 +213,22 @@ object FMain {
    * Our main server, as a resource that starts up our server on acquire and shuts it all down
    * in cleanup, yielding an `ExitCode`. Users will `use` this resource and hold it forever.
    */
-  def server[F[_]: Concurrent: ContextShift: Timer: Logger]: Resource[F, ExitCode] =
+  def server[F[_]: Async: Logger: Console]: Resource[F, ExitCode] =
     for {
-      c  <- Resource.liftF(Config.config.load[F])
-      _  <- Resource.liftF(banner[F](c))
-      _  <- Resource.liftF(migrateDatabase[F](c.database))
+      c  <- Resource.eval(Config.config.load[F])
+      _  <- Resource.eval(banner[F](c))
+      _  <- Resource.eval(migrateDatabase[F](c.database))
       ep <- entryPointResource(c.honeycomb)
       ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
   /** Our main server, which runs forever. */
-  def serve[F[_]: Concurrent: ContextShift: Timer: Logger]: F[ExitCode] =
+  def serve[F[_]: Async: Logger: Console]: F[ExitCode] =
     server.use(_ => Concurrent[F].never[ExitCode])
 
   /** Standalone single-use database instance for one-off commands. */
-  def standaloneDatabase[F[_]: Concurrent: ContextShift](
+  def standaloneDatabase[F[_]: Temporal: Network: Console](
     config: DatabaseConfig
   ): Resource[F, Database[F]] = {
     import Trace.Implicits.noop
@@ -223,7 +236,7 @@ object FMain {
   }
 
   /** A one-off command that creates a service user. */
-  def createServiceUser[F[_]: Concurrent: ContextShift](
+  def createServiceUser[F[_]: Async: Network: Console](
     name: String
   ): F[ExitCode] =
     Config.config.load[F].flatMap { config =>
@@ -236,7 +249,7 @@ object FMain {
           _    <- Sync[F].delay(println(s"⚠️  If it is lost you may re-run this command with the same service name."))
           _    <- Sync[F].delay(println())
           jwt  <- config.ssoJwtWriter.newJwt(user, Some((365 * 20).days)) // 20 years should be enough
-          _    <- Sync[F].delay(println(s"${Console.GREEN}$jwt${Console.RESET}"))
+          _    <- Sync[F].delay(println(s"${GREEN}$jwt${RESET}"))
           _    <- Sync[F].delay(println())
         } yield ExitCode.Success
       }

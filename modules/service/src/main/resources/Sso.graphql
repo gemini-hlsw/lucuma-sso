@@ -1,0 +1,39 @@
+
+
+## Schema for standard user with minimal (PI) access.
+
+type Query {
+  user: User!
+  role: Role!
+}
+
+type User {
+  id:           UserId!
+  orcidId:      OrcidId!
+  givenName:    String
+  familyName:   String,
+  creditName:   String,
+  email:        String,
+  roles:        [Role!]!
+  apiKeys:      [ApiKey!]!
+}
+
+type Role {
+  id:      RoleId!
+  type:    RoleType!
+  partner: Partner
+  user:    User!
+}
+
+type ApiKey {
+  id:   Int!
+  user: User!
+  role: Role!
+}
+
+scalar UserId
+scalar OrcidId
+scalar RoleId
+
+enum RoleType { PI NGO STAFF ADMIN }
+enum Partner { AR BR CA CL KR UH US }

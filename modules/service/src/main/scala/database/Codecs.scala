@@ -53,3 +53,5 @@ trait Codecs {
     text.map(ApiKey.fromString.getOption).emap(_.toRight("Invalid API Key"))
 
 }
+
+object Codecs extends Codecs

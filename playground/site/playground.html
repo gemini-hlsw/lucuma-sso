@@ -5,8 +5,8 @@
   <title>LUCUMA-SSO LOCAL PLAYGROUND</title>
   <script>
 
-    var ssoRootUri     = "https://sso.gpp.lucuma.xyz"
-    // var ssoRootUri     = "http://local.lucuma.xyz:8080"
+    // var ssoRootUri     = "https://sso.gpp.lucuma.xyz"
+    var ssoRootUri     = "https://local.lucuma.xyz:8444"
     var exampleRootUri = "http://local.lucuma.xyz:8082"
 
     var jwt = null
@@ -60,6 +60,9 @@
         } else {
           setJwt(xhttp.responseText)
         }
+      }
+      xhttp.onerror = function() {
+        document.getElementById("jwtContent").innerHTML = "Could not contact SSO server."
       }
       xhttp.open("POST", ssoRootUri + "/api/v1/refresh-token", true);
       xhttp.withCredentials = true

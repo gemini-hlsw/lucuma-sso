@@ -8,9 +8,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK
-        uses: olafurpg/setup-scala@v10
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
       - name: Cache SBT
-        uses: coursier/cache-action@v3
+        uses: coursier/cache-action@v6
       - name: Set up cert permissions (1)
         run: chmod 600 test-cert/server.key
       - name: Set up cert permissions (2)
@@ -18,7 +21,7 @@ jobs:
       - name: Start up Postgres instances
         run: docker-compose up -d
       - name: Compile and test
-        run: csbt headerCheck clean coverage "set frontendClient.js/coverageEnabled := false" test coverageReport coverageAggregate
+        run: sbt headerCheck clean coverage "set frontendClient.js/coverageEnabled := false" test coverageReport coverageAggregate
       - name: Shut down Postgres instances
         run: docker-compose down
       - name: Upload code coverage data

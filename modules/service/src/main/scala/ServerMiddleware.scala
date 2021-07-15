@@ -10,10 +10,11 @@ import cats.effect._
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
 import org.http4s.server.middleware.ErrorAction
-import io.chrisdavenport.log4cats.Logger
+import org.typelevel.log4cats.Logger
 import org.http4s.server.middleware.CORS
 import lucuma.sso.service.config.Config
 import natchez.http4s.NatchezMiddleware
+import org.http4s.server.middleware.CORSConfig
 
 /** A module of all the middlewares we apply to the server routes. */
 object ServerMiddleware {
@@ -21,11 +22,11 @@ object ServerMiddleware {
   type Middleware[F[_]] = Endo[HttpRoutes[F]]
 
   /** A middleware that adds distributed tracing. */
-  def natchez[F[_]: Bracket[*[_], Throwable]: Trace]: Middleware[F] =
+  def natchez[F[_]: MonadCancel[*[_], Throwable]: Trace]: Middleware[F] =
     NatchezMiddleware.server[F]
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
-  def logging[F[_]: Concurrent](
+  def logging[F[_]: Async](
     env:          Environment,
   ): Middleware[F] =
     org.http4s.server.middleware.Logger.httpRoutes[F](
@@ -53,17 +54,16 @@ object ServerMiddleware {
       routes,
       env match {
         case Local | Review | Staging =>
-          CORS.DefaultCORSConfig
+          CORSConfig.default
         case Production =>
-          CORS.DefaultCORSConfig.copy(
-            anyOrigin      = false,
-            allowedOrigins = domain.contains
-          )
+          CORSConfig.default
+            .withAnyOrigin(false)
+            .withAllowedOrigins(domain.contains)
       }
     )
 
   /** A middleware that composes all the others defined in this module. */
-  def apply[F[_]: Concurrent: Trace: Logger](
+  def apply[F[_]: Async: Trace: Logger](
     config: Config,
   ): Middleware[F] =
     List[Middleware[F]](
