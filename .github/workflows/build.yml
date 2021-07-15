@@ -21,7 +21,7 @@ jobs:
       - name: Start up Postgres instances
         run: docker-compose up -d
       - name: Compile and test
-        run: csbt headerCheck clean coverage "set frontendClient.js/coverageEnabled := false" test coverageReport coverageAggregate
+        run: sbt headerCheck clean coverage "set frontendClient.js/coverageEnabled := false" test coverageReport coverageAggregate
       - name: Shut down Postgres instances
         run: docker-compose down
       - name: Upload code coverage data
