@@ -10,7 +10,7 @@ import org.http4s.headers.Location
 import org.http4s.Request
 import org.http4s.Method
 import org.http4s.headers.Authorization
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import org.http4s.Credentials
 import org.http4s.Headers
 import lucuma.core.util.Gid
@@ -28,13 +28,13 @@ object ApiKeySuite extends SsoSuite with Fixture {
   implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
 
-  simpleTest("Create and redeem an API key.") {
+  test("Create and redeem an API key.") {
     SsoSimulator[IO].use { case (db, sim, sso, reader, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
 
@@ -54,7 +54,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
           Request[IO](
             method  = Method.POST,
             uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", user.role.id),
-            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), jwt))),
+            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
           )
         )
 
@@ -65,13 +65,13 @@ object ApiKeySuite extends SsoSuite with Fixture {
     } .onError(e => IO(println(e)))
   }
 
-  simpleTest("Delete an API key and try to re-use it.") {
+  test("Delete an API key and try to re-use it.") {
     SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
         user   <- db.use(_.getStandardUserFromToken(tok))
@@ -89,13 +89,13 @@ object ApiKeySuite extends SsoSuite with Fixture {
     } .onError(e => IO(println(e)))
   }
 
-  simpleTest("Can't create an API key for someone else!") {
+  test("Can't create an API key for someone else!") {
     SsoSimulator[IO].use { case (_, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
 
@@ -112,7 +112,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
           Request[IO](
             method  = Method.POST,
             uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", StandardRole.Id(1L)), // no real role with id=1
-            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), jwt))),
+            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
           )
         )
 
@@ -121,15 +121,15 @@ object ApiKeySuite extends SsoSuite with Fixture {
   }
 
 
-  simpleTest("Promote an API key.") {
+  test("Promote an API key.") {
     SsoSimulator[IO].use { case (db, sim, sso, reader, writer) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
       import reader.entityDecoder
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
         user   <- db.use(_.getStandardUserFromToken(tok))
@@ -144,7 +144,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
         jwt <- sso.expect[SsoJwtClaim](
                 Request[IO](
                   uri     = (SsoRoot / "api" / "v1" / "exchange-api-key").withQueryParam("key", apiKey),
-                  headers = Headers.of(Authorization(Credentials.Token(Bearer, serviceJwt)))
+                  headers = Headers(Authorization(Credentials.Token(Bearer, serviceJwt)))
                 )
               )
 
@@ -152,13 +152,13 @@ object ApiKeySuite extends SsoSuite with Fixture {
     } .onError(e => IO(println(e)))
   }
 
-  simpleTest("Can't promote an API key without a user.") {
+  test("Can't promote an API key without a user.") {
     SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken)
         user   <- db.use(_.getStandardUserFromToken(tok))
