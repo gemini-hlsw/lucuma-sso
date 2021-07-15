@@ -11,7 +11,7 @@ import lucuma.sso.client.SsoClient.AbstractSsoClient
 import org.http4s._
 import org.http4s.headers.Authorization
 import org.http4s.Credentials.Token
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.client.ApiKey
 import lucuma.core.model.{ User, StandardUser }
@@ -29,7 +29,7 @@ object LocalSsoClient {
   ): SsoClient[F, User] =
     new AbstractSsoClient[F, User] {
 
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
 
       def fetchApiUser(apiKey: ApiKey): F[Option[StandardUser]] =
         dbPool.use(_.findStandardUserFromApiKey(apiKey))
@@ -58,7 +58,7 @@ object LocalSsoClient {
         }
 
       def find(req: Request[F]): F[Option[User]] =
-        req.headers.get(Authorization) match {
+        req.headers.get[Authorization] match {
           case Some(a) => get(a)
           case None    => none.pure[F]
       }

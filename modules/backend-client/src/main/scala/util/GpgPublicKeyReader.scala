@@ -13,10 +13,11 @@ import java.{util => ju}
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import java.io.ByteArrayOutputStream
 import org.http4s.EntityDecoder
-import cats.effect.Sync
+import cats.effect.Concurrent
 import org.http4s.DecodeResult
 import org.http4s.MalformedMessageBodyFailure
 import org.http4s.EntityEncoder
+import cats.syntax.all._
 
 /** Methods to convert between GPG ASCII-amored text and JCA `PublicKey`. */
 object GpgPublicKeyReader {
@@ -52,10 +53,10 @@ object GpgPublicKeyReader {
       case NonFatal(e) => Left(e)
     }
 
-  def entityDecoder[F[_]: Sync]: EntityDecoder[F, PublicKey] =
+  def entityDecoder[F[_]: Concurrent]: EntityDecoder[F, PublicKey] =
     EntityDecoder.text[F].map(publicKey).flatMapR {
-      case Left(err)     => DecodeResult.failure(MalformedMessageBodyFailure("Invalid public key.", Some(err)))
-      case Right(pubKey) => DecodeResult.success(pubKey)
+      case Left(err)     => DecodeResult.failure(Concurrent[F].pure(MalformedMessageBodyFailure("Invalid public key.", Some(err))))
+      case Right(pubKey) => DecodeResult.success(pubKey.pure[F])
     }
 
   def entityEncoder[F[_]]: EntityEncoder[F, PublicKey] =

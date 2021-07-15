@@ -21,7 +21,7 @@ import eu.timepit.refined.auto._
 import scala.concurrent.duration._
 import org.http4s.Credentials
 import org.http4s.Headers
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import lucuma.sso.client.ApiKey
 
 object SsoClientSuite extends SsoSuite with Fixture {
@@ -37,10 +37,10 @@ object SsoClientSuite extends SsoSuite with Fixture {
   def otherServer(ssoClient: SsoClient[IO, UserInfo]): Client[IO] =
     Client.fromHttpApp(routes(ssoClient).orNotFound)
 
-  simpleTest("Call a remote service with a JWT.") {
+  test("Call a remote service with a JWT.") {
     SsoSimulator[IO].use { case (_, sim, sso, reader, writer) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
       for {
 
         // Create our SSO Client
@@ -55,7 +55,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
         other = otherServer(ssoClient)
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // cookie is set here
         jwt    <- sso.expect[String](Request[IO](method = Method.POST, uri = SsoRoot / "api" / "v1" / "refresh-token"))
@@ -64,7 +64,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
         name   <- other.expect[String](
                     Request[IO](
                       uri = uri"http://whatever.com/echo-name",
-                      headers = Headers.of(Authorization(Credentials.Token(Bearer, jwt)))
+                      headers = Headers(Authorization(Credentials.Token(Bearer, jwt)))
                     )
                   )
 
@@ -73,10 +73,10 @@ object SsoClientSuite extends SsoSuite with Fixture {
     }
   }
 
-  simpleTest("Call a remote service with an API key.") {
+  test("Call a remote service with an API key.") {
     SsoSimulator[IO].use { case (db, sim, sso, reader, writer) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
       for {
 
         // Create our SSO Client
@@ -91,7 +91,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
         other = otherServer(ssoClient)
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken) // cookie is set here
         user   <- db.use(_.getStandardUserFromToken(tok))
@@ -101,7 +101,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
         name   <- other.expect[String](
                     Request[IO](
                       uri = uri"http://whatever.com/echo-name",
-                      headers = Headers.of(Authorization(Credentials.Token(Bearer, ApiKey.fromString.reverseGet(apiKey))))
+                      headers = Headers(Authorization(Credentials.Token(Bearer, ApiKey.fromString.reverseGet(apiKey))))
                     )
                   )
 
@@ -111,7 +111,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
   }
 
 
-  simpleTest("Can't call remote service with no user.") {
+  test("Can't call remote service with no user.") {
     SsoSimulator[IO].use { case (_, sim, sso, reader, writer) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
@@ -128,7 +128,7 @@ object SsoClientSuite extends SsoSuite with Fixture {
         other = otherServer(ssoClient)
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // cookie is set here
 

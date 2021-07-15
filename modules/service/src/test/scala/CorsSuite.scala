@@ -8,6 +8,7 @@ import org.http4s._
 import org.http4s.implicits._
 import lucuma.sso.service.config.Environment
 import natchez.Trace.Implicits.noop
+import org.typelevel.ci.CIString
 
 object CorsSuite extends SsoSuite {
 
@@ -35,18 +36,18 @@ object CorsSuite extends SsoSuite {
     )
 
   def noHeaderTest(env: Environment): Unit =
-    simpleTest(s"CORS headers must not be added if no origin is provided. ($env)") {
+    test(s"CORS headers must not be added if no origin is provided. ($env)") {
       val req = Request[IO](uri = uri"/api/v1/whoami")
       routes(env).orNotFound(req).map { res =>
-        forall(CorsHeaders)(s => expect(!res.headers.exists(_.name.value == s)))
+        forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
       }
     }
 
   def headerTestForArbitraryDomain(env: Environment): Unit =
-    simpleTest(s"CORS headers must be added for arbitrary origin. ($env)") {
-      val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header("Origin", "https://wozle.com"))
+    test(s"CORS headers must be added for arbitrary origin. ($env)") {
+      val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://wozle.com"))
       routes(env).orNotFound(req).map { res =>
-        forall(CorsHeaders)(s => expect(res.headers.exists(_.name.value == s)))
+        forEach(CorsHeaders)(s => expect(res.headers.headers.exists(_.name.toString == s)))
       }
     }
 
@@ -60,17 +61,17 @@ object CorsSuite extends SsoSuite {
   // headerTestForArbitraryDomain(Environment.Review)
   // headerTestForArbitraryDomain(Environment.Staging)
 
-  simpleTest("CORS headers must not be added if origin is mismatched. (Production)") {
-    val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header("Origin", "https://wozle.com"))
+  test("CORS headers must not be added if origin is mismatched. (Production)") {
+    val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://wozle.com"))
     routes(Environment.Production, Some("gemini.edu")).orNotFound(req).map { res =>
-      forall(CorsHeaders)(s => expect(!res.headers.exists(_.name.value == s)))
+      forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
     }
   }
 
-  simpleTest("CORS headers must be added if origin matches. (Production)") {
-    val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header("Origin", "https://gemini.edu"))
+  test("CORS headers must be added if origin matches. (Production)") {
+    val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://gemini.edu"))
     routes(Environment.Production, Some("gemini.edu")).orNotFound(req).map { res =>
-      forall(CorsHeaders)(s => expect(!res.headers.exists(_.name.value == s)))
+      forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
     }
   }
 

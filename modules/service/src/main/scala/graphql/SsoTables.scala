@@ -16,7 +16,7 @@ trait SsoTables[F[_]] extends Codecs { this: SkunkMapping[F] =>
     rt => Json.fromString(rt.entryName.toUpperCase())
 
   class TableDef(name: String) {
-    def col(colName: String, codec: Codec[_]): ColumnRef =
+    def col(colName: String, codec: Codec): ColumnRef =
       ColumnRef(name, colName, codec)
   }
 

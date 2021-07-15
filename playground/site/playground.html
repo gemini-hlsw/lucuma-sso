@@ -61,6 +61,9 @@
           setJwt(xhttp.responseText)
         }
       }
+      xhttp.onerror = function() {
+        document.getElementById("jwtContent").innerHTML = "Could not contact SSO server."
+      }
       xhttp.open("POST", ssoRootUri + "/api/v1/refresh-token", true);
       xhttp.withCredentials = true
       xhttp.send(null);
