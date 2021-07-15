@@ -155,6 +155,13 @@ Use `docker-compose` to wrangle a dev database. It's way easier than dealing wit
 | `docker-compose stop`                                                 | stop the test database                         |
 | `docker-compose down`                                                 | destroy the database                           |
 
+To run locally you need to clean out the default database. If you're just running tests the default db is fine.
+
+```
+psql -h localhost -d postgres -U jimmy -c 'drop database "lucuma-sso"'
+psql -h localhost -d postgres -U jimmy -c 'create database "lucuma-sso"'
+```
+
 Docker-compose also starts up a local nginx server that serves an example client application at:
 
 - http://local.lucuma.xyz:8081/playground.html

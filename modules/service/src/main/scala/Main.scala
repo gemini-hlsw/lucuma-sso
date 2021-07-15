@@ -93,7 +93,7 @@ object FMain extends AnsiColor {
   val ServiceName = "lucuma-sso"
 
   /** A resource that yields a Skunk session pool. */
-  def databasePoolResource[F[_]: Concurrent: Trace: Network: Console](
+  def databasePoolResource[F[_]: Temporal: Trace: Network: Console](
     config: DatabaseConfig
   ): Resource[F, Resource[F, Session[F]]] =
     Session.pooled(
@@ -228,7 +228,7 @@ object FMain extends AnsiColor {
     server.use(_ => Concurrent[F].never[ExitCode])
 
   /** Standalone single-use database instance for one-off commands. */
-  def standaloneDatabase[F[_]: Concurrent: Network: Console](
+  def standaloneDatabase[F[_]: Temporal: Network: Console](
     config: DatabaseConfig
   ): Resource[F, Database[F]] = {
     import Trace.Implicits.noop

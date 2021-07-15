@@ -1,5 +1,23 @@
 import sbtcrossproject.CrossType
 
+val bcpgVersion            = "1.69"
+val circeVersion           = "0.14.1"
+val cirisVersion           = "2.0.1"
+val declineVersion         = "2.1.0"
+val disciplineMunitVersion = "1.0.9"
+val flywayVersion          = "7.11.1"
+val grackleVersion         = "0.1.1"
+val http4sVersion          = "0.23.0-RC1"
+val jwtVersion             = "5.0.0"
+val log4catsVersion        = "2.1.1"
+val lucumaCoreVersion      = "0.10.1"
+val munitVersion           = "0.7.27"
+val natcchezHttp4sVersion  = "0.1.2"
+val natchezVersion         = "0.1.5"
+val postgresVersion        = "42.2.23"
+val skunkVersion           = "0.2.0"
+val slf4jVersion           = "1.7.31"
+
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
@@ -8,12 +26,12 @@ ThisBuild / evictionErrorLevel := Level.Info
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-cats"       % "0.7.3" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.3" % Test,
+    "com.disneystreaming" %% "weaver-cats"       % "0.7.4" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.4" % Test,
    ),
-  testFrameworks += new TestFramework("weaver.framework.CatsEffect") ,
+  testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
 ) ++ lucumaPublishSettings)
 
 publish / skip := true
@@ -24,12 +42,12 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "lucuma-sso-frontend-client",
     libraryDependencies ++= Seq(
-      "edu.gemini"    %%% "lucuma-core"         % "0.8.1",
-      "io.circe"      %%% "circe-generic"       % "0.14.1",
-      "edu.gemini"    %%% "lucuma-core-testkit" % "0.8.1"  % Test,
-      "org.scalameta" %%% "munit"               % "0.7.26" % Test,
-      "org.scalameta" %%% "munit-scalacheck"    % "0.7.26" % Test,
-      "org.typelevel" %%% "discipline-munit"    % "1.0.9"  % Test,
+      "edu.gemini"    %%% "lucuma-core"         % lucumaCoreVersion,
+      "io.circe"      %%% "circe-generic"       % circeVersion,
+      "edu.gemini"    %%% "lucuma-core-testkit" % lucumaCoreVersion       % Test,
+      "org.scalameta" %%% "munit"               % munitVersion            % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % munitVersion            % Test,
+      "org.typelevel" %%% "discipline-munit"    % disciplineMunitVersion  % Test,
     ),
     testFrameworks += new TestFramework("munit.Framework"),
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -41,15 +59,15 @@ lazy val backendClient = project
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"     %% "jwt-circe"      % "5.0.0",
-      "com.pauldijou"     %% "jwt-core"       % "5.0.0",
-      "org.bouncycastle"  %  "bcpg-jdk15on"   % "1.68",
-      "org.http4s"        %% "http4s-circe"   % "0.23.0-M1",
-      "org.http4s"        %% "http4s-circe"   % "0.23.0-M1",
-      "org.http4s"        %% "http4s-dsl"     % "0.23.0-M1",
-      "org.http4s"        %% "http4s-client"  % "0.23.0-M1",
-      "org.typelevel"     %% "log4cats-slf4j" % "2.1.1",
-      "org.tpolecat"      %% "natchez-http4s" % "0.1.0",
+      "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
+      "com.pauldijou"     %% "jwt-core"       % jwtVersion,
+      "org.bouncycastle"  %  "bcpg-jdk15on"   % bcpgVersion,
+      "org.http4s"        %% "http4s-circe"   % http4sVersion,
+      "org.http4s"        %% "http4s-circe"   % http4sVersion,
+      "org.http4s"        %% "http4s-dsl"     % http4sVersion,
+      "org.http4s"        %% "http4s-client"  % http4sVersion,
+      "org.typelevel"     %% "log4cats-slf4j" % log4catsVersion,
+      "org.tpolecat"      %% "natchez-http4s" % natcchezHttp4sVersion,
     ),
   )
 
@@ -61,22 +79,22 @@ lazy val service = project
     publish / skip := true,
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"       %% "circe-parser"        % "0.14.1",
-      "is.cir"         %% "ciris"               % "2.0.0",
-      "org.http4s"     %% "http4s-ember-client" % "0.23.0-M1",
-      "org.http4s"     %% "http4s-ember-server" % "0.23.0-M1",
-      "org.http4s"     %% "http4s-scala-xml"    % "0.23.0-M1",
-      "org.slf4j"      %  "slf4j-simple"        % "1.7.30",
-      "org.tpolecat"   %% "natchez-honeycomb"   % "0.1.5",
-      "org.tpolecat"   %% "natchez-log"         % "0.1.5",
-      "org.tpolecat"   %% "natchez-http4s"      % "0.1.2",
-      "org.tpolecat"   %% "skunk-core"          % "0.1.2",
-      "org.flywaydb"   %  "flyway-core"         % "7.9.1",
-      "org.postgresql" %  "postgresql"          % "42.2.23",
-      "com.monovore"   %% "decline-effect"      % "2.0.0",
-      "com.monovore"   %% "decline"             % "2.0.0",
-      "edu.gemini"     %% "gsp-graphql-skunk"   % "0.0.47+16-59a79b5f+20210527-1206-SNAPSHOT",
-      "io.circe"       %% "circe-literal"       % "0.14.1" % "test",
+      "io.circe"       %% "circe-parser"        % circeVersion,
+      "is.cir"         %% "ciris"               % cirisVersion,
+      "org.http4s"     %% "http4s-ember-client" % http4sVersion,
+      "org.http4s"     %% "http4s-ember-server" % http4sVersion,
+      "org.http4s"     %% "http4s-scala-xml"    % http4sVersion,
+      "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
+      "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
+      "org.tpolecat"   %% "natchez-log"         % natchezVersion,
+      "org.tpolecat"   %% "natchez-http4s"      % natcchezHttp4sVersion,
+      "org.tpolecat"   %% "skunk-core"          % skunkVersion,
+      "org.flywaydb"   %  "flyway-core"         % flywayVersion,
+      "org.postgresql" %  "postgresql"          % postgresVersion,
+      "com.monovore"   %% "decline-effect"      % declineVersion,
+      "com.monovore"   %% "decline"             % declineVersion,
+      "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
+      "io.circe"       %% "circe-literal"       % circeVersion       % Test,
     )
   )
 
@@ -87,10 +105,10 @@ lazy val backendExample = project
     publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
-      "is.cir"       %% "ciris"               % "2.0.0",
-      "org.http4s"   %% "http4s-ember-client" % "0.23.0-M1",
-      "org.http4s"   %% "http4s-ember-server" % "0.23.0-M1",
-      "org.slf4j"    %  "slf4j-simple"        % "1.7.31",
-      "org.tpolecat" %% "natchez-honeycomb"   % "0.1.5",
+      "is.cir"       %% "ciris"               % cirisVersion,
+      "org.http4s"   %% "http4s-ember-client" % http4sVersion,
+      "org.http4s"   %% "http4s-ember-server" % http4sVersion,
+      "org.slf4j"    %  "slf4j-simple"        % slf4jVersion,
+      "org.tpolecat" %% "natchez-honeycomb"   % natchezVersion,
     )
   )

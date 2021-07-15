@@ -20,6 +20,8 @@ import natchez.EntryPoint
 import natchez.http4s.implicits._
 import natchez.honeycomb.Honeycomb
 import natchez.http4s.NatchezMiddleware
+import org.http4s.server.middleware.ErrorAction
+import scala.annotation.unused
 
 object Main extends IOApp {
 
@@ -57,7 +59,7 @@ object Main extends IOApp {
   ): Resource[F, HttpRoutes[F]] =
     cfg.ssoClient[F].map { ssoClient =>
       val userClient = ssoClient.map(_.user) // we only want part of the UserInfo
-      CORS.httpRoutes(NatchezMiddleware.server(SsoMiddleware(userClient)(routes[F](userClient))))
+      NatchezMiddleware.server(SsoMiddleware(userClient)(routes[F](userClient)))
     }
 
   def entryPoint[F[_]: Sync](cfg: Config): Resource[F, EntryPoint[F]] =
@@ -69,6 +71,9 @@ object Main extends IOApp {
       }
     }
 
+  def log[F[_]: Async](@unused r: Request[F], t: Throwable): F[Unit] =
+    Async[F].delay(t.printStackTrace())
+
   // Our main program as a resource.
   def runR[F[_]: Async](
     cfg: Config
@@ -76,7 +81,7 @@ object Main extends IOApp {
     for {
       ep      <- entryPoint[F](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))
-      httpApp  = CORS.httpRoutes(routes).orNotFound
+      httpApp  = ErrorAction.httpRoutes(CORS.httpRoutes(routes), log[F]).orNotFound
       server  <- serverResource(cfg.port, httpApp)
     } yield server
 
