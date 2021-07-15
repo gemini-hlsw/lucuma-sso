@@ -10,7 +10,7 @@ import org.http4s.headers.Location
 import org.http4s.Request
 import org.http4s.Method
 import org.http4s.headers.Authorization
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import org.http4s.Credentials
 import org.http4s.Headers
 import lucuma.core.util.Gid
@@ -32,7 +32,7 @@ object GraphQLSuite extends SsoSuite with Fixture {
       for {
 
         // Log in as Bob
-        redir  <- sso.get(stage1)(_.headers.get(Location).map(_.uri).get.pure[IO])
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
         _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
         jwt    <- sso.expect[String](Request[IO](method = Method.POST, uri = SsoRoot / "api" / "v1" / "refresh-token"))
@@ -43,7 +43,7 @@ object GraphQLSuite extends SsoSuite with Fixture {
           Request[IO](
             method  = Method.POST,
             uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", user.role.id),
-            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), jwt))),
+            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
           )
         )
 
@@ -52,7 +52,7 @@ object GraphQLSuite extends SsoSuite with Fixture {
           Request[IO](
             method  = Method.POST,
             uri     = SsoRoot / "graphql",
-            headers = Headers.of(Authorization(Credentials.Token(CaseInsensitiveString("Bearer"), ApiKey.fromString.reverseGet(apiKey)))),
+            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), ApiKey.fromString.reverseGet(apiKey)))),
           ).withEntity(
             Json.obj(
               "query" -> Json.fromString(query)
@@ -64,7 +64,7 @@ object GraphQLSuite extends SsoSuite with Fixture {
     } .onError(e => IO(println(e)))
 
 
-  simpleTest("Query current role.") {
+  test("Query current role.") {
     testQueryAsBob(
       query = """
         query {

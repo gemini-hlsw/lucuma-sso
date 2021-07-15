@@ -13,7 +13,7 @@ import lucuma.sso.service.orcid.OrcidAccess
 import lucuma.sso.service.orcid.OrcidPerson
 import cats.data.OptionT
 import skunk.data.Completion.Delete
-import cats.effect.Sync
+import cats.effect._
 import eu.timepit.refined.types.numeric.PosLong
 import lucuma.sso.client.ApiKey
 import natchez.Trace
@@ -69,7 +69,7 @@ trait Database[F[_]] {
 
 object Database extends Codecs {
 
-  def fromSession[F[_]: Sync: Trace](s: Session[F]): Database[F] =
+  def fromSession[F[_]: Concurrent: Trace](s: Session[F]): Database[F] =
     new Database[F] {
 
       def canonicalizeServiceUser(serviceName: String): F[ServiceUser] =
@@ -287,7 +287,7 @@ object Database extends Codecs {
       def getStandardUserFromToken(token: SessionToken): F[StandardUser] =
         Trace[F].span("getStandardUserFromToken") {
           findStandardUserFromToken(token).flatMap {
-            case None => Sync[F].raiseError(new RuntimeException(s"No such standard user with session token: ${token.value}"))
+            case None => Concurrent[F].raiseError(new RuntimeException(s"No such standard user with session token: ${token.value}"))
             case Some(u) => u.pure[F]
           }
         }
@@ -302,7 +302,7 @@ object Database extends Codecs {
               case all @ ((roleId ~ user ~ _) :: _) =>
                 val roles = all.map(_._2)
                 roles.find(_.id === roleId) match {
-                  case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user token: ${token.value}"))
+                  case None => Concurrent[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user token: ${token.value}"))
                   case Some(activeRole) =>
                     (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
                 }
@@ -320,7 +320,7 @@ object Database extends Codecs {
               case all @ ((roleId ~ user ~ _) :: _) =>
                 val roles = all.map(_._2)
                 roles.find(_.id === roleId) match {
-                  case None => Sync[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user associated with API key: ${apiKey.id}"))
+                  case None => Concurrent[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user associated with API key: ${apiKey.id}"))
                   case Some(activeRole) =>
                     (user.copy(role = activeRole, otherRoles = roles.filterNot(_.id === roleId))).some.pure[F]
                 }

@@ -6,7 +6,7 @@ package orcid
 package lucuma.sso.service.orcid
 
 import io.circe.Decoder
-import cats.effect.Sync
+import cats.effect.Concurrent
 import org.http4s.EntityDecoder
 import org.http4s.circe._
 
@@ -21,7 +21,7 @@ object OrcidException {
       desc  <- c.downField("error_description").as[String]
     } yield OrcidException(error, desc)
 
-  implicit def entityDecoderOrcidPerson[F[_]: Sync]: EntityDecoder[F, OrcidException] =
+  implicit def entityDecoderOrcidPerson[F[_]: Concurrent]: EntityDecoder[F, OrcidException] =
     jsonOf[F, OrcidException]
 
 }

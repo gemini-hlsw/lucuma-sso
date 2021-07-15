@@ -4,17 +4,15 @@
 package lucuma.sso.client
 
 import cats.data.OptionT
-import cats.effect.concurrent.Ref
-import cats.effect.Sync
+import cats.effect.{ Concurrent, Ref, Clock }
 import cats.Monad
 import cats.syntax.all._
-import java.time.Instant
 import lucuma.core.model.User
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Authorization
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration._
 import org.http4s.Credentials.Token
@@ -87,7 +85,7 @@ object SsoClient {
    * exchanging and caching API keys as required. Transformations of this client share the same
    * underlyiny API key cache. Note that the cache is never expunged; we rely on server cycling.
    */
-  def initial[F[_]: Sync](
+  def initial[F[_]: Concurrent: Clock](
     httpClient:  Client[F],
     ssoRoot:     Uri,
     jwtReader:   SsoJwtReader[F],
@@ -96,13 +94,13 @@ object SsoClient {
   ): F[SsoClient[F, UserInfo]] =
     Ref[F].of(TreeMap.empty[ApiKey, UserInfo]).map { ref =>
 
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
 
       def authorization(jwt: String): Authorization =
         Authorization(Credentials.Token(Bearer, jwt))
 
       def getCachedApiInfo(apiKey: ApiKey): F[Option[UserInfo]] =
-        Sync[F].delay(Instant.now().plusSeconds(gracePeriod.toSeconds)).flatMap { t =>
+        Clock[F].realTimeInstant.map(_.plusSeconds(gracePeriod.toSeconds)).flatMap { t =>
           ref.get.map(_.get(apiKey).filter(_.claim.expiration.isAfter(t)))
         }
 
@@ -110,12 +108,12 @@ object SsoClient {
         Request(
           method  = Method.GET,
           uri     = (ssoRoot / "api" / "v1" / "exchange-api-key").withQueryParam("key", apiKey),
-          headers = Headers.of(authorization(serviceJwt))
+          headers = Headers(authorization(serviceJwt))
         )
 
       def fetchApiInfo(apiKey: ApiKey): F[UserInfo] =
         for {
-          jwt   <- httpClient.expect[String](exchangeRequest(apiKey))
+          jwt   <- httpClient.expect[String](exchangeRequest(apiKey))(EntityDecoder.text[F])
           claim <- jwtReader.decodeClaim(jwt)
           user  <- claim.getUser.liftTo[F] // this really is a server error
           info   = UserInfo(user, claim, authorization(jwt))
@@ -151,7 +149,7 @@ object SsoClient {
           }
 
         def find(req: Request[F]): F[Option[UserInfo]] =
-          req.headers.get(Authorization) match {
+          req.headers.get[Authorization] match {
             case Some(a) => get(a)
             case None    => none.pure[F]
           }

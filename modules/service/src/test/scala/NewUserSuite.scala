@@ -12,7 +12,7 @@ import lucuma.core.model.Access
 
 object NewUserSuite extends SsoSuite with Fixture {
 
-  simpleTest("Bob logs in via ORCID as a new lucuma user.") {
+  test("Bob logs in via ORCID as a new lucuma user.") {
     SsoSimulator[IO].use { case (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
@@ -20,7 +20,7 @@ object NewUserSuite extends SsoSuite with Fixture {
         // stage1 auth should redirect
         res <- sso.get(stage1)(_.pure[IO])
         _   <- expect(res.status == Status.Found).failFast
-        loc  = res.headers.get(Location).map(_.uri)
+        loc  = res.headers.get[Location].map(_.uri)
         _   <- expect(loc.isDefined).failFast
 
         // simulate the user authenticating as Bob, who is a new user

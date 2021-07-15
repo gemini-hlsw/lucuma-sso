@@ -11,9 +11,9 @@ import org.http4s.Response
 import pdi.jwt.exceptions.JwtException
 import org.http4s.headers.Authorization
 import org.http4s.Credentials
-import org.http4s.util.CaseInsensitiveString
+import org.typelevel.ci.CIString
 import org.http4s.EntityDecoder
-import cats.effect.Sync
+import cats.effect.Concurrent
 import org.http4s.InvalidMessageBodyFailure
 import lucuma.core.model.User
 import lucuma.core.model.ServiceUser
@@ -59,7 +59,7 @@ object SsoJwtReader {
   private[client] val JwtCookie  = "lucuma-jwt"
   private[client] val lucumaUser = SsoJwtClaim.lucumaUser
 
-  def apply[F[_]: Sync](jwtDecoder: JwtDecoder[F]): SsoJwtReader[F] =
+  def apply[F[_]: Concurrent](jwtDecoder: JwtDecoder[F]): SsoJwtReader[F] =
     new SsoJwtReader[F] {
 
       implicit val entityDecoder: EntityDecoder[F, SsoJwtClaim] =
@@ -72,7 +72,7 @@ object SsoJwtReader {
             }
         }
 
-      val Bearer = CaseInsensitiveString("Bearer")
+      val Bearer = CIString("Bearer")
 
       def decodeClaim(jwt: String): F[SsoJwtClaim] =
         jwtDecoder.decode(jwt).map(SsoJwtClaim(_))
@@ -83,7 +83,7 @@ object SsoJwtReader {
       def decodeStandardUser(jwt: String): F[StandardUser] =
         decodeUser(jwt).flatMap {
           case u: StandardUser => u.pure[F]
-          case _ => Sync[F].raiseError(new RuntimeException("Not a standard user."))
+          case _ => Concurrent[F].raiseError(new RuntimeException("Not a standard user."))
         }
 
       def attemptFindClaim(req: Request[F]): F[Option[Either[JwtException, SsoJwtClaim]]] =
@@ -93,8 +93,8 @@ object SsoJwtReader {
         }
 
       def findBearerAuthorization(req: Request[F]): F[Option[String]]  =
-        req.headers.collectFirst {
-          case Authorization(Authorization(Credentials.Token(Bearer, token))) => token
+        req.headers.get[Authorization].collect {
+          case Authorization(Credentials.Token(Bearer, token)) => token
         } .pure[F]
 
       def findClaim(req: Request[F]): F[Option[SsoJwtClaim]] =

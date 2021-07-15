@@ -4,7 +4,7 @@
 package lucuma.sso.client
 
 import cats.Order
-import cats.effect.Sync
+import cats.effect.Concurrent
 import cats.implicits._
 import eu.timepit.refined._
 import eu.timepit.refined.cats._
@@ -52,10 +52,10 @@ object ApiKey {
   implicit def entityEncoder[F[_]]: EntityEncoder[F, ApiKey] =
     EntityEncoder[F, String].contramap(fromString.reverseGet)
 
-  implicit def entityDecoder[F[_]: Sync]: EntityDecoder[F, ApiKey] =
-    EntityDecoder[F, String].map(fromString.getOption).flatMapR {
-      case Some(ak) => DecodeResult.success(ak)
-      case None     => DecodeResult.failure(MalformedMessageBodyFailure("Invalid API Key"))
+  implicit def entityDecoder[F[_]: Concurrent]: EntityDecoder[F, ApiKey] =
+    EntityDecoder.text[F].map(fromString.getOption).flatMapR {
+      case Some(ak) => DecodeResult.success(ak.pure[F])
+      case None     => DecodeResult.failure(Concurrent[F].pure(MalformedMessageBodyFailure("Invalid API Key")))
     }
 
   implicit val queryParamDecoder: QueryParamDecoder[ApiKey] =
