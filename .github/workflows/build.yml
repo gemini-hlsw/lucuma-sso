@@ -8,9 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v12
       - name: Cache SBT
-        uses: coursier/cache-action@v3
+        uses: coursier/cache-action@v6
       - name: Set up cert permissions (1)
         run: chmod 600 test-cert/server.key
       - name: Set up cert permissions (2)
