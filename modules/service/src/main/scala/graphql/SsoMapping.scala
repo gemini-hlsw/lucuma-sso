@@ -3,14 +3,16 @@
 
 package lucuma.sso.service.graphql
 
-import skunk._
+import skunk.Session
 import cats.effect.{ Unique => _, _ }
 import cats.syntax.all._
+import edu.gemini.grackle._
 import edu.gemini.grackle.Path._
 import edu.gemini.grackle.Predicate._
 import edu.gemini.grackle.Query._
 import edu.gemini.grackle.QueryCompiler
 import lucuma.core.model
+import lucuma.core.model.StandardRole
 import lucuma.core.model.OrcidId
 import lucuma.core.model.Partner
 import lucuma.sso.service.database.RoleType
@@ -20,6 +22,10 @@ import edu.gemini.grackle.Schema
 import scala.io.Source
 import scala.util.Using
 import lucuma.core.model.StandardUser
+import lucuma.sso.service.database.Database
+import natchez.Trace
+import lucuma.sso.client.ApiKey
+import cats.data.NonEmptyChain
 
 object SsoMapping {
 
@@ -32,18 +38,34 @@ object SsoMapping {
       } .liftTo[F]
     }
 
-  def apply[F[_]: Sync](
+  def apply[F[_]: Async: Trace](
     pool:    Resource[F, Session[F]],
     monitor: SkunkMonitor[F],
   ): F[StandardUser => SkunkMapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
 
-      new SkunkMapping[F](pool, monitor) with SsoTables[F] {
+      // Directly-computed result for `createApiKey` mutation.
+      def createApiKey(env: Cursor.Env): F[Result[String]] =
+        env.get[StandardRole.Id]("roleId") match {
+          case Some(roleId) =>
+              if ((user.role :: user.otherRoles).exists(_.id === roleId))
+                pool.map(Database.fromSession(_)).use { db =>
+                  db.createApiKey(roleId)
+                    .map(apiKey => ApiKey.fromString.reverseGet(apiKey).rightIor[NonEmptyChain[Problem]])
+                }
+              else
+                Problem(show"No such role: $roleId").leftIorNec.pure[F]
+          case None =>
+            Problem(s"Implementation error: `roleId` is not in $env").leftIorNec.pure[F]
+        }
+
+      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] {
 
         val schema: Schema = loadedSchema
 
         val ApiKeyType   = schema.ref("ApiKey")
         val QueryType    = schema.ref("Query")
+        val MutationType = schema.ref("Mutation")
         val UserType     = schema.ref("User")
         val UserIdType   = schema.ref("UserId")
         val OrcidIdType  = schema.ref("OrcidId")
@@ -59,6 +81,12 @@ object SsoMapping {
               fieldMappings = List(
                 SqlRoot("user"),
                 SqlRoot("role"),
+              )
+            ),
+            ObjectMapping(
+              tpe = MutationType,
+              fieldMappings = List(
+                ComputeRoot("createApiKey", ScalarType.StringType, createApiKey),
               )
             ),
             ObjectMapping(
@@ -96,7 +124,7 @@ object SsoMapping {
             ),
             LeafMapping[model.User.Id](UserIdType),
             LeafMapping[OrcidId](OrcidIdType),
-            LeafMapping[model.StandardRole.Id](RoleIdType),
+            LeafMapping[StandardRole.Id](RoleIdType),
             LeafMapping[RoleType](RoleTypeType),
             LeafMapping[Partner](PartnerType)
           )
@@ -107,7 +135,16 @@ object SsoMapping {
               Select("user", Nil, Unique(Filter(Eql(UniquePath(List("id")), Const(user.id)), child))).rightIor
             case Select("role", Nil, child) =>
               Select("role", Nil, Unique(Filter(Eql(UniquePath(List("id")), Const(user.role.id)), child))).rightIor
-          }
+          },
+          MutationType -> {
+            case Select("createApiKey", List(Binding("role", Value.StringValue(id))), child) =>
+              StandardRole.Id.parse(id).toRightIorNec(Problem(s"Not a valid role id: $id")).map { roleId =>
+                Environment(
+                  Cursor.Env("roleId" -> roleId),
+                  Select("createApiKey", Nil, child)
+                )
+              }
+          },
         ))
 
       }

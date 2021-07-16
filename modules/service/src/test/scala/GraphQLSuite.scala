@@ -20,13 +20,18 @@ import lucuma.sso.client.ApiKey
 import io.circe.Json
 import io.circe.literal._
 import org.http4s.circe._
+import lucuma.core.model._
 
 object GraphQLSuite extends SsoSuite with Fixture {
 
   implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
 
-  def testQueryAsBob(query: String, expected: Json) =
+
+  def queryAsBob(query: String): IO[Json] =
+    queryAsBob(_ => query)
+
+  def queryAsBob(query: StandardUser => String): IO[Json] =
     SsoSimulator[IO].use { case (_, sim, sso, reader, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
       for {
@@ -55,17 +60,23 @@ object GraphQLSuite extends SsoSuite with Fixture {
             headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), ApiKey.fromString.reverseGet(apiKey)))),
           ).withEntity(
             Json.obj(
-              "query" -> Json.fromString(query)
+              "query" -> Json.fromString(query(user))
             )
           )
         )
 
-      } yield expect(result == expected)
+      } yield result
     } .onError(e => IO(println(e)))
 
+  def expectQueryAsBob(query: String, expected: Json) =
+    queryAsBob(query).map { result =>
+      if (result != expected)
+          println(s"Result: $result\n\nExpected: $expected")
+      expect(result == expected)
+    }
 
   test("Query current role.") {
-    testQueryAsBob(
+    expectQueryAsBob(
       query = """
         query {
           role {
@@ -95,6 +106,61 @@ object GraphQLSuite extends SsoSuite with Fixture {
         }
       }"""
     )
+  }
+
+  test("Attempt to create API key with invalid role id") {
+    expectQueryAsBob(
+      query = """
+        mutation {
+          createApiKey(role: "bogus")
+        }
+      """,
+      expected = json"""{
+        "errors" : [
+          {
+            "message" : "Not a valid role id: bogus"
+          }
+        ]
+      }"""
+    )
+  }
+
+  test("Attempt to create API key with a role we don't own") {
+    expectQueryAsBob(
+      query = """
+        mutation {
+          createApiKey(role: "r-99999")
+        }
+      """,
+      expected = json"""{
+        "errors" : [
+          {
+            "message" : "No such role: r-99999"
+          }
+        ],
+        "data" : null
+      }"""
+    )
+  }
+
+  test("Create an API key") {
+    queryAsBob { user =>
+      show"""
+        mutation {
+          createApiKey(role: "${user.role.id}")
+        }
+      """
+    } .map { json =>
+      expect(
+        json.hcursor
+         .downField("data")
+         .downField("createApiKey")
+         .as[String]
+         .toOption
+         .map(ApiKey.fromString.getOption)
+         .isDefined
+      )
+    }
   }
 
 }

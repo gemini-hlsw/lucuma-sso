@@ -62,7 +62,12 @@ extension](https://devcenter.heroku.com/articles/dyno-metadata) to get the full 
 
 ### Login
 
-The user must be allowed to choose to log in with ORCID or log in as a guest.
+The user must be allowed to choose to log in with ORCID (as a standard user) or log in as a guest.
+Service users are not interactive users and cannot log in.
+
+#### Login Roles for Standard Users
+Standard users will always be logged in
+under a PI role. If the user has no such role (possible but unusual) it will be created. The user can later switch to a different role (see **Set Role** below) and this choice will be peristed in the refresh token. Associating the role with the refresh tokan allows a user to be logged in under several roles at the same time, in different browser sessions.
 
 #### Guest Login
 
