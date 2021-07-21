@@ -7,6 +7,10 @@ type Query {
   role: Role!
 }
 
+type Mutation {
+  createApiKey(role: RoleId!): String!
+}
+
 type User {
   id:           UserId!
   orcidId:      OrcidId!
