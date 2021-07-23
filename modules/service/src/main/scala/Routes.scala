@@ -72,6 +72,17 @@ object Routes {
     // GraphQL uses a local SSO client to handle API keys.
     val localClient = LocalSsoClient(jwtReader, dbPool)
 
+    // Our common GraphQL executor, used by both GET and POST.
+    def runGraphQL(user: StandardUser, query: String, op: Option[String], vs: Option[Json]): F[Json] =
+      Trace[F].span("graphql") {
+        for {
+          _    <- Trace[F].put("graphql.query" -> query)
+          _    <- op.traverse(s => Trace[F].put("graphql.operationName" -> s))
+          _    <- vs.traverse(j => Trace[F].put("graphql.variables" -> j.spaces2))
+          json <- graphQL(user).compileAndRun(query, op, vs)
+        } yield json
+      }
+
     HttpRoutes.of[F] {
 
       // If the user has a refresh token, return a new JWT. Otherwise 403.
@@ -170,11 +181,12 @@ object Routes {
       // GraphQL query is embedded in the URI query string when queried via GET
       case req @ GET -> Root / "graphql" :?  QueryMatcher(query) +& OperationNameMatcher(op) +& VariablesMatcher(vars0) =>
         localClient.collect { case u: StandardUser => u } .require(req) { user =>
+          traceUser(user) *>
           vars0.sequence.fold(
             errors => BadRequest(errors.map(_.sanitized).mkString_("", ",", "")),
             vars =>
               for {
-                result <- graphQL(user).compileAndRun(query, op, vars)
+                result <- runGraphQL(user, query, op, vars)
                 resp   <- Ok(result)
               } yield resp
             )
@@ -184,12 +196,13 @@ object Routes {
       case req @ POST -> Root / "graphql" =>
         localClient.collect { case u: StandardUser => u } .require(req) { user =>
           for {
+            _      <- traceUser(user)
             body   <- req.as[Json]
             obj    <- body.asObject.liftTo[F](InvalidMessageBodyFailure("Invalid GraphQL query"))
             query  <- obj("query").flatMap(_.asString).liftTo[F](InvalidMessageBodyFailure("Missing query field"))
             op     =  obj("operationName").flatMap(_.asString)
             vars   =  obj("variables")
-            result <- graphQL(user).compileAndRun(query, op, vars)
+            result <- runGraphQL(user, query, op, vars)
             resp   <- Ok(result)
           } yield resp
         }
