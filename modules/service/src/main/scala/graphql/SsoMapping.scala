@@ -26,6 +26,7 @@ import lucuma.sso.service.database.Database
 import natchez.Trace
 import lucuma.sso.client.ApiKey
 import cats.data.NonEmptyChain
+import eu.timepit.refined.types.numeric.PosLong
 
 object SsoMapping {
 
@@ -59,6 +60,16 @@ object SsoMapping {
             Problem(s"Implementation error: `roleId` is not in $env").leftIorNec.pure[F]
         }
 
+      def deleteApiKey(env: Cursor.Env): F[Result[Boolean]] =
+        env.get[PosLong]("id") match {
+          case Some(id) =>
+            pool.map(Database.fromSession(_)).use { db =>
+              db.deleteApiKey(id, Some(user.id)).map(_.rightIor[NonEmptyChain[Problem]])
+            }
+          case None =>
+            Problem(s"Implementation error: `id` is not in $env").leftIorNec.pure[F]
+        }
+
       new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] {
 
         val schema: Schema = loadedSchema
@@ -73,6 +84,7 @@ object SsoMapping {
         val RoleIdType   = schema.ref("RoleId")
         val RoleTypeType = schema.ref("RoleType")
         val PartnerType  = schema.ref("Partner")
+        val ApiKeyIdType  = schema.ref("ApiKeyId")
 
         val typeMappings: List[TypeMapping] =
           List(
@@ -87,6 +99,7 @@ object SsoMapping {
               tpe = MutationType,
               fieldMappings = List(
                 ComputeRoot("createApiKey", ScalarType.StringType, createApiKey),
+                ComputeRoot("deleteApiKey", ScalarType.BooleanType, deleteApiKey),
               )
             ),
             ObjectMapping(
@@ -126,7 +139,8 @@ object SsoMapping {
             LeafMapping[OrcidId](OrcidIdType),
             LeafMapping[StandardRole.Id](RoleIdType),
             LeafMapping[RoleType](RoleTypeType),
-            LeafMapping[Partner](PartnerType)
+            LeafMapping[Partner](PartnerType),
+            LeafMapping[String](ApiKeyIdType),
           )
 
         override val selectElaborator = new QueryCompiler.SelectElaborator(Map(
@@ -142,6 +156,13 @@ object SsoMapping {
                 Environment(
                   Cursor.Env("roleId" -> roleId),
                   Select("createApiKey", Nil, child)
+                )
+              }
+            case Select("deleteApiKey", List(Binding("id", Value.StringValue(hexString))), child) =>
+              lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString).toRightIorNec(Problem(s"Not a valid API key id: $hexString")).map { keyId =>
+                Environment(
+                  Cursor.Env("id" -> keyId),
+                  Select("deleteApiKey", Nil, child)
                 )
               }
           },

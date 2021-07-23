@@ -80,7 +80,7 @@ object ApiKeySuite extends SsoSuite with Fixture {
         apiKey <- db.use(_.createApiKey(user.role.id))
 
         // Delete it
-        _      <- db.use(_.deleteApiKey(apiKey.id))
+        _      <- db.use(_.deleteApiKey(apiKey.id, Some(user.id)))
 
         // Try to redeem it, should fail
         user2  <- db.use(_.findStandardUserFromApiKey(apiKey))

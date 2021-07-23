@@ -4,8 +4,10 @@
 package lucuma.sso.service.database
 
 import cats.implicits._
+import lucuma.core.util.Gid
 import lucuma.core.model._
 import skunk._
+import skunk.data.Completion
 import skunk.implicits._
 import skunk.codec.all._
 import lucuma.sso.service._
@@ -63,7 +65,12 @@ trait Database[F[_]] {
 
   def createApiKey(roleId: StandardRole.Id): F[ApiKey]
   def findStandardUserFromApiKey(apiKey: ApiKey): F[Option[StandardUser]]
-  def deleteApiKey(keyId: PosLong): F[Unit]
+
+  /**
+   * Delete the specified API key, optionally ensuring that it is owned by the specified user.
+   * Returns `true` if the API key was deleted, `false` if no such key exists.
+   */
+  def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean]
 
 }
 
@@ -82,9 +89,20 @@ object Database extends Codecs {
           s.prepare(CreateApiKey).use(_.unique(roleId))
         }
 
-      def deleteApiKey(keyId: PosLong): F[Unit] =
+      def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean] =
         Trace[F].span("deleteApiKey") {
-          s.prepare(DeleteApiKey).use(_.execute(keyId)).void
+          Trace[F].put("keyId" -> keyId.toString) *> {
+            userId match {
+              case Some(u) =>
+                Trace[F].put("userId" -> Gid[User.Id].fromString.reverseGet(u)) *>
+                s.prepare(DeleteApiKeyForUser).use(_.execute(keyId ~ u))
+              case None =>
+                s.prepare(DeleteApiKey).use(_.execute(keyId))
+            }
+          } map {
+            case Completion.Delete(1) => true
+            case _                    => false
+          }
         }
 
       def createGuestUser: F[GuestUser] =
@@ -572,6 +590,15 @@ object Database extends Codecs {
       WHERE  api_key_id = $varchar
     """
       .contramap[PosLong](_.value.toHexString)
+      .command
+
+  private val DeleteApiKeyForUser: Command[PosLong ~ User.Id] =
+    sql"""
+      DELETE FROM lucuma_api_key
+      WHERE  api_key_id = $varchar
+      AND    user_id = $user_id
+    """
+      .contramap[(PosLong ~ User.Id)] { case key ~ user => key.value.toHexString ~ user }
       .command
 
   val CanonicalizeServiceUser: Query[String, ServiceUser] =
