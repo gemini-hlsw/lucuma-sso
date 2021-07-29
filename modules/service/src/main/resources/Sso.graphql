@@ -1,7 +1,5 @@
 
 
-## Schema for standard user with minimal (PI) access.
-
 type Query {
   user: User!
   role: Role!
@@ -14,6 +12,13 @@ type Mutation {
 
   "Delete the specified API key, if owned by the current user. Returns the constant value `true`."
   deleteApiKey(id: ApiKeyId!): Boolean!
+
+}
+
+type Subscription {
+
+  "A subscription that yields revoked API key identifiers."
+  apiKeyRevocation: ApiKeyId!
 
 }
 
@@ -48,3 +53,4 @@ scalar ApiKeyId
 
 enum RoleType { PI NGO STAFF ADMIN }
 enum Partner { AR BR CA CL KR UH US }
+

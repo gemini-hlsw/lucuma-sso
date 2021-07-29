@@ -4,6 +4,7 @@
 package lucuma.sso.service.graphql
 
 import skunk.Session
+import skunk.implicits._
 import cats.effect.{ Unique => _, _ }
 import cats.syntax.all._
 import edu.gemini.grackle._
@@ -27,6 +28,7 @@ import natchez.Trace
 import lucuma.sso.client.ApiKey
 import cats.data.NonEmptyChain
 import eu.timepit.refined.types.numeric.PosLong
+import fs2.Stream
 
 object SsoMapping {
 
@@ -70,21 +72,30 @@ object SsoMapping {
             Problem(s"Implementation error: `id` is not in $env").leftIorNec.pure[F]
         }
 
-      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] {
+      def apiKeyRevocation(@annotation.unused env: Cursor.Env): Stream[F, Result[String]] =
+        Stream.resource(pool).flatMap { s =>
+          s.channel(id"lucuma_api_key_deleted")
+            .listen(1024)
+            .evalTap(n => Async[F].delay(println(n)))
+            .map(_.value.rightIor)
+        }
+
+      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] with StreamMapping[F] {
 
         val schema: Schema = loadedSchema
 
-        val ApiKeyType   = schema.ref("ApiKey")
-        val QueryType    = schema.ref("Query")
-        val MutationType = schema.ref("Mutation")
-        val UserType     = schema.ref("User")
-        val UserIdType   = schema.ref("UserId")
-        val OrcidIdType  = schema.ref("OrcidId")
-        val RoleType     = schema.ref("Role")
-        val RoleIdType   = schema.ref("RoleId")
-        val RoleTypeType = schema.ref("RoleType")
-        val PartnerType  = schema.ref("Partner")
-        val ApiKeyIdType  = schema.ref("ApiKeyId")
+        val ApiKeyIdType     = schema.ref("ApiKeyId")
+        val ApiKeyType       = schema.ref("ApiKey")
+        val MutationType     = schema.ref("Mutation")
+        val OrcidIdType      = schema.ref("OrcidId")
+        val PartnerType      = schema.ref("Partner")
+        val QueryType        = schema.ref("Query")
+        val RoleIdType       = schema.ref("RoleId")
+        val RoleType         = schema.ref("Role")
+        val RoleTypeType     = schema.ref("RoleType")
+        val SubscriptionType = schema.ref("Subscription")
+        val UserIdType       = schema.ref("UserId")
+        val UserType         = schema.ref("User")
 
         val typeMappings: List[TypeMapping] =
           List(
@@ -133,6 +144,12 @@ object SsoMapping {
                 SqlField("«unused»", ApiKey.RoleId, hidden = true),
                 SqlObject("user", Join(ApiKey.UserId, User.Id)),
                 SqlObject("role", Join(ApiKey.RoleId, Role.Id)),
+              )
+            ),
+            ObjectMapping(
+              tpe = SubscriptionType,
+              fieldMappings = List(
+                StreamRoot("apiKeyRevocation", ScalarType.StringType, apiKeyRevocation),
               )
             ),
             LeafMapping[model.User.Id](UserIdType),
