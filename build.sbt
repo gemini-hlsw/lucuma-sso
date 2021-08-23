@@ -6,7 +6,7 @@ val cirisVersion           = "2.0.1"
 val declineVersion         = "2.1.0"
 val disciplineMunitVersion = "1.0.9"
 val flywayVersion          = "7.11.4"
-val grackleVersion         = "0.1.1"
+val grackleVersion         = "0.1.1+0-13e5d4af+20210817-1128-SNAPSHOT"
 val http4sVersion          = "0.23.0-RC1"
 val jwtVersion             = "5.0.0"
 val log4catsVersion        = "2.1.1"
@@ -82,7 +82,7 @@ lazy val service = project
       "io.circe"       %% "circe-parser"        % circeVersion,
       "is.cir"         %% "ciris"               % cirisVersion,
       "org.http4s"     %% "http4s-ember-client" % http4sVersion,
-      "org.http4s"     %% "http4s-ember-server" % http4sVersion,
+      "org.http4s"     %% "http4s-blaze-server" % http4sVersion,
       "org.http4s"     %% "http4s-scala-xml"    % http4sVersion,
       "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
       "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
@@ -94,6 +94,7 @@ lazy val service = project
       "com.monovore"   %% "decline-effect"      % declineVersion,
       "com.monovore"   %% "decline"             % declineVersion,
       "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
+      "edu.gemini"     %% "lucuma-graphql-routes-grackle" % "0.0.0+280-ef57136d-SNAPSHOT",
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
     )
   )

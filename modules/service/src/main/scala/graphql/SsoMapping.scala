@@ -42,7 +42,7 @@ object SsoMapping {
   def apply[F[_]: Async: Trace](
     pool:    Resource[F, Session[F]],
     monitor: SkunkMonitor[F],
-  ): F[StandardUser => SkunkMapping[F]] =
+  ): F[StandardUser => Mapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
 
       // Directly-computed result for `createApiKey` mutation.

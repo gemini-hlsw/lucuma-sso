@@ -53,7 +53,7 @@ object GraphQLSuite extends SsoSuite with Fixture {
         )
 
         // Run a query!
-        result <- sso.expect[Json](
+        result <- sso.fetchAs[Json](
           Request[IO](
             method  = Method.POST,
             uri     = SsoRoot / "graphql",

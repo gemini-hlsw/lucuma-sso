@@ -4,41 +4,41 @@
 package lucuma.sso.service
 
 import cats._
+import cats.data.Kleisli
 import cats.effect._
 import cats.effect.std.Console
 import cats.implicits._
-import com.comcast.ip4s.{ Host, Port }
+import com.comcast.ip4s.Port
+import com.monovore.decline._
+import com.monovore.decline.effect.CommandIOApp
 import edu.gemini.grackle.skunk.SkunkMonitor
+import eu.timepit.refined.auto._
+import fs2.io.net.Network
+import lucuma.core.model.StandardUser
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
-import lucuma.sso.service.graphql.SsoMapping
+import lucuma.sso.service.graphql.GraphQLRoutes
 import lucuma.sso.service.orcid.OrcidService
-import natchez.{ EntryPoint, Trace }
-import natchez.http4s.implicits._
+import natchez.EntryPoint
+import natchez.Trace
 import natchez.honeycomb.Honeycomb
+import natchez.http4s.implicits._
 import natchez.log.Log
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
+import org.http4s.Uri.Scheme
 import org.http4s._
+import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
 import org.http4s.server.staticcontent._
-import skunk.{ Command => _, _ }
 import org.typelevel.log4cats.Logger
-import cats.data.Kleisli
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import natchez.http4s.AnsiFilterStream
-import java.io.ByteArrayOutputStream
-import java.io.OutputStreamWriter
-import java.io.PrintWriter
-import org.http4s.Uri.Scheme
-import com.monovore.decline.effect.CommandIOApp
-import com.monovore.decline._
-import eu.timepit.refined.auto._
+import skunk.{Command => _, _}
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import fs2.io.net.Network
 import scala.io.AnsiColor
 
 object Main extends CommandIOApp(
@@ -83,8 +83,8 @@ object Main extends CommandIOApp(
 
 object FMain extends AnsiColor {
 
-  val host: Host =
-    Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
+  val host: String =
+    "0.0.0.0"
 
   // TODO: put this in the config
   val MaxConnections = 10
@@ -114,27 +114,10 @@ object FMain extends AnsiColor {
     port: Port,
     app:  HttpApp[F]
   ): Resource[F, Server] =
-    EmberServerBuilder
-      .default[F]
-      .withHost(host)
+    BlazeServerBuilder[F](ExecutionContext.global)
       .withHttpApp(app)
-      .withPort(port)
-      .withErrorHandler { t =>
-        // TODO: don't show this in production
-        val baos = new ByteArrayOutputStream
-        val fs   = new AnsiFilterStream(baos)
-        val osw  = new OutputStreamWriter(fs, "UTF-8")
-        val pw   = new PrintWriter(osw)
-        t.printStackTrace(pw)
-        pw.close()
-        osw.close()
-        fs.close()
-        baos.close()
-        Response[F](
-          status = Status.InternalServerError,
-        ).withEntity(new String(baos.toByteArray, "UTF-8")).pure[F]
-      }
-      .build
+      .bindHttp(port.value, host)
+      .resource
 
   /**
    * A resource that yields a Natchez tracing entry point, either a Honeycomb endpoint if `config`
@@ -165,17 +148,19 @@ object FMain extends AnsiColor {
     for {
       pool    <- databasePoolResource[F](config.database)
       orcid   <- orcidServiceResource(config.orcid)
-      graphql <- Resource.eval(SsoMapping(pool, SkunkMonitor.noopMonitor[F]))
     } yield ServerMiddleware[F](config).apply {
+      val dbPool = pool.map(Database.fromSession(_))
+      val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su }
       Routes[F](
-        dbPool    = pool.map(Database.fromSession(_)),
+        dbPool    = dbPool,
         orcid     = orcid,
         jwtReader = config.ssoJwtReader,
         jwtWriter = config.ssoJwtWriter,
         publicUri = config.publicUri,
         cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-        graphQL   = graphql,
-      ) <+> resourceServiceBuilder[F]("/assets").toRoutes
+      ) <+>
+      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F]) <+>
+      resourceServiceBuilder[F]("/assets").toRoutes
     }
 
   /** A startup action that prints a banner. */

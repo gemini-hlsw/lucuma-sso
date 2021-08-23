@@ -5,25 +5,21 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
+import lucuma.core.model.StandardRole
+import lucuma.core.util.Gid
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.client.SsoMiddleware.traceUser
+import lucuma.sso.client._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleRequest
 import lucuma.sso.service.orcid.OrcidService
+import natchez.Trace
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
-import lucuma.sso.client.SsoJwtReader
 import org.typelevel.log4cats.Logger
+
 import scala.concurrent.duration._
-import lucuma.core.model.StandardRole
-import lucuma.core.util.Gid
-import lucuma.sso.client._
-import lucuma.sso.client.SsoMiddleware.traceUser
-import natchez.Trace
-import io.circe.Json
-import io.circe.ParsingFailure
-import org.http4s.circe._
-import edu.gemini.grackle.Mapping
-import lucuma.core.model.StandardUser
 
 object Routes {
 
@@ -40,7 +36,6 @@ object Routes {
     jwtWriter: SsoJwtWriter[F],
     cookies:   CookieService[F],
     publicUri: Uri,
-    graphQL:   StandardUser => Mapping[F],
   ): HttpRoutes[F] = {
     object FDsl extends Http4sDsl[F]
     import FDsl._
@@ -50,38 +45,11 @@ object Routes {
     val Stage2Uri: Uri =
       publicUri.copy(path = Path.unsafeFromString("/auth/v1/stage2"))
 
-    // Inexplicably this doesn't already exist elsewhere.
-    implicit val jsonQPDecoder: QueryParamDecoder[Json] =
-      QueryParamDecoder[String].emap { s =>
-        io.circe.parser.parse(s).leftMap {
-          case ParsingFailure(msg, _) => ParseFailure("Invalid variables", msg)
-        }
-      }
-
     // Some parameter matchers. The parameter names are NOT arbitrary! They are requied by ORCID.
     object OrcidCode   extends QueryParamDecoderMatcher[String]("code")
     object RedirectUri extends QueryParamDecoderMatcher[Uri]("state")
     object Key         extends QueryParamDecoderMatcher[ApiKey]("key")
     object Role        extends QueryParamDecoderMatcher[StandardRole.Id]("role")
-
-    // GraphQL matchers
-    object QueryMatcher         extends QueryParamDecoderMatcher[String]("query")
-    object OperationNameMatcher extends OptionalQueryParamDecoderMatcher[String]("operationName")
-    object VariablesMatcher     extends OptionalValidatingQueryParamDecoderMatcher[Json]("variables")
-
-    // GraphQL uses a local SSO client to handle API keys.
-    val localClient = LocalSsoClient(jwtReader, dbPool)
-
-    // Our common GraphQL executor, used by both GET and POST.
-    def runGraphQL(user: StandardUser, query: String, op: Option[String], vs: Option[Json]): F[Json] =
-      Trace[F].span("graphql") {
-        for {
-          _    <- Trace[F].put("graphql.query" -> query)
-          _    <- op.traverse(s => Trace[F].put("graphql.operationName" -> s))
-          _    <- vs.traverse(j => Trace[F].put("graphql.variables" -> j.spaces2))
-          json <- graphQL(user).compileAndRun(query, op, vs)
-        } yield json
-      }
 
     HttpRoutes.of[F] {
 
@@ -176,35 +144,6 @@ object Routes {
             cookie   <- cookies.sessionCookie(token)
             res      <- Found(Location(redir))
           } yield res.addCookie(cookie)
-        }
-
-      // GraphQL query is embedded in the URI query string when queried via GET
-      case req @ GET -> Root / "graphql" :?  QueryMatcher(query) +& OperationNameMatcher(op) +& VariablesMatcher(vars0) =>
-        localClient.collect { case u: StandardUser => u } .require(req) { user =>
-          traceUser(user) *>
-          vars0.sequence.fold(
-            errors => BadRequest(errors.map(_.sanitized).mkString_("", ",", "")),
-            vars =>
-              for {
-                result <- runGraphQL(user, query, op, vars)
-                resp   <- Ok(result)
-              } yield resp
-            )
-        }
-
-      // GraphQL query is embedded in a Json request body when queried via POST
-      case req @ POST -> Root / "graphql" =>
-        localClient.collect { case u: StandardUser => u } .require(req) { user =>
-          for {
-            _      <- traceUser(user)
-            body   <- req.as[Json]
-            obj    <- body.asObject.liftTo[F](InvalidMessageBodyFailure("Invalid GraphQL query"))
-            query  <- obj("query").flatMap(_.asString).liftTo[F](InvalidMessageBodyFailure("Missing query field"))
-            op     =  obj("operationName").flatMap(_.asString)
-            vars   =  obj("variables")
-            result <- runGraphQL(user, query, op, vars)
-            resp   <- Ok(result)
-          } yield resp
         }
 
     }
