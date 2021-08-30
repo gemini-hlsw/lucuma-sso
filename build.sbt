@@ -28,8 +28,8 @@ inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-cats"       % "0.7.5" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.5" % Test,
+    "com.disneystreaming" %% "weaver-cats"       % "0.7.6" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.6" % Test,
    ),
   testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
 ) ++ lucumaPublishSettings)
