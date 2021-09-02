@@ -2,15 +2,15 @@ import sbtcrossproject.CrossType
 
 val bcpgVersion            = "1.69"
 val circeVersion           = "0.14.1"
-val cirisVersion           = "2.0.1"
+val cirisVersion           = "2.1.1"
 val declineVersion         = "2.1.0"
 val disciplineMunitVersion = "1.0.9"
-val flywayVersion          = "7.11.4"
-val grackleVersion         = "0.1.1"
-val http4sVersion          = "0.23.0-RC1"
+val flywayVersion          = "7.14.1"
+val grackleVersion         = "0.1.10"
+val http4sVersion          = "0.23.2"
 val jwtVersion             = "5.0.0"
 val log4catsVersion        = "2.1.1"
-val lucumaCoreVersion      = "0.10.1"
+val lucumaCoreVersion      = "0.12.4"
 val munitVersion           = "0.7.29"
 val natcchezHttp4sVersion  = "0.1.3"
 val natchezVersion         = "0.1.5"
@@ -26,7 +26,7 @@ ThisBuild / evictionErrorLevel := Level.Info
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.1" cross CrossVersion.full),
   libraryDependencies ++= Seq(
     "com.disneystreaming" %% "weaver-cats"       % "0.7.6" % Test,
     "com.disneystreaming" %% "weaver-scalacheck" % "0.7.6" % Test,
