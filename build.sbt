@@ -7,13 +7,13 @@ val declineVersion         = "2.1.0"
 val disciplineMunitVersion = "1.0.9"
 val flywayVersion          = "7.11.4"
 val grackleVersion         = "0.1.1+0-13e5d4af+20210817-1128-SNAPSHOT"
-val http4sVersion          = "0.23.0-RC1"
+val http4sVersion          = "1.0-90-adf07bc-SNAPSHOT"
 val jwtVersion             = "5.0.0"
 val log4catsVersion        = "2.1.1"
 val lucumaCoreVersion      = "0.10.1"
 val munitVersion           = "0.7.27"
-val natcchezHttp4sVersion  = "0.1.2"
-val natchezVersion         = "0.1.5"
+val natcchezHttp4sVersion  = "0.1.3+0-7e44be37+20210902-1035-SNAPSHOT"
+val natchezVersion         = "0.1.5+24-b61107da+20210826-1156-SNAPSHOT"
 val postgresVersion        = "42.2.23"
 val skunkVersion           = "0.2.0"
 val slf4jVersion           = "1.7.32"
@@ -94,9 +94,9 @@ lazy val service = project
       "com.monovore"   %% "decline-effect"      % declineVersion,
       "com.monovore"   %% "decline"             % declineVersion,
       "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
-      "edu.gemini"     %% "lucuma-graphql-routes-grackle" % "0.0.0+280-ef57136d-SNAPSHOT",
+      "edu.gemini"     %% "lucuma-graphql-routes-grackle" % "0.0.0+282-54e4bb44+20210902-1331-SNAPSHOT",
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
-    )
+    ),
   )
 
 lazy val backendExample = project

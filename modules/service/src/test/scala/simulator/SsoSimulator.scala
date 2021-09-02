@@ -44,7 +44,8 @@ object SsoSimulator {
       ) <+> GraphQLRoutes(
         LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su },
         pool,
-        SkunkMonitor.noopMonitor[F]
+        SkunkMonitor.noopMonitor[F],
+        null // !!!
       ), config.ssoJwtReader, config.ssoJwtWriter)
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */

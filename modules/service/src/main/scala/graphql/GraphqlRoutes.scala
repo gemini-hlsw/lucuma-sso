@@ -17,6 +17,7 @@ import natchez.Trace
 import org.http4s._
 import org.typelevel.log4cats.Logger
 import skunk.Session
+import org.http4s.server.websocket.WebSocketBuilder
 
 object GraphQLRoutes {
 
@@ -24,12 +25,18 @@ object GraphQLRoutes {
     client:  SsoClient[F, StandardUser],
     pool:    Resource[F, Session[F]],
     monitor: SkunkMonitor[F],
+    wdb:     WebSocketBuilder[F],
   ): HttpRoutes[F] =
-    LucumaGraphQLRoutes.forService[F] { req =>
-      OptionT(client.find(req)).flatMap { su =>
-        OptionT.liftF(SsoMapping(pool, monitor).map(f => f(su)).map[GraphQLService[F]](new GrackleGraphQLService(_)))
-      }.value
-    }
+    LucumaGraphQLRoutes.forService[F](
+      req => {
+        OptionT(client.get(req)).flatMap { su =>
+          OptionT.liftF(SsoMapping(pool, monitor).map(f => f(su)).map[GraphQLService[F]](new GrackleGraphQLService(_)))
+        }.value
+      },
+      wdb
+    )
+
+
 
 }
 

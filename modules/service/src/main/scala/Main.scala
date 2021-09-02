@@ -8,7 +8,7 @@ import cats.data.Kleisli
 import cats.effect._
 import cats.effect.std.Console
 import cats.implicits._
-import com.comcast.ip4s.Port
+import com.comcast.ip4s.{ Host, Port }
 import com.monovore.decline._
 import com.monovore.decline.effect.CommandIOApp
 import edu.gemini.grackle.skunk.SkunkMonitor
@@ -28,7 +28,6 @@ import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
 import org.http4s.Uri.Scheme
 import org.http4s._
-import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.implicits._
 import org.http4s.server._
@@ -36,10 +35,10 @@ import org.http4s.server.staticcontent._
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import skunk.{Command => _, _}
-
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.io.AnsiColor
+import org.http4s.server.websocket.WebSocketBuilder
+import org.http4s.blaze.server.BlazeServerBuilder
 
 object Main extends CommandIOApp(
   name    = "lucuma-sso",
@@ -83,8 +82,8 @@ object Main extends CommandIOApp(
 
 object FMain extends AnsiColor {
 
-  val host: String =
-    "0.0.0.0"
+  val host: Host =
+    Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
 
   // TODO: put this in the config
   val MaxConnections = 10
@@ -105,19 +104,41 @@ object FMain extends AnsiColor {
       ssl      = SSL.Trusted.withFallback(true),
       max      = MaxConnections,
       strategy = Strategy.SearchPath,
-      // debug    = true
+      debug    = true,
     )
 
 
   /** A resource that yields a running HTTP server. */
   def serverResource[F[_]: Async](
     port: Port,
-    app:  HttpApp[F]
+    app:  WebSocketBuilder[F] => HttpApp[F]
   ): Resource[F, Server] =
-    BlazeServerBuilder[F](ExecutionContext.global)
-      .withHttpApp(app)
-      .bindHttp(port.value, host)
+    BlazeServerBuilder
+      .apply[F]
+      .bindHttp(port.value, "0.0.0.0")
+      .withHttpWebSocketApp(app)
       .resource
+    // EmberServerBuilder
+    //   .default[F]
+    //   .withHost(host)
+    //   .withHttpWebSocketApp(app)
+    //   .withPort(port)
+    //   .withErrorHandler { t =>
+    //     // TODO: don't show this in production
+    //     val baos = new ByteArrayOutputStream
+    //     val fs   = new AnsiFilterStream(baos)
+    //     val osw  = new OutputStreamWriter(fs, "UTF-8")
+    //     val pw   = new PrintWriter(osw)
+    //     t.printStackTrace(pw)
+    //     pw.close()
+    //     osw.close()
+    //     fs.close()
+    //     baos.close()
+    //     Response[F](
+    //       status = Status.InternalServerError,
+    //     ).withEntity(new String(baos.toByteArray, "UTF-8")).pure[F]
+    //   }
+    //   .build
 
   /**
    * A resource that yields a Natchez tracing entry point, either a Honeycomb endpoint if `config`
@@ -144,11 +165,11 @@ object FMain extends AnsiColor {
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
-  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, HttpRoutes[F]] =
+  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, WebSocketBuilder[F] => HttpRoutes[F]] =
     for {
       pool    <- databasePoolResource[F](config.database)
       orcid   <- orcidServiceResource(config.orcid)
-    } yield ServerMiddleware[F](config).apply {
+    } yield wsb => ServerMiddleware[F](config).apply {
       val dbPool = pool.map(Database.fromSession(_))
       val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su }
       Routes[F](
@@ -159,7 +180,7 @@ object FMain extends AnsiColor {
         publicUri = config.publicUri,
         cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
       ) <+>
-      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F]) <+>
+      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F], wsb) <+>
       resourceServiceBuilder[F]("/assets").toRoutes
     }
 
@@ -204,7 +225,7 @@ object FMain extends AnsiColor {
       _  <- Resource.eval(banner[F](c))
       _  <- Resource.eval(migrateDatabase[F](c.database))
       ep <- entryPointResource(c.honeycomb)
-      ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
+      ap <- ep.wsLiftR(routesResource(c)).map(_.map(_.orNotFound))
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
