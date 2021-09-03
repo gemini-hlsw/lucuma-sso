@@ -81,7 +81,7 @@ object Main extends IOApp {
     for {
       ep      <- entryPoint[F](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))
-      httpApp  = ErrorAction.httpRoutes(CORS.httpRoutes(routes), log[F]).orNotFound
+      httpApp  = ErrorAction.httpRoutes(CORS.policy(routes), log[F]).orNotFound
       server  <- serverResource(cfg.port, httpApp)
     } yield server
 
