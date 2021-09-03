@@ -12,8 +12,8 @@ import org.typelevel.ci.CIString
 
 object CorsSuite extends SsoSuite {
 
-  def routes(env: Environment, domain: Option[String] = None): HttpRoutes[IO] =
-    ServerMiddleware.cors[IO](env, domain).apply(
+  def routes(domain: String): HttpRoutes[IO] =
+    ServerMiddleware.cors[IO](domain).apply(
       Routes[IO](
         dbPool    = null,
         orcid     = null,
@@ -38,7 +38,7 @@ object CorsSuite extends SsoSuite {
   def noHeaderTest(env: Environment): Unit =
     test(s"CORS headers must not be added if no origin is provided. ($env)") {
       val req = Request[IO](uri = uri"/api/v1/whoami")
-      routes(env).orNotFound(req).map { res =>
+      routes("lucuma.xyz").orNotFound(req).map { res =>
         forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
       }
     }
@@ -46,7 +46,7 @@ object CorsSuite extends SsoSuite {
   def headerTestForArbitraryDomain(env: Environment): Unit =
     test(s"CORS headers must be added for arbitrary origin. ($env)") {
       val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://wozle.com"))
-      routes(env).orNotFound(req).map { res =>
+      routes("lucuma.xyz").orNotFound(req).map { res =>
         forEach(CorsHeaders)(s => expect(res.headers.headers.exists(_.name.toString == s)))
       }
     }
@@ -63,14 +63,14 @@ object CorsSuite extends SsoSuite {
 
   test("CORS headers must not be added if origin is mismatched. (Production)") {
     val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://wozle.com"))
-    routes(Environment.Production, Some("gemini.edu")).orNotFound(req).map { res =>
+    routes("gemini.edu").orNotFound(req).map { res =>
       forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
     }
   }
 
   test("CORS headers must be added if origin matches. (Production)") {
     val req = Request[IO](uri = uri"/api/v1/whoami").putHeaders(Header.Raw(CIString("Origin"), "https://gemini.edu"))
-    routes(Environment.Production, Some("gemini.edu")).orNotFound(req).map { res =>
+    routes("gemini.edu").orNotFound(req).map { res =>
       forEach(CorsHeaders)(s => expect(!res.headers.headers.exists(_.name.toString == s)))
     }
   }
