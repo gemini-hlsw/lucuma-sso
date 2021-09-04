@@ -26,7 +26,7 @@ ThisBuild / evictionErrorLevel := Level.Info
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
   libraryDependencies ++= Seq(
     "com.disneystreaming" %% "weaver-cats"       % "0.7.6" % Test,
     "com.disneystreaming" %% "weaver-scalacheck" % "0.7.6" % Test,
