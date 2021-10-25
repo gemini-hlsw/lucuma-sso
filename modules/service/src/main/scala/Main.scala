@@ -37,7 +37,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import skunk.{Command => _, _}
 import scala.concurrent.duration._
 import scala.io.AnsiColor
-import org.http4s.server.websocket.WebSocketBuilder
+import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.blaze.server.BlazeServerBuilder
 
 object Main extends CommandIOApp(
@@ -104,14 +104,14 @@ object FMain extends AnsiColor {
       ssl      = SSL.Trusted.withFallback(true),
       max      = MaxConnections,
       strategy = Strategy.SearchPath,
-      debug    = true,
+      // debug    = true,
     )
 
 
   /** A resource that yields a running HTTP server. */
   def serverResource[F[_]: Async](
     port: Port,
-    app:  WebSocketBuilder[F] => HttpApp[F]
+    app:  WebSocketBuilder2[F] => HttpApp[F]
   ): Resource[F, Server] =
     BlazeServerBuilder
       .apply[F]
@@ -165,7 +165,7 @@ object FMain extends AnsiColor {
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
-  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, WebSocketBuilder[F] => HttpRoutes[F]] =
+  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, WebSocketBuilder2[F] => HttpRoutes[F]] =
     for {
       pool    <- databasePoolResource[F](config.database)
       orcid   <- orcidServiceResource(config.orcid)

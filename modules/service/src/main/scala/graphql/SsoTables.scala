@@ -15,11 +15,6 @@ trait SsoTables[F[_]] extends Codecs { this: SkunkMapping[F] =>
   implicit val RoleTypeEncoder: circe.Encoder[RoleType] =
     rt => Json.fromString(rt.entryName.toUpperCase())
 
-  class TableDef(name: String) {
-    def col(colName: String, codec: Codec): ColumnRef =
-      ColumnRef(name, colName, codec)
-  }
-
   object User extends TableDef("lucuma_user") {
     val Id         = col("user_id", user_id)
     val OrcidId    = col("orcid_id", orcid_id)

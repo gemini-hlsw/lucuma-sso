@@ -22,6 +22,7 @@ import natchez.honeycomb.Honeycomb
 import natchez.http4s.NatchezMiddleware
 import org.http4s.server.middleware.ErrorAction
 import scala.annotation.unused
+import scala.concurrent.duration._
 
 object Main extends IOApp {
 
@@ -74,6 +75,12 @@ object Main extends IOApp {
   def log[F[_]: Async](@unused r: Request[F], t: Throwable): F[Unit] =
     Async[F].delay(t.printStackTrace())
 
+  def cors[F[_]: Monad](routes: HttpRoutes[F]): HttpRoutes[F] =
+    CORS.policy
+      .withAllowCredentials(true)
+      .withMaxAge(1.day)
+      .apply(routes)
+
   // Our main program as a resource.
   def runR[F[_]: Async](
     cfg: Config
@@ -81,7 +88,7 @@ object Main extends IOApp {
     for {
       ep      <- entryPoint[F](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))
-      httpApp  = ErrorAction.httpRoutes(CORS.httpRoutes(routes), log[F]).orNotFound
+      httpApp  = ErrorAction.httpRoutes(cors(routes), log[F]).orNotFound
       server  <- serverResource(cfg.port, httpApp)
     } yield server
 
