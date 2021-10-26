@@ -12,11 +12,11 @@ val jwtVersion                 = "5.0.0"
 val log4catsVersion            = "2.1.1"
 val lucumaCoreVersion          = "0.10.1"
 val lucumaGraphQLRoutesVersion = "0.1.2"
-val munitVersion               = "0.7.27"
+val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.2.0"
 val natchezVersion             = "0.1.5"
-val postgresVersion            = "42.2.23"
-val skunkVersion               = "0.2.0"
+val postgresVersion            = "42.2.24"
+val skunkVersion               = "0.2.2"
 val slf4jVersion               = "1.7.32"
 
 // If we don't do this we get a spurious warning about an unused key.
@@ -27,10 +27,10 @@ ThisBuild / evictionErrorLevel := Level.Info
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
   libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-cats"       % "0.7.4" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.4" % Test,
+    "com.disneystreaming" %% "weaver-cats"       % "0.7.6" % Test,
+    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.6" % Test,
    ),
   testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
 ) ++ lucumaPublishSettings)
