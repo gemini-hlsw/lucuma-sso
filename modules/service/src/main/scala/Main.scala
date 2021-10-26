@@ -31,7 +31,6 @@ import org.http4s._
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.implicits._
 import org.http4s.server._
-import org.http4s.server.staticcontent._
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import skunk.{Command => _, _}
@@ -180,8 +179,7 @@ object FMain extends AnsiColor {
         publicUri = config.publicUri,
         cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
       ) <+>
-      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F], wsb) <+>
-      resourceServiceBuilder[F]("/assets").toRoutes
+      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F], wsb)
     }
 
   /** A startup action that prints a banner. */
