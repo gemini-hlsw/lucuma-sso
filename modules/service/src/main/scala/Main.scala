@@ -38,6 +38,7 @@ import scala.concurrent.duration._
 import scala.io.AnsiColor
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.blaze.server.BlazeServerBuilder
+import lucuma.sso.service.graphql.SsoMapping
 
 object Main extends CommandIOApp(
   name    = "lucuma-sso",
@@ -166,8 +167,9 @@ object FMain extends AnsiColor {
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
   def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, WebSocketBuilder2[F] => HttpRoutes[F]] =
     for {
-      pool    <- databasePoolResource[F](config.database)
-      orcid   <- orcidServiceResource(config.orcid)
+      pool     <- databasePoolResource[F](config.database)
+      channels <- SsoMapping.Channels(pool)
+      orcid    <- orcidServiceResource(config.orcid)
     } yield wsb => ServerMiddleware[F](config).apply {
       val dbPool = pool.map(Database.fromSession(_))
       val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su }
@@ -179,7 +181,7 @@ object FMain extends AnsiColor {
         publicUri = config.publicUri,
         cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
       ) <+>
-      GraphQLRoutes(localClient, pool, SkunkMonitor.noopMonitor[F], wsb)
+      GraphQLRoutes(localClient, pool, channels, SkunkMonitor.noopMonitor[F], wsb)
     }
 
   /** A startup action that prints a banner. */

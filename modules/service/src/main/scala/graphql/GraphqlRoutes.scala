@@ -21,17 +21,18 @@ import cats.data.OptionT
 object GraphQLRoutes {
 
   def apply[F[_]: Async: Trace: Logger](
-    client:  SsoClient[F, StandardUser],
-    pool:    Resource[F, Session[F]],
-    monitor: SkunkMonitor[F],
-    wsb:     WebSocketBuilder2[F],
+    client:   SsoClient[F, StandardUser],
+    pool:     Resource[F, Session[F]],
+    channels: SsoMapping.Channels[F],
+    monitor:  SkunkMonitor[F],
+    wsb:      WebSocketBuilder2[F],
   ): HttpRoutes[F] =
     LucumaGraphQLRoutes.forService[F](
       oa => {
         for {
           auth <- OptionT.fromOption[F](oa)
           user <- OptionT(client.get(auth))
-          map  <- OptionT.liftF(SsoMapping(pool, monitor).map(_(user)))
+          map  <- OptionT.liftF(SsoMapping(channels, pool, monitor).map(_(user)))
         } yield new GrackleGraphQLService(map)
       } .widen.value,
       wsb
