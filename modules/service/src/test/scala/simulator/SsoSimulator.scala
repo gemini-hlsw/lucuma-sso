@@ -24,6 +24,7 @@ import edu.gemini.grackle.skunk.SkunkMonitor
 import lucuma.sso.service.graphql.GraphQLRoutes
 import cats.syntax.all._
 import lucuma.core.model.StandardUser
+import lucuma.sso.service.graphql.SsoMapping
 
 object SsoSimulator {
 
@@ -33,6 +34,7 @@ object SsoSimulator {
       sim     <- Resource.eval(OrcidSimulator[F])
       config   = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
       pool    <- FMain.databasePoolResource[F](config.database)
+      chans   <- SsoMapping.Channels(pool)
       dbPool   = pool.map(Database.fromSession(_))
     } yield (dbPool, sim, Routes[F](
         dbPool    = dbPool,
@@ -44,6 +46,7 @@ object SsoSimulator {
       ) <+> GraphQLRoutes(
         LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su },
         pool,
+        chans,
         SkunkMonitor.noopMonitor[F],
         null // !!!
       ), config.ssoJwtReader, config.ssoJwtWriter)
