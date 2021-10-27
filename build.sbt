@@ -1,22 +1,23 @@
 import sbtcrossproject.CrossType
 
-val bcpgVersion            = "1.69"
-val circeVersion           = "0.14.1"
-val cirisVersion           = "2.0.1"
-val declineVersion         = "2.1.0"
-val disciplineMunitVersion = "1.0.9"
-val flywayVersion          = "7.11.4"
-val grackleVersion         = "0.1.1"
-val http4sVersion          = "0.23.0-RC1"
-val jwtVersion             = "5.0.0"
-val log4catsVersion        = "2.1.1"
-val lucumaCoreVersion      = "0.10.1"
-val munitVersion           = "0.7.29"
-val natcchezHttp4sVersion  = "0.1.3"
-val natchezVersion         = "0.1.5"
-val postgresVersion        = "42.2.24"
-val skunkVersion           = "0.2.2"
-val slf4jVersion           = "1.7.32"
+val bcpgVersion                = "1.69"
+val circeVersion               = "0.14.1"
+val cirisVersion               = "2.0.1"
+val declineVersion             = "2.1.0"
+val disciplineMunitVersion     = "1.0.9"
+val flywayVersion              = "7.11.4"
+val grackleVersion             = "0.1.14"
+val http4sVersion              = "0.23.5"
+val jwtVersion                 = "5.0.0"
+val log4catsVersion            = "2.1.1"
+val lucumaCoreVersion          = "0.10.1"
+val lucumaGraphQLRoutesVersion = "0.1.2"
+val munitVersion               = "0.7.29"
+val natcchezHttp4sVersion      = "0.2.0"
+val natchezVersion             = "0.1.5"
+val postgresVersion            = "42.2.24"
+val skunkVersion               = "0.2.2"
+val slf4jVersion               = "1.7.32"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
@@ -82,7 +83,7 @@ lazy val service = project
       "io.circe"       %% "circe-parser"        % circeVersion,
       "is.cir"         %% "ciris"               % cirisVersion,
       "org.http4s"     %% "http4s-ember-client" % http4sVersion,
-      "org.http4s"     %% "http4s-ember-server" % http4sVersion,
+      "org.http4s"     %% "http4s-blaze-server" % http4sVersion,
       "org.http4s"     %% "http4s-scala-xml"    % http4sVersion,
       "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
       "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
@@ -94,8 +95,9 @@ lazy val service = project
       "com.monovore"   %% "decline-effect"      % declineVersion,
       "com.monovore"   %% "decline"             % declineVersion,
       "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
+      "edu.gemini"     %% "lucuma-graphql-routes-grackle" % lucumaGraphQLRoutesVersion,
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
-    )
+    ),
   )
 
 lazy val backendExample = project

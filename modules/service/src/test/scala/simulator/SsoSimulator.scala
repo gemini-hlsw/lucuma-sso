@@ -20,8 +20,11 @@ import lucuma.sso.service.config.OrcidConfig
 import lucuma.sso.service.config.Environment
 import org.http4s.client.middleware.CookieJar
 import org.http4s.Uri
-import lucuma.sso.service.graphql.SsoMapping
 import edu.gemini.grackle.skunk.SkunkMonitor
+import lucuma.sso.service.graphql.GraphQLRoutes
+import cats.syntax.all._
+import lucuma.core.model.StandardUser
+import lucuma.sso.service.graphql.SsoMapping
 
 object SsoSimulator {
 
@@ -31,8 +34,8 @@ object SsoSimulator {
       sim     <- Resource.eval(OrcidSimulator[F])
       config   = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
       pool    <- FMain.databasePoolResource[F](config.database)
+      chans   <- SsoMapping.Channels(pool)
       dbPool   = pool.map(Database.fromSession(_))
-      graphQL <- Resource.eval(SsoMapping(pool, SkunkMonitor.noopMonitor))
     } yield (dbPool, sim, Routes[F](
         dbPool    = dbPool,
         orcid     = OrcidService(OrcidConfig.orcidHost(Environment.Production), "unused", "unused", sim.client),
@@ -40,7 +43,12 @@ object SsoSimulator {
         jwtWriter = config.ssoJwtWriter,
         publicUri = config.publicUri,
         cookies   = CookieService[F]("lucuma.xyz", true),
-        graphQL   = graphQL,
+      ) <+> GraphQLRoutes(
+        LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su },
+        pool,
+        chans,
+        SkunkMonitor.noopMonitor[F],
+        null // !!!
       ), config.ssoJwtReader, config.ssoJwtWriter)
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */

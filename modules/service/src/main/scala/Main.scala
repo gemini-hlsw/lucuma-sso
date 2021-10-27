@@ -4,42 +4,41 @@
 package lucuma.sso.service
 
 import cats._
+import cats.data.Kleisli
 import cats.effect._
 import cats.effect.std.Console
 import cats.implicits._
 import com.comcast.ip4s.{ Host, Port }
+import com.monovore.decline._
+import com.monovore.decline.effect.CommandIOApp
 import edu.gemini.grackle.skunk.SkunkMonitor
+import eu.timepit.refined.auto._
+import fs2.io.net.Network
+import lucuma.core.model.StandardUser
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database
-import lucuma.sso.service.graphql.SsoMapping
+import lucuma.sso.service.graphql.GraphQLRoutes
 import lucuma.sso.service.orcid.OrcidService
-import natchez.{ EntryPoint, Trace }
-import natchez.http4s.implicits._
+import natchez.EntryPoint
+import natchez.Trace
 import natchez.honeycomb.Honeycomb
+import natchez.http4s.implicits._
 import natchez.log.Log
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
+import org.http4s.Uri.Scheme
 import org.http4s._
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.server._
-import org.http4s.server.staticcontent._
-import skunk.{ Command => _, _ }
 import org.typelevel.log4cats.Logger
-import cats.data.Kleisli
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import natchez.http4s.AnsiFilterStream
-import java.io.ByteArrayOutputStream
-import java.io.OutputStreamWriter
-import java.io.PrintWriter
-import org.http4s.Uri.Scheme
-import com.monovore.decline.effect.CommandIOApp
-import com.monovore.decline._
-import eu.timepit.refined.auto._
+import skunk.{Command => _, _}
 import scala.concurrent.duration._
-import fs2.io.net.Network
 import scala.io.AnsiColor
+import org.http4s.server.websocket.WebSocketBuilder2
+import org.http4s.blaze.server.BlazeServerBuilder
+import lucuma.sso.service.graphql.SsoMapping
 
 object Main extends CommandIOApp(
   name    = "lucuma-sso",
@@ -105,36 +104,41 @@ object FMain extends AnsiColor {
       ssl      = SSL.Trusted.withFallback(true),
       max      = MaxConnections,
       strategy = Strategy.SearchPath,
-      // debug    = true
+      // debug    = true,
     )
 
 
   /** A resource that yields a running HTTP server. */
   def serverResource[F[_]: Async](
     port: Port,
-    app:  HttpApp[F]
+    app:  WebSocketBuilder2[F] => HttpApp[F]
   ): Resource[F, Server] =
-    EmberServerBuilder
-      .default[F]
-      .withHost(host)
-      .withHttpApp(app)
-      .withPort(port)
-      .withErrorHandler { t =>
-        // TODO: don't show this in production
-        val baos = new ByteArrayOutputStream
-        val fs   = new AnsiFilterStream(baos)
-        val osw  = new OutputStreamWriter(fs, "UTF-8")
-        val pw   = new PrintWriter(osw)
-        t.printStackTrace(pw)
-        pw.close()
-        osw.close()
-        fs.close()
-        baos.close()
-        Response[F](
-          status = Status.InternalServerError,
-        ).withEntity(new String(baos.toByteArray, "UTF-8")).pure[F]
-      }
-      .build
+    BlazeServerBuilder
+      .apply[F]
+      .bindHttp(port.value, "0.0.0.0")
+      .withHttpWebSocketApp(app)
+      .resource
+    // EmberServerBuilder
+    //   .default[F]
+    //   .withHost(host)
+    //   .withHttpWebSocketApp(app)
+    //   .withPort(port)
+    //   .withErrorHandler { t =>
+    //     // TODO: don't show this in production
+    //     val baos = new ByteArrayOutputStream
+    //     val fs   = new AnsiFilterStream(baos)
+    //     val osw  = new OutputStreamWriter(fs, "UTF-8")
+    //     val pw   = new PrintWriter(osw)
+    //     t.printStackTrace(pw)
+    //     pw.close()
+    //     osw.close()
+    //     fs.close()
+    //     baos.close()
+    //     Response[F](
+    //       status = Status.InternalServerError,
+    //     ).withEntity(new String(baos.toByteArray, "UTF-8")).pure[F]
+    //   }
+    //   .build
 
   /**
    * A resource that yields a Natchez tracing entry point, either a Honeycomb endpoint if `config`
@@ -161,21 +165,23 @@ object FMain extends AnsiColor {
     }
 
   /** A resource that yields our HttpRoutes, wrapped in accessory middleware. */
-  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, HttpRoutes[F]] =
+  def routesResource[F[_]: Async: Trace: Logger: Network: Console](config: Config): Resource[F, WebSocketBuilder2[F] => HttpRoutes[F]] =
     for {
-      pool    <- databasePoolResource[F](config.database)
-      orcid   <- orcidServiceResource(config.orcid)
-      graphql <- Resource.eval(SsoMapping(pool, SkunkMonitor.noopMonitor[F]))
-    } yield ServerMiddleware[F](config).apply {
+      pool     <- databasePoolResource[F](config.database)
+      channels <- SsoMapping.Channels(pool)
+      orcid    <- orcidServiceResource(config.orcid)
+    } yield wsb => ServerMiddleware[F](config).apply {
+      val dbPool = pool.map(Database.fromSession(_))
+      val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su }
       Routes[F](
-        dbPool    = pool.map(Database.fromSession(_)),
+        dbPool    = dbPool,
         orcid     = orcid,
         jwtReader = config.ssoJwtReader,
         jwtWriter = config.ssoJwtWriter,
         publicUri = config.publicUri,
         cookies   = CookieService[F](config.cookieDomain, config.scheme === Scheme.https),
-        graphQL   = graphql,
-      ) <+> resourceServiceBuilder[F]("/assets").toRoutes
+      ) <+>
+      GraphQLRoutes(localClient, pool, channels, SkunkMonitor.noopMonitor[F], wsb)
     }
 
   /** A startup action that prints a banner. */
@@ -219,7 +225,7 @@ object FMain extends AnsiColor {
       _  <- Resource.eval(banner[F](c))
       _  <- Resource.eval(migrateDatabase[F](c.database))
       ep <- entryPointResource(c.honeycomb)
-      ap <- ep.liftR(routesResource(c)).map(_.orNotFound)
+      ap <- ep.wsLiftR(routesResource(c)).map(_.map(_.orNotFound))
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 

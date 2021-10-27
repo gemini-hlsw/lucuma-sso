@@ -4,6 +4,7 @@
 package lucuma.sso.service.graphql
 
 import skunk.Session
+import skunk.implicits._
 import cats.effect.{ Unique => _, _ }
 import cats.syntax.all._
 import edu.gemini.grackle._
@@ -27,8 +28,23 @@ import natchez.Trace
 import lucuma.sso.client.ApiKey
 import cats.data.NonEmptyChain
 import eu.timepit.refined.types.numeric.PosLong
+import fs2.Stream
+import _root_.skunk.Channel
 
 object SsoMapping {
+
+  case class Channels[F[_]](
+    apiKeyDeletions: Channel[F, String, String]
+  )
+
+  object Channels {
+    def apply[F[_]](pool: Resource[F, Session[F]]): Resource[F, Channels[F]] =
+      pool.map { s =>
+        Channels(
+          apiKeyDeletions = s.channel(id"lucuma_api_key_deleted")
+        )
+      }
+  }
 
   // In principle this is a pure operation because resources are constant values, but the potential
   // for error in dev is high and it's nice to handle failures in `F`.
@@ -40,9 +56,10 @@ object SsoMapping {
     }
 
   def apply[F[_]: Async: Trace](
-    pool:    Resource[F, Session[F]],
-    monitor: SkunkMonitor[F],
-  ): F[StandardUser => SkunkMapping[F]] =
+    channels: Channels[F],
+    pool:     Resource[F, Session[F]],
+    monitor:  SkunkMonitor[F],
+  ): F[StandardUser => Mapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
 
       // Directly-computed result for `createApiKey` mutation.
@@ -70,21 +87,29 @@ object SsoMapping {
             Problem(s"Implementation error: `id` is not in $env").leftIorNec.pure[F]
         }
 
-      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] {
+      val apiKeyRevocation: Stream[F, Result[String]] =
+        channels
+          .apiKeyDeletions
+          .listen(1024)
+          .evalTap(n => Async[F].delay(println(n)))
+          .map(_.value.rightIor)
+
+      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] with StreamMapping[F] {
 
         val schema: Schema = loadedSchema
 
-        val ApiKeyType   = schema.ref("ApiKey")
-        val QueryType    = schema.ref("Query")
-        val MutationType = schema.ref("Mutation")
-        val UserType     = schema.ref("User")
-        val UserIdType   = schema.ref("UserId")
-        val OrcidIdType  = schema.ref("OrcidId")
-        val RoleType     = schema.ref("Role")
-        val RoleIdType   = schema.ref("RoleId")
-        val RoleTypeType = schema.ref("RoleType")
-        val PartnerType  = schema.ref("Partner")
-        val ApiKeyIdType  = schema.ref("ApiKeyId")
+        val ApiKeyIdType     = schema.ref("ApiKeyId")
+        val ApiKeyType       = schema.ref("ApiKey")
+        val MutationType     = schema.ref("Mutation")
+        val OrcidIdType      = schema.ref("OrcidId")
+        val PartnerType      = schema.ref("Partner")
+        val QueryType        = schema.ref("Query")
+        val RoleIdType       = schema.ref("RoleId")
+        val RoleType         = schema.ref("Role")
+        val RoleTypeType     = schema.ref("RoleType")
+        val SubscriptionType = schema.ref("Subscription")
+        val UserIdType       = schema.ref("UserId")
+        val UserType         = schema.ref("User")
 
         val typeMappings: List[TypeMapping] =
           List(
@@ -133,6 +158,12 @@ object SsoMapping {
                 SqlField("«unused»", ApiKey.RoleId, hidden = true),
                 SqlObject("user", Join(ApiKey.UserId, User.Id)),
                 SqlObject("role", Join(ApiKey.RoleId, Role.Id)),
+              )
+            ),
+            ObjectMapping(
+              tpe = SubscriptionType,
+              fieldMappings = List(
+                StreamRoot("apiKeyRevocation", ScalarType.StringType, _ => apiKeyRevocation),
               )
             ),
             LeafMapping[model.User.Id](UserIdType),
