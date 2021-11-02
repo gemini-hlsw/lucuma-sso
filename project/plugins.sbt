@@ -4,5 +4,5 @@ addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.8.1")
 addSbtPlugin("edu.gemini"         % "sbt-lucuma"               % "0.3.9")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.1.0")
 addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "1.6.0")
-addSbtPlugin("org.scoverage"      % "sbt-scoverage"            % "1.8.2")
+addSbtPlugin("org.scoverage"      % "sbt-scoverage"            % "1.9.2")
 
