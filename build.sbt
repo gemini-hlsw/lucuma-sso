@@ -1,6 +1,6 @@
 import sbtcrossproject.CrossType
 
-val bcpgVersion                = "1.69"
+val bcpgVersion                = "1.70"
 val circeVersion               = "0.14.1"
 val cirisVersion               = "2.0.1"
 val declineVersion             = "2.1.0"
