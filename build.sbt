@@ -2,7 +2,7 @@ import sbtcrossproject.CrossType
 
 val bcpgVersion                = "1.70"
 val circeVersion               = "0.14.1"
-val cirisVersion               = "2.3.1"
+val cirisVersion               = "2.3.2"
 val declineVersion             = "2.1.0"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "7.11.4"
