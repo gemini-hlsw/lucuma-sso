@@ -70,9 +70,6 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "org.typelevel" %%% "discipline-munit"    % disciplineMunitVersion  % Test,
     )
   )
-  .jsSettings(
-    coverageEnabled := false,
-  )
 
 lazy val backendClient = project
   .in(file("modules/backend-client"))
