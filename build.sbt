@@ -21,6 +21,7 @@ val slf4jVersion               = "1.7.35"
 Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion := "0.0"
+ThisBuild / scalaVersion := "2.13.7" // pinned for coverage
 ThisBuild / tlCiReleaseBranches := Seq("master")
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
