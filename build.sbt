@@ -1,5 +1,3 @@
-import sbtcrossproject.CrossType
-
 val bcpgVersion                = "1.70"
 val circeVersion               = "0.14.1"
 val cirisVersion               = "2.3.2"
@@ -22,20 +20,35 @@ val slf4jVersion               = "1.7.35"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
+ThisBuild / tlBaseVersion := "0.0"
+ThisBuild / tlCiReleaseBranches := Seq("master")
+ThisBuild / githubWorkflowBuildPreamble ++= Seq(
+  WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
+  WorkflowStep.Run(List("sudo chown 999 test-cert/server.key"), name = Some("Set up cert permissions (2)")),
+  WorkflowStep.Run(List("docker-compose up -d"), name = Some("Start up Postgres instances")),
+)
+ThisBuild / githubWorkflowBuild ~= { steps =>
+  steps.map {
+    case step @ WorkflowStep.Sbt(List("test"), _, _, _, _, _) =>
+      step.copy(commands = List("coverage", "test", "coverageReport", "coverageAggregate"))
+    case step => step
+  }
+}
+ThisBuild / githubWorkflowBuildPostamble ++= Seq(
+  WorkflowStep.Run(List("docker-compose down"), name = Some("Shut down Postgres instances")),
+  WorkflowStep.Run(List("bash <(curl -s https://codecov.io/bash)"), name = Some("Upload code coverage data")),
+)
+
 // Temporarily due to Scala-XML 2.0.0
 ThisBuild / evictionErrorLevel := Level.Info
 
-inThisBuild(Seq(
-  homepage := Some(url("https://github.com/gemini-hlsw/lucuma-sso")),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.13.2" cross CrossVersion.full),
-  libraryDependencies ++= Seq(
-    "com.disneystreaming" %% "weaver-cats"       % "0.7.9" % Test,
-    "com.disneystreaming" %% "weaver-scalacheck" % "0.7.9" % Test,
-   ),
-  testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
-) ++ lucumaPublishSettings)
+ThisBuild / libraryDependencies ++= Seq(
+  "com.disneystreaming" %% "weaver-cats"       % "0.7.9" % Test,
+  "com.disneystreaming" %% "weaver-scalacheck" % "0.7.9" % Test,
+)
+ThisBuild / testFrameworks += new TestFramework("weaver.framework.CatsEffect")
 
-publish / skip := true
+enablePlugins(NoPublishPlugin)
 
 lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
@@ -49,9 +62,10 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "org.scalameta" %%% "munit"               % munitVersion            % Test,
       "org.scalameta" %%% "munit-scalacheck"    % munitVersion            % Test,
       "org.typelevel" %%% "discipline-munit"    % disciplineMunitVersion  % Test,
-    ),
-    testFrameworks += new TestFramework("munit.Framework"),
-    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+    )
+  )
+  .jsSettings(
+    coverageEnabled := false,
   )
 
 lazy val backendClient = project
@@ -75,9 +89,8 @@ lazy val backendClient = project
 lazy val service = project
   .in(file("modules/service"))
   .dependsOn(backendClient)
-  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(NoPublishPlugin, JavaAppPackaging)
   .settings(
-    publish / skip := true,
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
       "io.circe"       %% "circe-parser"        % circeVersion,
@@ -102,9 +115,9 @@ lazy val service = project
 
 lazy val backendExample = project
   .in(file("modules/backend-example"))
+  .enablePlugins(NoPublishPlugin)
   .dependsOn(backendClient)
   .settings(
-    publish / skip := true,
     name := "lucuma-sso-backend-example",
     libraryDependencies ++= Seq(
       "is.cir"       %% "ciris"               % cirisVersion,
