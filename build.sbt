@@ -23,22 +23,12 @@ Global / excludeLintKeys += scalaJSLinkerConfig
 ThisBuild / tlBaseVersion := "0.1"
 ThisBuild / scalaVersion := "2.13.7" // pinned for coverage
 ThisBuild / tlCiReleaseBranches := Seq("master")
-ThisBuild / githubWorkflowBuildPreamble ++= Seq(
-  WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
-  WorkflowStep.Run(List("sudo chown 999 test-cert/server.key"), name = Some("Set up cert permissions (2)")),
-  WorkflowStep.Run(List("docker-compose up -d"), name = Some("Start up Postgres instances")),
-)
-ThisBuild / githubWorkflowBuild ~= { steps =>
-  steps.map {
-    case step @ WorkflowStep.Sbt(List("test"), _, _, _, _, _) =>
-      step.copy(commands = List("coverage", "test", "coverageReport", "coverageAggregate"))
-    case step => step
-  }
+ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
+  Seq(
+    WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
+    WorkflowStep.Run(List("sudo chown 999 test-cert/server.key"), name = Some("Set up cert permissions (2)")),
+  ) ++ steps
 }
-ThisBuild / githubWorkflowBuildPostamble ++= Seq(
-  WorkflowStep.Run(List("docker-compose down"), name = Some("Shut down Postgres instances")),
-  WorkflowStep.Run(List("bash <(curl -s https://codecov.io/bash)"), name = Some("Upload code coverage data")),
-)
 
 // Temporarily due to Scala-XML 2.0.0
 ThisBuild / evictionErrorLevel := Level.Info
