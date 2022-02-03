@@ -49,7 +49,12 @@ ThisBuild / libraryDependencies ++= Seq(
 )
 ThisBuild / testFrameworks += new TestFramework("weaver.framework.CatsEffect")
 
-enablePlugins(NoPublishPlugin)
+lazy val root = tlCrossRootProject.aggregate(
+  frontendClient,
+  backendClient,
+  service,
+  backendExample,
+)
 
 lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Full)
