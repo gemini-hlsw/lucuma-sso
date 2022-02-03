@@ -20,7 +20,7 @@ val slf4jVersion               = "1.7.35"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
-ThisBuild / tlBaseVersion := "0.0"
+ThisBuild / tlBaseVersion := "0.1"
 ThisBuild / scalaVersion := "2.13.7" // pinned for coverage
 ThisBuild / tlCiReleaseBranches := Seq("master")
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
