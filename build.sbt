@@ -1,21 +1,22 @@
 val bcpgVersion                = "1.70"
 val circeVersion               = "0.14.1"
 val cirisVersion               = "2.3.2"
-val declineVersion             = "2.1.0"
+val declineVersion             = "2.2.0"
 val disciplineMunitVersion     = "1.0.9"
-val flywayVersion              = "7.11.4"
-val grackleVersion             = "0.1.14"
-val http4sVersion              = "0.23.7"
+val flywayVersion              = "8.5.1"
+val grackleVersion             = "0.1.16"
+val http4sVersion              = "0.23.10"
 val jwtVersion                 = "5.0.0"
 val log4catsVersion            = "2.1.1"
 val lucumaCoreVersion          = "0.25.0"
-val lucumaGraphQLRoutesVersion = "0.1.2"
+val lucumaGraphQLRoutesVersion = "0.3.0"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
-val natchezVersion             = "0.1.5"
+val natchezVersion             = "0.1.6"
 val postgresVersion            = "42.3.3"
-val skunkVersion               = "0.2.3"
+val skunkVersion               = "0.3.1"
 val slf4jVersion               = "1.7.36"
+val weaverVersion              = "0.7.10"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
@@ -34,8 +35,8 @@ ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
 ThisBuild / evictionErrorLevel := Level.Info
 
 ThisBuild / libraryDependencies ++= Seq(
-  "com.disneystreaming" %% "weaver-cats"       % "0.7.9" % Test,
-  "com.disneystreaming" %% "weaver-scalacheck" % "0.7.9" % Test,
+  "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
+  "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
 )
 ThisBuild / testFrameworks += new TestFramework("weaver.framework.CatsEffect")
 
