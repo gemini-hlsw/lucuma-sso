@@ -30,6 +30,7 @@ ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
     WorkflowStep.Run(List("sudo chown 999 test-cert/server.key"), name = Some("Set up cert permissions (2)")),
   ) ++ steps
 }
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 
 // Temporarily due to Scala-XML 2.0.0
 ThisBuild / evictionErrorLevel := Level.Info
