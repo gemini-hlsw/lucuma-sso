@@ -22,7 +22,7 @@ import io.circe.literal._
 import org.http4s.circe._
 import lucuma.core.model._
 
-object GraphQLSuite extends SsoSuite with Fixture {
+object GraphQLSuite extends SsoSuite with Fixture with FlakyTests {
 
   implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
@@ -76,91 +76,99 @@ object GraphQLSuite extends SsoSuite with Fixture {
     }
 
   test("Query current role.") {
-    expectQueryAsBob(
-      query = """
-        query {
-          role {
-            type
-            partner
-            user {
-              givenName
-              familyName
-              creditName
-              email
+    flaky()(
+      expectQueryAsBob(
+        query = """
+          query {
+            role {
+              type
+              partner
+              user {
+                givenName
+                familyName
+                creditName
+                email
+              }
             }
           }
-        }
-      """,
-      expected = json"""{
-        "data" : {
-          "role" : {
-            "type" : "PI",
-            "partner" : null,
-            "user" : {
-              "givenName" : "Bob",
-              "familyName" : "Dobbs",
-              "creditName" : null,
-              "email" : "bob@dobbs.com"
+        """,
+        expected = json"""{
+          "data" : {
+            "role" : {
+              "type" : "PI",
+              "partner" : null,
+              "user" : {
+                "givenName" : "Bob",
+                "familyName" : "Dobbs",
+                "creditName" : null,
+                "email" : "bob@dobbs.com"
+              }
             }
           }
-        }
-      }"""
+        }"""
+      )
     )
   }
 
   test("Attempt to create API key with invalid role id") {
-    expectQueryAsBob(
-      query = """
-        mutation {
-          createApiKey(role: "bogus")
-        }
-      """,
-      expected = json"""{
-        "errors" : [
-          {
-            "message" : "Not a valid role id: bogus"
+    flaky()(
+      expectQueryAsBob(
+        query = """
+          mutation {
+            createApiKey(role: "bogus")
           }
-        ]
-      }"""
+        """,
+        expected = json"""{
+          "errors" : [
+            {
+              "message" : "Not a valid role id: bogus"
+            }
+          ]
+        }"""
+      )
     )
   }
 
   test("Attempt to create API key with a role we don't own") {
-    expectQueryAsBob(
-      query = """
-        mutation {
-          createApiKey(role: "r-99999")
-        }
-      """,
-      expected = json"""{
-        "errors" : [
-          {
-            "message" : "No such role: r-99999"
+    flaky()(
+      expectQueryAsBob(
+        query = """
+          mutation {
+            createApiKey(role: "r-99999")
           }
-        ],
-        "data" : null
-      }"""
+        """,
+        expected = json"""{
+          "errors" : [
+            {
+              "message" : "No such role: r-99999"
+            }
+          ],
+          "data" : null
+        }"""
+      )
     )
   }
 
   test("Create an API key") {
-    queryAsBob { user =>
-      show"""
-        mutation {
-          createApiKey(role: "${user.role.id}")
-        }
-      """
-    } .map { json =>
-      expect(
-        json.hcursor
-         .downField("data")
-         .downField("createApiKey")
-         .as[String]
-         .toOption
-         .map(ApiKey.fromString.getOption)
-         .isDefined
-      )
-    }
+    flaky()(
+      queryAsBob { user =>
+        show"""
+          mutation {
+            createApiKey(role: "${user.role.id}")
+          }
+        """
+      } .map { json =>
+        expect(
+          json.hcursor
+          .downField("data")
+          .downField("createApiKey")
+          .as[String]
+          .toOption
+          .map(ApiKey.fromString.getOption)
+          .isDefined
+        )
+      }
+    )
   }
 
 }
