@@ -1,4 +1,4 @@
-val bcpgVersion                = "1.70"
+val bcpgVersion                = "1.71"
 val circeVersion               = "0.14.2"
 val cirisVersion               = "2.3.2"
 val declineVersion             = "2.2.0"
@@ -70,7 +70,7 @@ lazy val backendClient = project
     libraryDependencies ++= Seq(
       "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
       "com.pauldijou"     %% "jwt-core"       % jwtVersion,
-      "org.bouncycastle"  %  "bcpg-jdk15on"   % bcpgVersion,
+      "org.bouncycastle"  %  "bcpg-jdk18on"   % bcpgVersion,
       "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-dsl"     % http4sVersion,
