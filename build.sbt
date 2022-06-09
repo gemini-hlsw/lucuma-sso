@@ -1,14 +1,14 @@
-val bcpgVersion                = "1.70"
+val bcpgVersion                = "1.71"
 val circeVersion               = "0.14.2"
 val cirisVersion               = "2.3.2"
 val declineVersion             = "2.2.0"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "8.5.11"
 val grackleVersion             = "0.1.16"
-val http4sVersion              = "0.23.10"
+val http4sVersion              = "0.23.11"
 val jwtVersion                 = "5.0.0"
 val log4catsVersion            = "2.3.1"
-val lucumaCoreVersion          = "0.39.0"
+val lucumaCoreVersion          = "0.40.0"
 val lucumaGraphQLRoutesVersion = "0.3.2"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
@@ -70,7 +70,7 @@ lazy val backendClient = project
     libraryDependencies ++= Seq(
       "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
       "com.pauldijou"     %% "jwt-core"       % jwtVersion,
-      "org.bouncycastle"  %  "bcpg-jdk15on"   % bcpgVersion,
+      "org.bouncycastle"  %  "bcpg-jdk18on"   % bcpgVersion,
       "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-dsl"     % http4sVersion,
