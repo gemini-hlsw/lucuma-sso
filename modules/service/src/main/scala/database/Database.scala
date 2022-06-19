@@ -328,7 +328,7 @@ object Database extends Codecs {
           }
         }
 
-    def findStandardUserFromApiKey(
+      def findStandardUserFromApiKey(
         apiKey: ApiKey
       ): F[Option[StandardUser]] =
         Trace[F].span("findStandardUserFromApiKey") {

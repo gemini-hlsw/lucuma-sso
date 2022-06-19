@@ -4,7 +4,7 @@
 package lucuma.sso.service
 
 import cats.Applicative
-import cats.MonadError
+import cats.MonadThrow
 import cats.data.OptionT
 import cats.syntax.all._
 import org.http4s.HttpDate
@@ -46,7 +46,7 @@ object CookieReader {
 
   private[service] val CookieName = "lucuma-refresh-token"
 
-  def apply[F[_]: MonadError[*[_], Throwable]]: CookieReader[F] =
+  def apply[F[_]: MonadThrow]: CookieReader[F] =
     new CookieReader[F] {
 
       def findCookie(req: Request[F]): F[Option[RequestCookie]] =
@@ -123,7 +123,7 @@ trait CookieService[F[_]]
      with CookieWriter[F]
 
 object CookieService {
-    def apply[F[_]: MonadError[*[_], Throwable]](
+    def apply[F[_]: MonadThrow](
       domain: String,
       secure: Boolean,
     ): CookieService[F] =
