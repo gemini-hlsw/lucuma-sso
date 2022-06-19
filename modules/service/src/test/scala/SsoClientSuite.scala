@@ -6,8 +6,10 @@ package lucuma.sso.service
 import cats.effect._
 import cats.syntax.all._
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.User
+import lucuma.refined._
 import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
@@ -25,6 +27,8 @@ import org.typelevel.ci.CIString
 import scala.concurrent.duration._
 
 object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
+  inline given Predicate[Long, Positive] with
+    transparent inline def isValid(inline t: Long): Boolean = t > 0
 
   def routes(ssoClient: SsoClient[IO, UserInfo]): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
@@ -45,7 +49,7 @@ object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
         for {
 
           // Create our SSO Client
-          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L), "bogus")) // need to call as a service user
+          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L.refined), "bogus")) // need to call as a service user
           ssoClient  <- SsoClient.initial[IO](
             httpClient = sso,
             ssoRoot = uri"http://ignored",
@@ -82,7 +86,7 @@ object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
         for {
 
           // Create our SSO Client
-          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L), "bogus")) // need to call as a service user
+          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L.refined), "bogus")) // need to call as a service user
           ssoClient  <- SsoClient.initial[IO](
             httpClient  = sso,
             ssoRoot     = SsoRoot,
@@ -120,7 +124,7 @@ object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
         for {
 
           // Create our SSO Client
-          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L), "bogus")) // need to call as a service user
+          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L.refined), "bogus")) // need to call as a service user
           ssoClient  <- SsoClient.initial[IO](
             httpClient  = sso,
             ssoRoot     = SsoRoot,

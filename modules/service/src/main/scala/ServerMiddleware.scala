@@ -23,7 +23,7 @@ object ServerMiddleware {
   type Middleware[F[_]] = Endo[HttpRoutes[F]]
 
   /** A middleware that adds distributed tracing. */
-  def natchez[F[_]: MonadCancel[*[_], Throwable]: Trace]: Middleware[F] =
+  def natchez[F[_]: Trace](implicit ev: MonadCancel[F, Throwable]): Middleware[F] =
     NatchezMiddleware.server[F]
 
   /** A middleware that logs request and response. Headers are redacted in staging/production. */
@@ -42,7 +42,7 @@ object ServerMiddleware {
     )
 
   /** A middleware that reports errors during requets processing. */
-  def errorReporting[F[_]: MonadError[*[_], Throwable]: Logger]: Middleware[F] = routes =>
+  def errorReporting[F[_]: MonadThrow: Logger]: Middleware[F] = routes =>
     ErrorAction.httpRoutes.log(
       httpRoutes              = routes,
       messageFailureLogAction = Logger[F].error(_)(_),

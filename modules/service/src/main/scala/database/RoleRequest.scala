@@ -10,8 +10,8 @@ sealed abstract class RoleRequest(
   val partnerOption: Option[Partner] = None
 )
 object RoleRequest {
-  final case object Pi extends RoleRequest(RoleType.Pi)
-  final case class  Ngo(partner: Partner) extends RoleRequest(RoleType.Ngo, Some(partner))
-  final case object Staff extends RoleRequest(RoleType.Staff)
-  final case object Admin extends RoleRequest(RoleType.Admin)
+  case object Pi extends RoleRequest(RoleType.Pi)
+  case class  Ngo(partner: Partner) extends RoleRequest(RoleType.Ngo, Some(partner))
+  case object Staff extends RoleRequest(RoleType.Staff)
+  case object Admin extends RoleRequest(RoleType.Admin)
 }

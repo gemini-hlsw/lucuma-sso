@@ -9,10 +9,10 @@ import ciris._
 sealed trait Environment
 object Environment {
 
-  final case object Local      extends Environment
-  final case object Review     extends Environment
-  final case object Staging    extends Environment
-  final case object Production extends Environment
+  case object Local      extends Environment
+  case object Review     extends Environment
+  case object Staging    extends Environment
+  case object Production extends Environment
 
   implicit val ConfigDecoderEnvironment: ConfigDecoder[String, Environment] =
     ConfigDecoder[String].map(_.toLowerCase).collect("Environment") {
