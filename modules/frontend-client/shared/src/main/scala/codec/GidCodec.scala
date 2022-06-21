@@ -3,7 +3,8 @@
 
 package lucuma.sso.client.codec
 
-import io.circe.{ Encoder, Decoder }
+import io.circe.Decoder
+import io.circe.Encoder
 import lucuma.core.util.Gid
 
 trait GidCodec {

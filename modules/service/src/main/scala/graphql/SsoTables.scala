@@ -4,11 +4,11 @@
 package lucuma.sso.service.graphql
 
 import edu.gemini.grackle.skunk.SkunkMapping
-import lucuma.sso.service.database.Codecs
-import skunk.codec.all._
-import lucuma.sso.service.database.RoleType
 import io.circe
 import io.circe.Json
+import lucuma.sso.service.database.Codecs
+import lucuma.sso.service.database.RoleType
+import skunk.codec.all._
 
 trait SsoTables[F[_]] extends Codecs { this: SkunkMapping[F] =>
 

@@ -7,19 +7,20 @@ import cats.effect._
 import cats.syntax.all._
 import ciris._
 import com.comcast.ip4s.Port
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.client.util.JwtDecoder
+import lucuma.sso.service.SsoJwtWriter
+import lucuma.sso.service.config.Environment.Local
+import lucuma.sso.service.util.JwtEncoder
+import org.http4s.Uri
+import org.http4s.Uri.Authority
+import org.http4s.Uri.RegName
+
+import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.KeyPairGenerator
 import java.security.SecureRandom
-import lucuma.sso.client.SsoJwtReader
-import lucuma.sso.service.SsoJwtWriter
-import lucuma.sso.client.util.JwtDecoder
-import lucuma.sso.service.util.JwtEncoder
 import scala.concurrent.duration._
-import org.http4s.Uri
-import org.http4s.Uri.RegName
-import lucuma.sso.service.config.Environment.Local
-import org.http4s.Uri.Authority
 
 final case class Config(
   environment:  Environment,

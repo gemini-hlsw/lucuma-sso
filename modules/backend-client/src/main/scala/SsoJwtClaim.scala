@@ -3,10 +3,11 @@
 
 package lucuma.sso.client
 
-import pdi.jwt.JwtClaim
+import io.circe.parser.parse
 import lucuma.core.model.User
 import lucuma.sso.client.codec.user._
-import io.circe.parser.parse
+import pdi.jwt.JwtClaim
+
 import java.time.Instant
 
 final case class SsoJwtClaim(jwtClaim: JwtClaim) {

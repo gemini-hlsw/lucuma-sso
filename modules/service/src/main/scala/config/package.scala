@@ -5,16 +5,18 @@ package lucuma.sso.service
 
 import cats.implicits._
 import ciris._
-import java.net.URI
-import java.security.{ PrivateKey, PublicKey }
-import lucuma.sso.service.util.GpgPrivateKeyReader
-import lucuma.sso.client.util.GpgPublicKeyReader
-import java.net.URISyntaxException
-import java.util.UUID
-import java.time.LocalDateTime
-import java.time.format.DateTimeParseException
-import java.time.format.DateTimeFormatter
 import com.comcast.ip4s.Port
+import lucuma.sso.client.util.GpgPublicKeyReader
+import lucuma.sso.service.util.GpgPrivateKeyReader
+
+import java.net.URI
+import java.net.URISyntaxException
+import java.security.PrivateKey
+import java.security.PublicKey
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.UUID
 
 package object config {
 

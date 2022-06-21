@@ -3,17 +3,17 @@ val circeVersion               = "0.14.2"
 val cirisVersion               = "2.3.2"
 val declineVersion             = "2.2.0"
 val disciplineMunitVersion     = "1.0.9"
-val flywayVersion              = "8.5.11"
-val grackleVersion             = "0.1.16"
+val flywayVersion              = "8.5.13"
+val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
-val jwtVersion                 = "5.0.0"
-val log4catsVersion            = "2.3.1"
-val lucumaCoreVersion          = "0.40.0"
-val lucumaGraphQLRoutesVersion = "0.3.2"
+val jwtVersion                 = "9.0.5"
+val log4catsVersion            = "2.3.2"
+val lucumaCoreVersion          = "0.42.0"
+val lucumaGraphQLRoutesVersion = "0.3.4"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
 val natchezVersion             = "0.1.6"
-val postgresVersion            = "42.3.6"
+val postgresVersion            = "42.4.0"
 val skunkVersion               = "0.3.1"
 val slf4jVersion               = "1.7.36"
 val weaverVersion              = "0.7.12"
@@ -68,15 +68,14 @@ lazy val backendClient = project
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
-      "com.pauldijou"     %% "jwt-core"       % jwtVersion,
-      "org.bouncycastle"  %  "bcpg-jdk18on"   % bcpgVersion,
-      "org.http4s"        %% "http4s-circe"   % http4sVersion,
-      "org.http4s"        %% "http4s-circe"   % http4sVersion,
-      "org.http4s"        %% "http4s-dsl"     % http4sVersion,
-      "org.http4s"        %% "http4s-client"  % http4sVersion,
-      "org.typelevel"     %% "log4cats-slf4j" % log4catsVersion,
-      "org.tpolecat"      %% "natchez-http4s" % natcchezHttp4sVersion,
+      "com.github.jwt-scala" %% "jwt-core"       % jwtVersion,
+      "com.github.jwt-scala" %% "jwt-circe"      % jwtVersion,
+      "org.bouncycastle"     %  "bcpg-jdk18on"   % bcpgVersion,
+      "org.http4s"           %% "http4s-circe"   % http4sVersion,
+      "org.http4s"           %% "http4s-dsl"     % http4sVersion,
+      "org.http4s"           %% "http4s-client"  % http4sVersion,
+      "org.typelevel"        %% "log4cats-slf4j" % log4catsVersion,
+      "org.tpolecat"         %% "natchez-http4s" % natcchezHttp4sVersion,
     ),
   )
 

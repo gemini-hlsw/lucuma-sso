@@ -3,14 +3,18 @@
 
 package lucuma.sso.service
 
-import cats.data.OptionT
-import cats.MonadError
-import cats.syntax.all._
-import org.http4s.{ Request, Response, ResponseCookie, SameSite }
-import org.http4s.RequestCookie
-import java.util.UUID
 import cats.Applicative
+import cats.MonadError
+import cats.data.OptionT
+import cats.syntax.all._
 import org.http4s.HttpDate
+import org.http4s.Request
+import org.http4s.RequestCookie
+import org.http4s.Response
+import org.http4s.ResponseCookie
+import org.http4s.SameSite
+
+import java.util.UUID
 
 trait CookieReader[F[_]] {
 

@@ -5,23 +5,23 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import lucuma.sso.service.simulator.SsoSimulator
-import org.http4s.headers.Location
-import org.http4s.Request
-import org.http4s.Method
-import org.http4s.headers.Authorization
-import org.typelevel.ci.CIString
-import org.http4s.Credentials
-import org.http4s.Headers
-import lucuma.core.util.Gid
-import org.http4s.QueryParamEncoder
-import lucuma.core.model.StandardRole
 import eu.timepit.refined.auto._
-import org.http4s.Status
+import lucuma.core.model.ServiceUser
+import lucuma.core.model.StandardRole
+import lucuma.core.model.User
+import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoJwtClaim
-import lucuma.core.model.ServiceUser
-import lucuma.core.model.User
+import lucuma.sso.service.simulator.SsoSimulator
+import org.http4s.Credentials
+import org.http4s.Headers
+import org.http4s.Method
+import org.http4s.QueryParamEncoder
+import org.http4s.Request
+import org.http4s.Status
+import org.http4s.headers.Authorization
+import org.http4s.headers.Location
+import org.typelevel.ci.CIString
 
 object ApiKeySuite extends SsoSuite with Fixture with FlakyTests {
 

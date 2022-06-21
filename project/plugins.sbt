@@ -1,6 +1,4 @@
-resolvers += Resolver.sonatypeRepo("snapshots")
-addSbtPlugin("edu.gemini" % "sbt-lucuma-lib" % "0.6.1")
-
+addSbtPlugin("edu.gemini" % "sbt-lucuma-lib" % "0.8.4")
 addSbtPlugin("com.timushev.sbt"   % "sbt-updates"              % "0.6.3")
-addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.8.1")
+addSbtPlugin("com.github.sbt"   % "sbt-native-packager"      % "1.9.9")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage"            % "1.9.3")

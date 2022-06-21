@@ -5,22 +5,24 @@ package lucuma.sso.example
 
 import cats._
 import cats.effect._
-import com.comcast.ip4s.{ Host, Port }
+import com.comcast.ip4s.Host
+import com.comcast.ip4s.Port
 import lucuma.core.model.User
+import lucuma.sso.client.SsoClient
+import lucuma.sso.client.SsoMiddleware
+import natchez.EntryPoint
+import natchez.Trace
+import natchez.honeycomb.Honeycomb
+import natchez.http4s.NatchezMiddleware
+import natchez.http4s.implicits._
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
-import org.http4s.server.middleware.CORS
 import org.http4s.server.Server
-import lucuma.sso.client.SsoClient
-import natchez.Trace
-import lucuma.sso.client.SsoMiddleware
-import natchez.EntryPoint
-import natchez.http4s.implicits._
-import natchez.honeycomb.Honeycomb
-import natchez.http4s.NatchezMiddleware
+import org.http4s.server.middleware.CORS
 import org.http4s.server.middleware.ErrorAction
+
 import scala.annotation.unused
 import scala.concurrent.duration._
 

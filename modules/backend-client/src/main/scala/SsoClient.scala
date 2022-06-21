@@ -3,19 +3,22 @@
 
 package lucuma.sso.client
 
-import cats.data.OptionT
-import cats.effect.{ Concurrent, Ref, Clock }
 import cats.Monad
+import cats.data.OptionT
+import cats.effect.Clock
+import cats.effect.Concurrent
+import cats.effect.Ref
 import cats.syntax.all._
 import lucuma.core.model.User
+import org.http4s.Credentials.Token
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Authorization
 import org.typelevel.ci.CIString
+
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration._
-import org.http4s.Credentials.Token
 
 /** An SSO client that extracts user information of type `A` from API keys and JWTs. */
 trait SsoClient[F[_], A] {

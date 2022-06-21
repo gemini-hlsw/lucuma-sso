@@ -6,16 +6,17 @@ package lucuma.sso.service
 import cats.data._
 import cats.effect._
 import cats.syntax.all._
+import lucuma.core.model.StandardUser
+import lucuma.core.model.User
+import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.AbstractSsoClient
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.service.database.Database
+import org.http4s.Credentials.Token
 import org.http4s._
 import org.http4s.headers.Authorization
-import org.http4s.Credentials.Token
 import org.typelevel.ci.CIString
-import lucuma.sso.client.SsoJwtReader
-import lucuma.sso.client.ApiKey
-import lucuma.core.model.{ User, StandardUser }
-import lucuma.sso.service.database.Database
 
 /**
  * Constructor for an SsoClient that runs locally, which we need for endpoints that are going to be

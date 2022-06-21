@@ -5,25 +5,27 @@ package lucuma.sso.client.util
 
 import cats._
 import cats.implicits._
-import java.security.PublicKey
-import pdi.jwt.{ Jwt, JwtClaim }
-import scala.util.Success
-import scala.util.Failure
-import pdi.jwt.exceptions.JwtException
-import pdi.jwt.exceptions.JwtLengthException
-import pdi.jwt.exceptions.JwtValidationException
-import pdi.jwt.exceptions.JwtSignatureFormatException
-import pdi.jwt.exceptions.JwtEmptySignatureException
-import pdi.jwt.exceptions.JwtNonEmptySignatureException
+import pdi.jwt.Jwt
+import pdi.jwt.JwtClaim
 import pdi.jwt.exceptions.JwtEmptyAlgorithmException
-import pdi.jwt.exceptions.JwtNonEmptyAlgorithmException
+import pdi.jwt.exceptions.JwtEmptySignatureException
+import pdi.jwt.exceptions.JwtException
 import pdi.jwt.exceptions.JwtExpirationException
-import pdi.jwt.exceptions.JwtNotBeforeException
-import pdi.jwt.exceptions.JwtNonSupportedAlgorithm
-import pdi.jwt.exceptions.JwtNonSupportedCurve
+import pdi.jwt.exceptions.JwtLengthException
+import pdi.jwt.exceptions.JwtNonEmptyAlgorithmException
+import pdi.jwt.exceptions.JwtNonEmptySignatureException
+import pdi.jwt.exceptions.JwtNonNumberException
 import pdi.jwt.exceptions.JwtNonStringException
 import pdi.jwt.exceptions.JwtNonStringSetOrStringException
-import pdi.jwt.exceptions.JwtNonNumberException
+import pdi.jwt.exceptions.JwtNonSupportedAlgorithm
+import pdi.jwt.exceptions.JwtNonSupportedCurve
+import pdi.jwt.exceptions.JwtNotBeforeException
+import pdi.jwt.exceptions.JwtSignatureFormatException
+import pdi.jwt.exceptions.JwtValidationException
+
+import java.security.PublicKey
+import scala.util.Failure
+import scala.util.Success
 
 /** Service for a JWT client that needs to verify tokens. */
 trait JwtDecoder[F[_]] { outer =>

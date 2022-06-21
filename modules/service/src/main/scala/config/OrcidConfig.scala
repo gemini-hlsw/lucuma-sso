@@ -3,13 +3,13 @@
 
 package lucuma.sso.service.config
 
-import ciris._
 import cats.implicits._
-import org.http4s.Uri.Host
+import ciris._
 import lucuma.sso.service.config.Environment.Local
+import lucuma.sso.service.config.Environment.Production
 import lucuma.sso.service.config.Environment.Review
 import lucuma.sso.service.config.Environment.Staging
-import lucuma.sso.service.config.Environment.Production
+import org.http4s.Uri.Host
 import org.http4s.Uri.RegName
 
 final case class OrcidConfig(

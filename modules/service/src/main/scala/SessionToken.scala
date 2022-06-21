@@ -4,6 +4,7 @@
 package lucuma.sso.service
 
 import cats.Eq
+
 import java.util.UUID
 
 final case class SessionToken(value: UUID)

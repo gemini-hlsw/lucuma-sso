@@ -5,8 +5,8 @@ package orcid
 
 package lucuma.sso.service.orcid
 
-import io.circe.Decoder
 import cats.effect.Concurrent
+import io.circe.Decoder
 import org.http4s.EntityDecoder
 import org.http4s.circe._
 
