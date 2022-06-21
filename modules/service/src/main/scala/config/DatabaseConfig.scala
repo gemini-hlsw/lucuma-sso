@@ -3,9 +3,10 @@
 
 package lucuma.sso.service.config
 
-import java.net.URI
-import ciris._
 import cats.Show
+import ciris._
+
+import java.net.URI
 
 case class DatabaseConfig(
   host: String,

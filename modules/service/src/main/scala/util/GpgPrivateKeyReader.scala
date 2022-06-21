@@ -3,11 +3,12 @@
 
 package lucuma.sso.service.util
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.openpgp._
+import org.bouncycastle.openpgp.operator.jcajce._
+
 import java.io.ByteArrayInputStream
 import java.security.PrivateKey
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.openpgp.operator.jcajce._
-import org.bouncycastle.openpgp._
 import scala.util.control.NonFatal
 
 /**

@@ -5,10 +5,11 @@ package lucuma.sso.service.config
 
 import cats.implicits._
 import ciris._
-import java.util.UUID
-import java.time.LocalDateTime
-import lucuma.sso.service.config.HerokuConfig.Review
 import lucuma.sso.service.config.HerokuConfig.Default
+import lucuma.sso.service.config.HerokuConfig.Review
+
+import java.time.LocalDateTime
+import java.util.UUID
 
 sealed trait HerokuConfig {
 

@@ -5,19 +5,20 @@ package lucuma.sso.example
 
 import cats.effect._
 import cats.syntax.all._
+import ciris._
 import com.comcast.ip4s.Port
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.client.util.GpgPublicKeyReader
 import lucuma.sso.client.util.JwtDecoder
-import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.Uri
-import org.http4s.client.Client
-import ciris._
-import java.security.PublicKey
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
+import org.http4s.Uri
+import org.http4s.client.Client
+import org.http4s.ember.client.EmberClientBuilder
+
+import java.security.PublicKey
 
 case class Config(
   port:         Port,      // Our port, nothing fancy.

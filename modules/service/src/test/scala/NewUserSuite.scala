@@ -5,10 +5,10 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
+import lucuma.core.model.Access
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s._
 import org.http4s.headers.Location
-import lucuma.core.model.Access
 
 object NewUserSuite extends SsoSuite with Fixture with FlakyTests {
 

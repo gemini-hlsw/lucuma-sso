@@ -3,8 +3,10 @@
 
 package lucuma.sso.client.codec
 
-import io.circe.{ Encoder, Decoder, Json }
+import io.circe.Decoder
 import io.circe.DecodingFailure
+import io.circe.Encoder
+import io.circe.Json
 import io.circe.syntax._
 import lucuma.core.model._
 

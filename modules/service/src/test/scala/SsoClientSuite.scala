@@ -3,26 +3,26 @@
 
 package lucuma.sso.service
 
-import lucuma.sso.client.SsoClient
-import lucuma.sso.client.SsoClient.UserInfo
-import org.http4s.client.Client
-import org.http4s.HttpRoutes
-
 import cats.effect._
 import cats.syntax.all._
-import org.http4s.dsl.io._
-import org.http4s.implicits._
-import lucuma.sso.service.simulator.SsoSimulator
-import org.http4s.headers._
-import org.http4s._
+import eu.timepit.refined.auto._
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.User
-import eu.timepit.refined.auto._
-import scala.concurrent.duration._
+import lucuma.sso.client.ApiKey
+import lucuma.sso.client.SsoClient
+import lucuma.sso.client.SsoClient.UserInfo
+import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.Credentials
 import org.http4s.Headers
+import org.http4s.HttpRoutes
+import org.http4s._
+import org.http4s.client.Client
+import org.http4s.dsl.io._
+import org.http4s.headers._
+import org.http4s.implicits._
 import org.typelevel.ci.CIString
-import lucuma.sso.client.ApiKey
+
+import scala.concurrent.duration._
 
 object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
 

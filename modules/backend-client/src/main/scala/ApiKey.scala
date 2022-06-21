@@ -9,11 +9,15 @@ import cats.implicits._
 import eu.timepit.refined.cats._
 import eu.timepit.refined.types.numeric.PosLong
 import monocle.Prism
-import org.http4s.{ DecodeResult, EntityDecoder, EntityEncoder, MalformedMessageBodyFailure }
+import org.http4s.DecodeResult
+import org.http4s.EntityDecoder
+import org.http4s.EntityEncoder
+import org.http4s.MalformedMessageBodyFailure
 import org.http4s.ParseFailure
 import org.http4s.QueryParamDecoder
-import scala.util.matching.Regex
 import org.http4s.QueryParamEncoder
+
+import scala.util.matching.Regex
 
 /**
  * An API key consists of an id (a positive Long) and a cleartext body (a 96-char lowecase hex

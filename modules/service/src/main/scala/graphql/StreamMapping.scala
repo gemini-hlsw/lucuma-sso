@@ -8,9 +8,10 @@ import edu.gemini.grackle.Query
 import edu.gemini.grackle.Result
 import edu.gemini.grackle.Type
 import edu.gemini.grackle.circe.CirceMapping
-import io.circe.{ Encoder, Json }
-import org.tpolecat.sourcepos.SourcePos
 import fs2.Stream
+import io.circe.Encoder
+import io.circe.Json
+import org.tpolecat.sourcepos.SourcePos
 
 trait StreamMapping[F[_]] { this: CirceMapping[F] =>
 

@@ -3,11 +3,11 @@
 
 package lucuma.sso.service.config
 
-import weaver._
 import cats.effect.IO
-import cats.effect.std.Semaphore
 import cats.effect.Resource
+import cats.effect.std.Semaphore
 import cats.implicits._
+import weaver._
 
 object HerokuConfigSuite extends IOSuite {
 

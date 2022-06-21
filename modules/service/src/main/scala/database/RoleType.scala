@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.database
 
-import enumeratum._
 import enumeratum.EnumEntry.Lowercase
+import enumeratum._
 
 // lucuma_role_type
 sealed trait RoleType extends EnumEntry with Lowercase

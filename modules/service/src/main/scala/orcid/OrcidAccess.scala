@@ -3,17 +3,18 @@
 
 package lucuma.sso.service.orcid
 
-import lucuma.core.model.OrcidId
-import io.circe.Decoder
-import io.circe.syntax._
-import java.time.Duration
-import java.util.UUID
-import org.http4s.EntityDecoder
-import org.http4s.circe._
 import cats.effect.Concurrent
+import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.Json
+import io.circe.syntax._
+import lucuma.core.model.OrcidId
+import org.http4s.EntityDecoder
 import org.http4s.EntityEncoder
+import org.http4s.circe._
+
+import java.time.Duration
+import java.util.UUID
 
 final case class OrcidAccess(
   accessToken:  UUID,

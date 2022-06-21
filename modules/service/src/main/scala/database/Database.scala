@@ -3,22 +3,22 @@
 
 package lucuma.sso.service.database
 
+import cats.data.OptionT
+import cats.effect._
 import cats.implicits._
-import lucuma.core.util.Gid
+import eu.timepit.refined.types.numeric.PosLong
 import lucuma.core.model._
-import skunk._
-import skunk.data.Completion
-import skunk.implicits._
-import skunk.codec.all._
+import lucuma.core.util.Gid
+import lucuma.sso.client.ApiKey
 import lucuma.sso.service._
 import lucuma.sso.service.orcid.OrcidAccess
 import lucuma.sso.service.orcid.OrcidPerson
-import cats.data.OptionT
-import skunk.data.Completion.Delete
-import cats.effect._
-import eu.timepit.refined.types.numeric.PosLong
-import lucuma.sso.client.ApiKey
 import natchez.Trace
+import skunk._
+import skunk.codec.all._
+import skunk.data.Completion
+import skunk.data.Completion.Delete
+import skunk.implicits._
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
 trait Database[F[_]] {

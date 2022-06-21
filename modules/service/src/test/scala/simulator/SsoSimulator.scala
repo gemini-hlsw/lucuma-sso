@@ -6,25 +6,25 @@ package simulator
 
 import cats.effect._
 import cats.effect.std.Console
-import org.http4s.HttpRoutes
-import org.http4s.implicits._
-import org.http4s.client.Client
-import org.http4s.server.Router
-import lucuma.sso.service.orcid.OrcidService
-import lucuma.sso.service.config.Config
-import natchez.Trace.Implicits.noop
-import lucuma.sso.service.database.Database
-import lucuma.sso.client.SsoJwtReader
-import org.typelevel.log4cats.Logger
-import lucuma.sso.service.config.OrcidConfig
-import lucuma.sso.service.config.Environment
-import org.http4s.client.middleware.CookieJar
-import org.http4s.Uri
-import edu.gemini.grackle.skunk.SkunkMonitor
-import lucuma.sso.service.graphql.GraphQLRoutes
 import cats.syntax.all._
+import edu.gemini.grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
+import lucuma.sso.client.SsoJwtReader
+import lucuma.sso.service.config.Config
+import lucuma.sso.service.config.Environment
+import lucuma.sso.service.config.OrcidConfig
+import lucuma.sso.service.database.Database
+import lucuma.sso.service.graphql.GraphQLRoutes
 import lucuma.sso.service.graphql.SsoMapping
+import lucuma.sso.service.orcid.OrcidService
+import natchez.Trace.Implicits.noop
+import org.http4s.HttpRoutes
+import org.http4s.Uri
+import org.http4s.client.Client
+import org.http4s.client.middleware.CookieJar
+import org.http4s.implicits._
+import org.http4s.server.Router
+import org.typelevel.log4cats.Logger
 
 object SsoSimulator {
 
