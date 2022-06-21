@@ -8,10 +8,10 @@ val grackleVersion             = "0.1.16"
 val http4sVersion              = "0.23.11"
 val jwtVersion                 = "5.0.0"
 val log4catsVersion            = "2.3.2"
-val lucumaCoreVersion          = "0.40.0"
+val lucumaCoreVersion          = "0.42.0"
 val lucumaGraphQLRoutesVersion = "0.3.2"
 val munitVersion               = "0.7.29"
-val natcchezHttp4sVersion      = "0.3.2"
+val natcchezHttp4sVersion      = "0.3.4"
 val natchezVersion             = "0.1.6"
 val postgresVersion            = "42.4.0"
 val skunkVersion               = "0.3.1"
@@ -71,7 +71,6 @@ lazy val backendClient = project
       "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
       "com.pauldijou"     %% "jwt-core"       % jwtVersion,
       "org.bouncycastle"  %  "bcpg-jdk18on"   % bcpgVersion,
-      "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-circe"   % http4sVersion,
       "org.http4s"        %% "http4s-dsl"     % http4sVersion,
       "org.http4s"        %% "http4s-client"  % http4sVersion,
