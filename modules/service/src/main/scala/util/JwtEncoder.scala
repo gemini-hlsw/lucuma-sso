@@ -5,9 +5,12 @@ package lucuma.sso.service.util
 
 import cats.ApplicativeError
 import cats.implicits._
-import java.security.PrivateKey
-import pdi.jwt.{ Jwt, JwtAlgorithm, JwtClaim }
+import pdi.jwt.Jwt
+import pdi.jwt.JwtAlgorithm
+import pdi.jwt.JwtClaim
 import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
+
+import java.security.PrivateKey
 import scala.util.control.NonFatal
 
 /** Service for a JWT server that needs to issue tokens. */

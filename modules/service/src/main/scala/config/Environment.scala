@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.config
 
-import ciris._
 import cats.implicits._
+import ciris._
 
 sealed trait Environment
 object Environment {

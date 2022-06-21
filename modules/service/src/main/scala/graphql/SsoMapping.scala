@@ -3,33 +3,34 @@
 
 package lucuma.sso.service.graphql
 
-import skunk.Session
-import skunk.implicits._
-import cats.effect.{ Unique => _, _ }
+import _root_.skunk.Channel
+import _root_.skunk.Session
+import _root_.skunk.implicits._
+import cats.data.NonEmptyChain
+import cats.effect.{Unique => _, _}
 import cats.syntax.all._
-import edu.gemini.grackle._
 import edu.gemini.grackle.Path._
 import edu.gemini.grackle.Predicate._
 import edu.gemini.grackle.Query._
 import edu.gemini.grackle.QueryCompiler
-import lucuma.core.model
-import lucuma.core.model.StandardRole
-import lucuma.core.model.OrcidId
-import lucuma.core.model.Partner
-import lucuma.sso.service.database.RoleType
-import edu.gemini.grackle.skunk.SkunkMonitor
-import edu.gemini.grackle.skunk.SkunkMapping
 import edu.gemini.grackle.Schema
-import scala.io.Source
-import scala.util.Using
-import lucuma.core.model.StandardUser
-import lucuma.sso.service.database.Database
-import natchez.Trace
-import lucuma.sso.client.ApiKey
-import cats.data.NonEmptyChain
+import edu.gemini.grackle._
+import edu.gemini.grackle.skunk.SkunkMapping
+import edu.gemini.grackle.skunk.SkunkMonitor
 import eu.timepit.refined.types.numeric.PosLong
 import fs2.Stream
-import _root_.skunk.Channel
+import lucuma.core.model
+import lucuma.core.model.OrcidId
+import lucuma.core.model.Partner
+import lucuma.core.model.StandardRole
+import lucuma.core.model.StandardUser
+import lucuma.sso.client.ApiKey
+import lucuma.sso.service.database.Database
+import lucuma.sso.service.database.RoleType
+import natchez.Trace
+
+import scala.io.Source
+import scala.util.Using
 
 object SsoMapping {
 

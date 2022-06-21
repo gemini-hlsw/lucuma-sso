@@ -3,21 +3,22 @@
 
 package lucuma.sso.client.util
 
-import java.io.ByteArrayInputStream
-import java.security.PublicKey
-import org.bouncycastle.openpgp.operator.jcajce._
-import org.bouncycastle.openpgp._
-import scala.util.control.NonFatal
-import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
-import java.{util => ju}
-import org.bouncycastle.bcpg.ArmoredOutputStream
-import java.io.ByteArrayOutputStream
-import org.http4s.EntityDecoder
 import cats.effect.Concurrent
-import org.http4s.DecodeResult
-import org.http4s.MalformedMessageBodyFailure
-import org.http4s.EntityEncoder
 import cats.syntax.all._
+import org.bouncycastle.bcpg.ArmoredOutputStream
+import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
+import org.bouncycastle.openpgp._
+import org.bouncycastle.openpgp.operator.jcajce._
+import org.http4s.DecodeResult
+import org.http4s.EntityDecoder
+import org.http4s.EntityEncoder
+import org.http4s.MalformedMessageBodyFailure
+
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.security.PublicKey
+import java.{util => ju}
+import scala.util.control.NonFatal
 
 /** Methods to convert between GPG ASCII-amored text and JCA `PublicKey`. */
 object GpgPublicKeyReader {

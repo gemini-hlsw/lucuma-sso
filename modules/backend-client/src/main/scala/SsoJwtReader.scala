@@ -4,20 +4,20 @@
 package lucuma.sso.client
 
 import cats.data._
-import cats.implicits._
-import lucuma.sso.client.util.JwtDecoder
-import org.http4s.Request
-import org.http4s.Response
-import pdi.jwt.exceptions.JwtException
-import org.http4s.headers.Authorization
-import org.http4s.Credentials
-import org.typelevel.ci.CIString
-import org.http4s.EntityDecoder
 import cats.effect.Concurrent
-import org.http4s.InvalidMessageBodyFailure
-import lucuma.core.model.User
+import cats.implicits._
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardUser
+import lucuma.core.model.User
+import lucuma.sso.client.util.JwtDecoder
+import org.http4s.Credentials
+import org.http4s.EntityDecoder
+import org.http4s.InvalidMessageBodyFailure
+import org.http4s.Request
+import org.http4s.Response
+import org.http4s.headers.Authorization
+import org.typelevel.ci.CIString
+import pdi.jwt.exceptions.JwtException
 
 trait SsoJwtReader[F[_]] { outer =>
 

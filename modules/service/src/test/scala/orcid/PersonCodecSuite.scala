@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.orcid
 
-import lucuma.sso.service.SsoSuite
 import io.circe.parser.parse
+import lucuma.sso.service.SsoSuite
 
 object PersonCodecSuite extends SsoSuite {
 

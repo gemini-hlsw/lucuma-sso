@@ -5,14 +5,17 @@ package lucuma.sso.service.orcid
 
 import cats.effect.Concurrent
 import cats.implicits._
+import natchez.Trace
+import orcid.lucuma.sso.service.orcid.OrcidException
+import org.http4s.Uri.Authority
+import org.http4s.Uri.Host
+import org.http4s.Uri.Path
+import org.http4s.Uri.Scheme
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Accept
 import org.http4s.headers.Authorization
-import orcid.lucuma.sso.service.orcid.OrcidException
-import org.http4s.Uri.{ Scheme, Authority, Host, Path }
-import natchez.Trace
 
 trait OrcidService[F[_]] {
 

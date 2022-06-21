@@ -4,18 +4,19 @@
 package lucuma.sso.service.simulator
 
 import cats.data.OptionT
-import cats.effect._
 import cats.effect.Ref
+import cats.effect._
 import cats.implicits._
 import lucuma.core.model.OrcidId
 import lucuma.sso.service.orcid._
-import java.time.Duration
-import java.util.UUID
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits._
 import org.http4s.server._
+
+import java.time.Duration
+import java.util.UUID
 import scala.util.Random
 
 /** An ORCID simulator. */

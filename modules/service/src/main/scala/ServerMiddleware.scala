@@ -3,17 +3,18 @@
 
 package lucuma.sso.service
 
-import natchez.Trace
 import cats._
-import org.http4s.HttpRoutes
 import cats.effect._
+import lucuma.sso.service.config.Config
 import lucuma.sso.service.config.Environment
 import lucuma.sso.service.config.Environment._
+import natchez.Trace
+import natchez.http4s.NatchezMiddleware
+import org.http4s.HttpRoutes
+import org.http4s.server.middleware.CORS
 import org.http4s.server.middleware.ErrorAction
 import org.typelevel.log4cats.Logger
-import org.http4s.server.middleware.CORS
-import lucuma.sso.service.config.Config
-import natchez.http4s.NatchezMiddleware
+
 import scala.concurrent.duration._
 
 /** A module of all the middlewares we apply to the server routes. */

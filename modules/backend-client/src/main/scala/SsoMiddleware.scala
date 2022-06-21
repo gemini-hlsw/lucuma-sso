@@ -3,13 +3,13 @@
 
 package lucuma.sso.client
 
-import org.http4s.HttpRoutes
-import cats.data.Kleisli
-import lucuma.core.model.User
-import cats.data.OptionT
 import cats.Monad
-import natchez.Trace
+import cats.data.Kleisli
+import cats.data.OptionT
 import cats.syntax.all._
+import lucuma.core.model.User
+import natchez.Trace
+import org.http4s.HttpRoutes
 
 /**
  * A middleware that adds the following Lucuma-standard fields to the current span:
