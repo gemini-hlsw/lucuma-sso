@@ -6,7 +6,7 @@ val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "8.5.13"
 val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
-val jwtVersion                 = "5.0.0"
+val jwtVersion                 = "9.0.5"
 val log4catsVersion            = "2.3.2"
 val lucumaCoreVersion          = "0.42.0"
 val lucumaGraphQLRoutesVersion = "0.3.4"
@@ -68,14 +68,14 @@ lazy val backendClient = project
   .settings(
     name := "lucuma-sso-backend-client",
     libraryDependencies ++= Seq(
-      "com.pauldijou"     %% "jwt-circe"      % jwtVersion,
-      "com.pauldijou"     %% "jwt-core"       % jwtVersion,
-      "org.bouncycastle"  %  "bcpg-jdk18on"   % bcpgVersion,
-      "org.http4s"        %% "http4s-circe"   % http4sVersion,
-      "org.http4s"        %% "http4s-dsl"     % http4sVersion,
-      "org.http4s"        %% "http4s-client"  % http4sVersion,
-      "org.typelevel"     %% "log4cats-slf4j" % log4catsVersion,
-      "org.tpolecat"      %% "natchez-http4s" % natcchezHttp4sVersion,
+      "com.github.jwt-scala" %% "jwt-core"       % jwtVersion,
+      "com.github.jwt-scala" %% "jwt-circe"      % jwtVersion,
+      "org.bouncycastle"     %  "bcpg-jdk18on"   % bcpgVersion,
+      "org.http4s"           %% "http4s-circe"   % http4sVersion,
+      "org.http4s"           %% "http4s-dsl"     % http4sVersion,
+      "org.http4s"           %% "http4s-client"  % http4sVersion,
+      "org.typelevel"        %% "log4cats-slf4j" % log4catsVersion,
+      "org.tpolecat"         %% "natchez-http4s" % natcchezHttp4sVersion,
     ),
   )
 
