@@ -8,7 +8,7 @@ val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
 val jwtVersion                 = "9.0.5"
 val log4catsVersion            = "2.3.2"
-val lucumaCoreVersion          = "0.41-8517424-SNAPSHOT"
+val lucumaCoreVersion          = "0.44-13de521-SNAPSHOT"
 val lucumaGraphQLRoutesVersion = "0.3.4"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
@@ -29,7 +29,7 @@ ThisBuild / scalacOptions ++= Seq(
 )
 
 
-ThisBuild / tlCiReleaseBranches := Seq("master")
+ThisBuild / tlCiReleaseBranches := Seq("master", "scala3")
 ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
   Seq(
     WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
