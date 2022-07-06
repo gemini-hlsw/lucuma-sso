@@ -28,7 +28,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-language:implicitConversions"
 )
 
-ThisBuild / tlCiReleaseBranches := Seq("master")
+ThisBuild / tlCiReleaseBranches := Seq("master", "scala3")
 ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
   Seq(
     WorkflowStep.Run(List("chmod 600 test-cert/server.key"), name = Some("Set up cert permissions (1)")),
