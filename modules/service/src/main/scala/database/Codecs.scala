@@ -44,10 +44,10 @@ trait Codecs {
     Codec.simple[A](encode, s => decode(s).toRight(s"${tpe.name}: no such element '$s'"), tpe)
 
   val role_type: Codec[RoleType] =
-    enums[RoleType](Enumerated[RoleType].tag, Enumerated[RoleType].fromTag, Type("lucuma_role_type"))
+    enums[RoleType](Enumerated[RoleType].tag(_).toLowerCase, Enumerated[RoleType].fromTag, Type("lucuma_role_type"))
 
   val partner: Codec[Partner] =
-    enums[Partner](Enumerated[Partner].tag, Enumerated[Partner].fromTag, Type("lucuma_ngo"))
+    enums[Partner](Enumerated[Partner].tag(_).toLowerCase, Enumerated[Partner].fromTag, Type("lucuma_ngo"))
 
   val session_token: Codec[SessionToken] =
     uuid.gimap
