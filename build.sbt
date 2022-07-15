@@ -1,6 +1,6 @@
 val bcpgVersion                = "1.71"
 val circeVersion               = "0.14.2"
-val cirisVersion               = "2.3.2"
+val cirisVersion               = "2.3.3"
 val declineVersion             = "2.3.0"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "8.5.13"
