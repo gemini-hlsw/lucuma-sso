@@ -22,7 +22,6 @@ val weaverVersion              = "0.7.13"
 Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion := "0.1"
-ThisBuild / scalaVersion := "2.13.7" // pinned for coverage
 ThisBuild / tlCiReleaseBranches := Seq("master")
 ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
   Seq(
