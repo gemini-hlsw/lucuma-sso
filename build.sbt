@@ -3,12 +3,12 @@ val circeVersion               = "0.14.2"
 val cirisVersion               = "2.3.3"
 val declineVersion             = "2.3.0"
 val disciplineMunitVersion     = "1.0.9"
-val flywayVersion              = "9.0.4"
+val flywayVersion              = "9.1.0"
 val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
 val jwtVersion                 = "9.0.6"
 val log4catsVersion            = "2.4.0"
-val lucumaCoreVersion          = "0.46-32d8501-SNAPSHOT"
+val lucumaCoreVersion          = "0.51.0"
 val lucumaGraphQLRoutesVersion = "0.5.0"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
@@ -21,7 +21,7 @@ val weaverVersion              = "0.7.14"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
-ThisBuild / tlBaseVersion := "0.2"
+ThisBuild / tlBaseVersion := "0.3"
 ThisBuild / scalaVersion       := "3.1.3"
 ThisBuild / crossScalaVersions := Seq("3.1.3")
 ThisBuild / scalacOptions ++= Seq(
