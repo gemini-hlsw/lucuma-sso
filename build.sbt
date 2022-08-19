@@ -3,26 +3,25 @@ val circeVersion               = "0.14.2"
 val cirisVersion               = "2.3.3"
 val declineVersion             = "2.3.0"
 val disciplineMunitVersion     = "1.0.9"
-val flywayVersion              = "9.0.2"
+val flywayVersion              = "9.1.6"
 val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
-val jwtVersion                 = "9.0.6"
+val jwtVersion                 = "9.1.0"
 val log4catsVersion            = "2.4.0"
-val lucumaCoreVersion          = "0.44.0"
+val lucumaCoreVersion          = "0.45.0"
 val lucumaGraphQLRoutesVersion = "0.5.0"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
 val natchezVersion             = "0.1.6"
-val postgresVersion            = "42.4.0"
+val postgresVersion            = "42.4.2"
 val skunkVersion               = "0.3.1"
 val slf4jVersion               = "1.7.36"
-val weaverVersion              = "0.7.13"
+val weaverVersion              = "0.7.15"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion := "0.1"
-ThisBuild / scalaVersion := "2.13.7" // pinned for coverage
 ThisBuild / tlCiReleaseBranches := Seq("master")
 ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
   Seq(
