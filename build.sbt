@@ -8,7 +8,7 @@ val grackleVersion             = "0.2.0"
 val http4sVersion              = "0.23.11"
 val jwtVersion                 = "9.1.1"
 val log4catsVersion            = "2.5.0"
-val lucumaCoreVersion          = "0.46-32d8501-SNAPSHOT"
+val lucumaCoreVersion          = "0.54.0"
 val lucumaGraphQLRoutesVersion = "0.5.0"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
@@ -21,7 +21,11 @@ val weaverVersion              = "0.7.15"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
+<<<<<<< HEAD
 ThisBuild / tlBaseVersion := "0.2"
+=======
+ThisBuild / tlBaseVersion := "0.4"
+>>>>>>> 0661343 (Upgrade core)
 ThisBuild / scalaVersion       := "3.1.3"
 ThisBuild / crossScalaVersions := Seq("3.1.3")
 ThisBuild / scalacOptions ++= Seq(
