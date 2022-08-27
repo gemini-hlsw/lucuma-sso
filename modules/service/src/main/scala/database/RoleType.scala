@@ -7,7 +7,7 @@ import lucuma.core.util.Enumerated
 
 // lucuma_role_type
 enum RoleType(private val tag: String) derives Enumerated:
-  case Pi extends RoleType("pi")
-  case Ngo extends RoleType("ngo")
-  case Staff extends RoleType("staff")
-  case Admin extends RoleType("admin")
+  case Pi extends RoleType("Pi")
+  case Ngo extends RoleType("Ngo")
+  case Staff extends RoleType("Staff")
+  case Admin extends RoleType("Admin")
