@@ -6,15 +6,8 @@ package lucuma.sso.service.database
 import lucuma.core.util.Enumerated
 
 // lucuma_role_type
-sealed trait RoleType extends Product with Serializable
-
-object RoleType {
-  case object Pi    extends RoleType
-  case object Ngo   extends RoleType
-  case object Staff extends RoleType
-  case object Admin extends RoleType
-
-  implicit val roleType: Enumerated[RoleType] =
-    Enumerated.of(Pi, Ngo, Staff, Admin)
-
-}
+enum RoleType(private val tag: String) derives Enumerated:
+  case Pi extends RoleType("pi")
+  case Ngo extends RoleType("ngo")
+  case Staff extends RoleType("staff")
+  case Admin extends RoleType("admin")
