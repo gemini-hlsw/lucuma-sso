@@ -178,9 +178,9 @@ object SsoMapping {
         override val selectElaborator = new QueryCompiler.SelectElaborator(Map(
           QueryType -> {
             case Select("user", Nil, child) =>
-              Select("user", Nil, Unique(Filter(Eql(UniquePath(List("id")), Const(user.id)), child))).rightIor
+              Select("user", Nil, Unique(Filter(Eql(UserType / "id", Const(user.id)), child))).rightIor
             case Select("role", Nil, child) =>
-              Select("role", Nil, Unique(Filter(Eql(UniquePath(List("id")), Const(user.role.id)), child))).rightIor
+              Select("role", Nil, Unique(Filter(Eql(UserType / "id", Const(user.role.id)), child))).rightIor
           },
           MutationType -> {
             case Select("createApiKey", List(Binding("role", Value.StringValue(id))), child) =>
