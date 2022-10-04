@@ -68,7 +68,6 @@ object SsoJwtReader {
             .map(SsoJwtClaim(_))
             .leftMap {
               case e: Exception => InvalidMessageBodyFailure(s"Invalid or missing JWT.", Some(e))
-              case e            => InvalidMessageBodyFailure(s"Invalid or missing JWT: $e")
             }
         }
 

@@ -3,7 +3,7 @@
 
 package lucuma.sso.service.util
 
-import cats.ApplicativeError
+import cats.ApplicativeThrow
 import cats.implicits._
 import pdi.jwt.Jwt
 import pdi.jwt.JwtAlgorithm
@@ -26,7 +26,7 @@ object JwtEncoder {
    * Construct a `JwtEncoder` that will encode claims and produce signed tokens using the provided
    * JCA `PrivateKey` and asymmetric key algorithm.
    */
-  def withPrivateKey[F[_]: ApplicativeError[*[_], Throwable]](
+  def withPrivateKey[F[_]: ApplicativeThrow](
     sec: PrivateKey,
     algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS512
   ): JwtEncoder[F] =

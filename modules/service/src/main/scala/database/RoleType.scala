@@ -3,15 +3,11 @@
 
 package lucuma.sso.service.database
 
-import enumeratum.EnumEntry.Lowercase
-import enumeratum._
+import lucuma.core.util.Enumerated
 
 // lucuma_role_type
-sealed trait RoleType extends EnumEntry with Lowercase
-object RoleType extends Enum[RoleType] {
-  case object Pi    extends RoleType
-  case object Ngo   extends RoleType
-  case object Staff extends RoleType
-  case object Admin extends RoleType
-  val values = findValues
-}
+enum RoleType(private val tag: String) derives Enumerated:
+  case Pi extends RoleType("Pi")
+  case Ngo extends RoleType("Ngo")
+  case Staff extends RoleType("Staff")
+  case Admin extends RoleType("Admin")

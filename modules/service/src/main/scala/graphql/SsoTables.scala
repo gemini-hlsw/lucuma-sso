@@ -6,6 +6,7 @@ package lucuma.sso.service.graphql
 import edu.gemini.grackle.skunk.SkunkMapping
 import io.circe
 import io.circe.Json
+import lucuma.core.util.Enumerated
 import lucuma.sso.service.database.Codecs
 import lucuma.sso.service.database.RoleType
 import skunk.codec.all._
@@ -13,7 +14,7 @@ import skunk.codec.all._
 trait SsoTables[F[_]] extends Codecs { this: SkunkMapping[F] =>
 
   implicit val RoleTypeEncoder: circe.Encoder[RoleType] =
-    rt => Json.fromString(rt.entryName.toUpperCase())
+    rt => Json.fromString(Enumerated[RoleType].tag(rt).toUpperCase())
 
   object User extends TableDef("lucuma_user") {
     val Id         = col("user_id", user_id)

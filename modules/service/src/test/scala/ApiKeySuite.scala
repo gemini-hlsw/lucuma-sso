@@ -6,10 +6,12 @@ package lucuma.sso.service
 import cats.effect._
 import cats.implicits._
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.User
 import lucuma.core.util.Gid
+import lucuma.refined._
 import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoJwtClaim
 import lucuma.sso.service.simulator.SsoSimulator
@@ -24,6 +26,8 @@ import org.http4s.headers.Location
 import org.typelevel.ci.CIString
 
 object ApiKeySuite extends SsoSuite with Fixture with FlakyTests {
+  inline given Predicate[Long, Positive] with
+    transparent inline def isValid(inline t: Long): Boolean = t > 0
 
   implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
@@ -116,7 +120,7 @@ object ApiKeySuite extends SsoSuite with Fixture with FlakyTests {
           status <- sso.status(
             Request[IO](
               method  = Method.POST,
-              uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", StandardRole.Id(1L)), // no real role with id=1
+              uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", StandardRole.Id(1L.refined)), // no real role with id=1
               headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
             )
           )
@@ -146,7 +150,7 @@ object ApiKeySuite extends SsoSuite with Fixture with FlakyTests {
 
           // Promote it to a JWT
 
-          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L), "bogus")) // need to call as a service user
+          serviceJwt <- writer.newJwt(ServiceUser(User.Id(1L.refined), "bogus")) // need to call as a service user
 
           jwt <- sso.expect[SsoJwtClaim](
                   Request[IO](

@@ -40,11 +40,19 @@ trait Codecs {
     )
   }
 
+  private def toPrefix(x: String): String = (x.toList match {
+    case x :: tail => x.toUpper :: tail
+    case x => x
+  }).mkString("")
+
+  def enums[A](encode: A => String, decode: String => Option[A], tpe: Type): Codec[A] =
+    Codec.simple[A](encode, s => decode(s).toRight(s"${tpe.name}: no such element '$s'"), tpe)
+
   val role_type: Codec[RoleType] =
-    enum(RoleType, Type("lucuma_role_type"))
+    enums[RoleType](Enumerated[RoleType].tag(_).toLowerCase, x => Enumerated[RoleType].fromTag(toPrefix(x)), Type("lucuma_role_type"))
 
   val partner: Codec[Partner] =
-    enum[Partner](Enumerated[Partner].tag, Enumerated[Partner].fromTag, Type("lucuma_ngo"))
+    enums[Partner](Enumerated[Partner].tag(_).toLowerCase, x => Enumerated[Partner].fromTag(toPrefix(x)), Type("lucuma_ngo"))
 
   val session_token: Codec[SessionToken] =
     uuid.gimap
