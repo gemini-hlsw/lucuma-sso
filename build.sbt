@@ -12,10 +12,10 @@ val lucumaCoreVersion          = "0.58.0"
 val lucumaGraphQLRoutesVersion = "0.5.4"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
-val natchezVersion             = "0.1.6"
-val postgresVersion            = "42.5.0"
+val natchezVersion             = "0.2.2"
+val postgresVersion            = "42.5.1"
 val skunkVersion               = "0.3.2"
-val slf4jVersion               = "2.0.4"
+val slf4jVersion               = "2.0.5"
 val weaverVersion              = "0.8.0"
 
 // If we don't do this we get a spurious warning about an unused key.
