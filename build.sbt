@@ -1,21 +1,21 @@
-val bcpgVersion                = "1.72.1"
+val bcpgVersion                = "1.72.2"
 val circeVersion               = "0.14.3"
-val cirisVersion               = "2.4.0"
-val declineVersion             = "2.3.1"
+val cirisVersion               = "3.0.0"
+val declineVersion             = "2.4.0"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "9.3.0"
 val grackleVersion             = "0.7.0"
 val http4sVersion              = "0.23.11"
-val jwtVersion                 = "9.1.1"
+val jwtVersion                 = "9.1.2"
 val log4catsVersion            = "2.5.0"
-val lucumaCoreVersion          = "0.58.0"
+val lucumaCoreVersion          = "0.60.0"
 val lucumaGraphQLRoutesVersion = "0.5.4"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
-val natchezVersion             = "0.1.6"
-val postgresVersion            = "42.5.0"
+val natchezVersion             = "0.2.2"
+val postgresVersion            = "42.5.1"
 val skunkVersion               = "0.3.2"
-val slf4jVersion               = "2.0.3"
+val slf4jVersion               = "2.0.5"
 val weaverVersion              = "0.8.0"
 
 // If we don't do this we get a spurious warning about an unused key.
@@ -39,10 +39,6 @@ ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
 // Temporarily due to Scala-XML 2.0.0
 ThisBuild / evictionErrorLevel := Level.Info
 
-ThisBuild / libraryDependencies ++= Seq(
-  "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
-  "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
-)
 ThisBuild / testFrameworks += new TestFramework("weaver.framework.CatsEffect")
 
 lazy val root = tlCrossRootProject.aggregate(
@@ -108,6 +104,8 @@ lazy val service = project
       "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
       "edu.gemini"     %% "lucuma-graphql-routes-grackle" % lucumaGraphQLRoutesVersion,
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
+      "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
+      "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
     ),
   )
 
