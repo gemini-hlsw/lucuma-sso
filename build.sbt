@@ -39,10 +39,6 @@ ThisBuild / githubWorkflowBuildPreamble ~= { steps =>
 // Temporarily due to Scala-XML 2.0.0
 ThisBuild / evictionErrorLevel := Level.Info
 
-ThisBuild / libraryDependencies ++= Seq(
-  "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
-  "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
-)
 ThisBuild / testFrameworks += new TestFramework("weaver.framework.CatsEffect")
 
 lazy val root = tlCrossRootProject.aggregate(
@@ -108,6 +104,8 @@ lazy val service = project
       "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
       "edu.gemini"     %% "lucuma-graphql-routes-grackle" % lucumaGraphQLRoutesVersion,
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
+      "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
+      "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
     ),
   )
 
