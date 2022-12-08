@@ -1,3 +1,4 @@
+val catsVersion                = "2.9.0"
 val bcpgVersion                = "1.72.2"
 val circeVersion               = "0.14.3"
 val cirisVersion               = "3.0.0"
@@ -8,7 +9,7 @@ val grackleVersion             = "0.7.0"
 val http4sVersion              = "0.23.11"
 val jwtVersion                 = "9.1.2"
 val log4catsVersion            = "2.5.0"
-val lucumaCoreVersion          = "0.58.0"
+val lucumaCoreVersion          = "0.60.0"
 val lucumaGraphQLRoutesVersion = "0.5.4"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
@@ -60,6 +61,9 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= Seq(
       "edu.gemini"    %%% "lucuma-core"         % lucumaCoreVersion,
       "io.circe"      %%% "circe-generic"       % circeVersion,
+      // Due to sbt pecularities this has to be set as a jvm dependency
+      // Don't delete unless you know what you're doing
+      "org.typelevel" %%  "cats-core"           % catsVersion,
       "edu.gemini"    %%% "lucuma-core-testkit" % lucumaCoreVersion       % Test,
       "org.scalameta" %%% "munit"               % munitVersion            % Test,
       "org.scalameta" %%% "munit-scalacheck"    % munitVersion            % Test,
