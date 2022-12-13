@@ -16,7 +16,7 @@ val natchezVersion             = "0.2.2"
 val postgresVersion            = "42.5.1"
 val skunkVersion               = "0.3.2"
 val slf4jVersion               = "2.0.6"
-val weaverVersion              = "0.8.0"
+val weaverVersion              = "0.8.1"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
