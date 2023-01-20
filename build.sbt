@@ -14,7 +14,7 @@ val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.3.2"
 val natchezVersion             = "0.2.2"
 val postgresVersion            = "42.5.1"
-val skunkVersion               = "0.3.2"
+val skunkVersion               = "0.5.1"
 val slf4jVersion               = "2.0.6"
 val weaverVersion              = "0.8.0"
 
