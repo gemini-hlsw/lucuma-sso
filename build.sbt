@@ -4,24 +4,27 @@ val cirisVersion               = "3.0.0"
 val declineVersion             = "2.4.1"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "9.3.0"
-val grackleVersion             = "0.7.0"
-val http4sVersion              = "0.23.11"
+val grackleVersion             = "0.10.2"
+val http4sVersion              = "0.23.18"
+val http4sBlazeVersion         = "0.23.13"
+val http4sEmberVersion         = "0.23.18"
+val http4sXmlVersion           = "0.23.13"
 val jwtVersion                 = "9.1.2"
 val log4catsVersion            = "2.5.0"
-val lucumaCoreVersion          = "0.60.0"
-val lucumaGraphQLRoutesVersion = "0.5.4"
+val lucumaCoreVersion          = "0.63.0"
+val lucumaGraphQLRoutesVersion = "0.5.9"
 val munitVersion               = "0.7.29"
-val natcchezHttp4sVersion      = "0.3.2"
-val natchezVersion             = "0.2.2"
+val natcchezHttp4sVersion      = "0.5.0"
+val natchezVersion             = "0.3.0"
 val postgresVersion            = "42.5.1"
-val skunkVersion               = "0.3.2"
+val skunkVersion               = "0.5.1"
 val slf4jVersion               = "2.0.6"
 val weaverVersion              = "0.8.0"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
-ThisBuild / tlBaseVersion := "0.4"
+ThisBuild / tlBaseVersion := "0.5"
 ThisBuild / scalaVersion       := "3.2.1-RC4"
 ThisBuild / crossScalaVersions := Seq("3.2.1-RC4")
 ThisBuild / scalacOptions ++= Seq(
@@ -89,9 +92,9 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "io.circe"       %% "circe-parser"        % circeVersion,
       "is.cir"         %% "ciris"               % cirisVersion,
-      "org.http4s"     %% "http4s-ember-client" % http4sVersion,
-      "org.http4s"     %% "http4s-blaze-server" % http4sVersion,
-      "org.http4s"     %% "http4s-scala-xml"    % http4sVersion,
+      "org.http4s"     %% "http4s-blaze-server" % http4sBlazeVersion,
+      "org.http4s"     %% "http4s-ember-client" % http4sEmberVersion,
+      "org.http4s"     %% "http4s-scala-xml"    % http4sXmlVersion,
       "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
       "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
       "org.tpolecat"   %% "natchez-log"         % natchezVersion,

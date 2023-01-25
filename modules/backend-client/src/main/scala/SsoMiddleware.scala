@@ -1,11 +1,11 @@
-// Copyright (c) 2016-2022 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2023 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.client
 
-import cats.Monad
 import cats.data.Kleisli
 import cats.data.OptionT
+import cats.effect.MonadCancelThrow
 import cats.syntax.all._
 import lucuma.core.model.User
 import natchez.Trace
@@ -29,7 +29,7 @@ object SsoMiddleware {
       s"$prefix.user.role" -> u.role.name,
     )
 
-  def apply[F[_]: Monad: Trace](ssoClient: SsoClient[F, User])(routes: HttpRoutes[F]): HttpRoutes[F] =
+  def apply[F[_]: MonadCancelThrow: Trace](ssoClient: SsoClient[F, User])(routes: HttpRoutes[F]): HttpRoutes[F] =
     Kleisli { req =>
       for {
         ou  <- OptionT.liftF(ssoClient.find(req))

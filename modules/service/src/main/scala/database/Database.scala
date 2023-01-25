@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2022 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2023 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service.database
@@ -81,12 +81,12 @@ object Database extends Codecs {
 
       def canonicalizeServiceUser(serviceName: String): F[ServiceUser] =
         Trace[F].span("canonicalizeServiceUser") {
-          s.prepare(CanonicalizeServiceUser).use(_.unique(serviceName))
+          s.prepareR(CanonicalizeServiceUser).use(_.unique(serviceName))
         }
 
       def createApiKey(roleId: StandardRole.Id): F[ApiKey] =
         Trace[F].span("createApiKey") {
-          s.prepare(CreateApiKey).use(_.unique(roleId))
+          s.prepareR(CreateApiKey).use(_.unique(roleId))
         }
 
       def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean] =
@@ -95,9 +95,9 @@ object Database extends Codecs {
             userId match {
               case Some(u) =>
                 Trace[F].put("userId" -> Gid[User.Id].fromString.reverseGet(u)) *>
-                s.prepare(DeleteApiKeyForUser).use(_.execute(keyId ~ u))
+                s.prepareR(DeleteApiKeyForUser).use(_.execute(keyId ~ u))
               case None =>
-                s.prepare(DeleteApiKey).use(_.execute(keyId))
+                s.prepareR(DeleteApiKey).use(_.execute(keyId))
             }
           } map {
             case Completion.Delete(1) => true
@@ -112,7 +112,7 @@ object Database extends Codecs {
 
       def createGuestUserSessionToken(guestUser: GuestUser): F[SessionToken] =
         Trace[F].span("createGuestUserSessionToken") {
-          s.prepare(InsertGuestUserSessionToken).use(_.unique(guestUser.id))
+          s.prepareR(InsertGuestUserSessionToken).use(_.unique(guestUser.id))
         }
 
       def createGuestUserAndSessionToken: F[(GuestUser, SessionToken)] =
@@ -124,12 +124,12 @@ object Database extends Codecs {
 
       def createStandardUserSessionToken(roleId: StandardRole.Id): F[SessionToken] =
         Trace[F].span("createStandardUserSessionToken") {
-          s.prepare(InsertStandardUserSessionToken).use(_.unique(roleId))
+          s.prepareR(InsertStandardUserSessionToken).use(_.unique(roleId))
         }
 
       def findGuestUserFromToken(token: SessionToken): F[Option[GuestUser]] =
         Trace[F].span("findGuestUserFromToken") {
-          s.prepare(SelectGuestUserForSessionToken).use(_.option(token))
+          s.prepareR(SelectGuestUserForSessionToken).use(_.option(token))
         }
 
       def getGuestUserFromToken(token: SessionToken): F[GuestUser] =
@@ -188,7 +188,7 @@ object Database extends Codecs {
 
       def deleteAllSessionTokensForUser(uid: User.Id): F[Unit] =
         Trace[F].span("deleteAllSessionTokensForUser") {
-          s.prepare(sql"DELETE FROM lucuma_session WHERE user_id = $user_id".command)
+          s.prepareR(sql"DELETE FROM lucuma_session WHERE user_id = $user_id".command)
             .use(_.execute(uid))
             .void
         }
@@ -243,16 +243,16 @@ object Database extends Codecs {
             role.partnerOption.fold(AppliedFragment.empty)(sql" AND partner = $partner")
 
           // Done
-          s.prepare(af.fragment.query(role_id)).use(pq => pq.option(af.argument))
+          s.prepareR(af.fragment.query(role_id)).use(pq => pq.option(af.argument))
 
         }
 
       // def getDefaultRole(id: User.Id): F[Option[StandardRole.Id]] =
-      //   s.prepare(SelectDefaultRole).use(_.option(id))
+      //   s.prepareR(SelectDefaultRole).use(_.option(id))
 
       def deleteUser(id: User.Id): F[Boolean] =
         Trace[F].span("deleteUser") {
-          s.prepare(DeleteUser).use { pq =>
+          s.prepareR(DeleteUser).use { pq =>
             pq.execute(id).map {
               case Delete(c) => c > 0
               case _         => sys.error("unpossible")
@@ -265,7 +265,7 @@ object Database extends Codecs {
       // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
       def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[User.Id]] =
         Trace[F].span("updateProfile") {
-          s.prepare(UpdateProfile).use(_.option(access ~ person))
+          s.prepareR(UpdateProfile).use(_.option(access ~ person))
         }
 
       def promoteGuest(
@@ -275,7 +275,7 @@ object Database extends Codecs {
         role:      RoleRequest
       ): F[StandardRole.Id] =
         Trace[F].span("promoteGuest") {
-          s.prepare(PromoteGuest).use { pq =>
+          s.prepareR(PromoteGuest).use { pq =>
             for {
               userId <- pq.unique(gid ~ access ~ person)
               rid    <- addRole(userId, role)
@@ -289,7 +289,7 @@ object Database extends Codecs {
         role:      RoleRequest
       ): F[StandardRole.Id] =
         Trace[F].span("createStandardUser") {
-          s.prepare(InsertStandardUser).use { pq =>
+          s.prepareR(InsertStandardUser).use { pq =>
             for {
               userId <- pq.unique(access ~ person)
               rid    <- addRole(userId, role)
@@ -299,7 +299,7 @@ object Database extends Codecs {
 
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("addRole") {
-          s.prepare(InsertRole).use(_.unique(user ~ role))
+          s.prepareR(InsertRole).use(_.unique(user ~ role))
         }
 
       def getStandardUserFromToken(token: SessionToken): F[StandardUser] =
@@ -314,7 +314,7 @@ object Database extends Codecs {
         token: SessionToken
       ): F[Option[StandardUser]] =
         Trace[F].span("findStandardUserFromToken") {
-          s.prepare(SelectStandardUserByToken).use { pq =>
+          s.prepareR(SelectStandardUserByToken).use { pq =>
             pq.stream(token, 64).compile.toList flatMap {
               case Nil => none[StandardUser].pure[F]
               case all @ ((roleId ~ user ~ _) :: _) =>
@@ -332,7 +332,7 @@ object Database extends Codecs {
         apiKey: ApiKey
       ): F[Option[StandardUser]] =
         Trace[F].span("findStandardUserFromApiKey") {
-          s.prepare(SelectStandardUserByApiKey).use { pq =>
+          s.prepareR(SelectStandardUserByApiKey).use { pq =>
             pq.stream(apiKey, 64).compile.toList flatMap {
               case Nil => none[StandardUser].pure[F]
               case all @ ((roleId ~ user ~ _) :: _) =>

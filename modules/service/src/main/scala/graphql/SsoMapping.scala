@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2022 Association of Universities for Research in Astronomy, Inc. (AURA)
+// Copyright (c) 2016-2023 Association of Universities for Research in Astronomy, Inc. (AURA)
 // For license information see LICENSE or https://opensource.org/licenses/BSD-3-Clause
 
 package lucuma.sso.service.graphql
@@ -95,7 +95,7 @@ object SsoMapping {
           .evalTap(n => Async[F].delay(println(n)))
           .map(_.value.rightIor)
 
-      new SkunkMapping[F](pool, monitor) with SsoTables[F] with ComputeMapping[F] with StreamMapping[F] {
+      new SkunkMapping[F](pool, monitor) with SsoTables[F] {
 
         val schema: Schema = loadedSchema
 
@@ -117,15 +117,15 @@ object SsoMapping {
             ObjectMapping(
               tpe = QueryType,
               fieldMappings = List(
-                SqlRoot("user"),
-                SqlRoot("role"),
+                SqlObject("user"),
+                SqlObject("role"),
               )
             ),
             ObjectMapping(
               tpe = MutationType,
               fieldMappings = List(
-                ComputeRoot("createApiKey", ScalarType.StringType, createApiKey),
-                ComputeRoot("deleteApiKey", ScalarType.BooleanType, deleteApiKey),
+                RootEffect.computeEncodable("createApiKey")((_,_,e) => createApiKey(e)),
+                RootEffect.computeEncodable("deleteApiKey")((_,_,e) => deleteApiKey(e))
               )
             ),
             ObjectMapping(
@@ -164,7 +164,7 @@ object SsoMapping {
             ObjectMapping(
               tpe = SubscriptionType,
               fieldMappings = List(
-                StreamRoot("apiKeyRevocation", ScalarType.StringType, _ => apiKeyRevocation),
+                RootEffect.computeEncodableStream("apiKeyRevocation")((_,_,_) => apiKeyRevocation)
               )
             ),
             LeafMapping[model.User.Id](UserIdType),
