@@ -5,7 +5,10 @@ val declineVersion             = "2.4.1"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "9.3.0"
 val grackleVersion             = "0.10.2"
-val http4sVersion              = "0.23.11"
+val http4sVersion              = "0.23.18"
+val http4sBlazeVersion         = "0.23.13"
+val http4sEmberVersion         = "0.23.18"
+val http4sXmlVersion           = "0.23.13"
 val jwtVersion                 = "9.1.2"
 val log4catsVersion            = "2.5.0"
 val lucumaCoreVersion          = "0.63.0"
@@ -89,9 +92,9 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "io.circe"       %% "circe-parser"        % circeVersion,
       "is.cir"         %% "ciris"               % cirisVersion,
-      "org.http4s"     %% "http4s-ember-client" % http4sVersion,
-      "org.http4s"     %% "http4s-blaze-server" % http4sVersion,
-      "org.http4s"     %% "http4s-scala-xml"    % http4sVersion,
+      "org.http4s"     %% "http4s-blaze-server" % http4sBlazeVersion,
+      "org.http4s"     %% "http4s-ember-client" % http4sEmberVersion,
+      "org.http4s"     %% "http4s-scala-xml"    % http4sXmlVersion,
       "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
       "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
       "org.tpolecat"   %% "natchez-log"         % natchezVersion,
