@@ -21,7 +21,7 @@ val weaverVersion              = "0.8.0"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
-ThisBuild / tlBaseVersion := "0.4"
+ThisBuild / tlBaseVersion := "0.5"
 ThisBuild / scalaVersion       := "3.2.1-RC4"
 ThisBuild / crossScalaVersions := Seq("3.2.1-RC4")
 ThisBuild / scalacOptions ++= Seq(
