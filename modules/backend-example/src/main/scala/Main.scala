@@ -7,6 +7,7 @@ import cats._
 import cats.effect._
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
+import fs2.io.net.Network
 import lucuma.core.model.User
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoMiddleware
@@ -32,7 +33,7 @@ object Main extends IOApp {
     Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
 
   // A normal server.
-  def serverResource[F[_]: Async](
+  def serverResource[F[_]: Async: Network](
     port: Port,
     app:  HttpApp[F]
   ): Resource[F, Server] =
@@ -57,7 +58,7 @@ object Main extends IOApp {
   }
 
   // Our routes, with middleware
-  def wrappedRoutes[F[_]: Async: Trace](
+  def wrappedRoutes[F[_]: Async: Trace: Network](
     cfg: Config
   ): Resource[F, HttpRoutes[F]] =
     cfg.ssoClient[F].map { ssoClient =>
@@ -84,13 +85,13 @@ object Main extends IOApp {
       .apply(routes)
 
   // Our main program as a resource.
-  def runR[F[_]: Async](
+  def runR(
     cfg: Config
-  ): Resource[F, Server] =
+  ): Resource[IO, Server] =
     for {
-      ep      <- entryPoint[F](cfg)
+      ep      <- entryPoint[IO](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))
-      httpApp  = ErrorAction.httpRoutes(cors(routes), log[F]).orNotFound
+      httpApp  = ErrorAction.httpRoutes(cors(routes), log[IO]).orNotFound
       server  <- serverResource(cfg.port, httpApp)
     } yield server
 
@@ -98,7 +99,7 @@ object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] =
     for {
       cfg <- Config.fromCiris.load[IO]
-      _   <- runR[IO](cfg).use(_ => IO.never.void)
+      _   <- runR(cfg).useForever
     } yield ExitCode.Success
 
 }
