@@ -8,6 +8,7 @@ import cats.effect._
 import cats.effect.std.Console
 import cats.syntax.all._
 import edu.gemini.grackle.skunk.SkunkMonitor
+import fs2.io.net.Network
 import lucuma.core.model.StandardUser
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.service.config.Config
@@ -29,7 +30,7 @@ import org.typelevel.log4cats.Logger
 object SsoSimulator {
 
   // The exact same routes and database used by SSO, but a fake ORCID back end
-  private def httpRoutes[F[_]: Async: Console: Logger]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
+  private def httpRoutes[F[_]: Async: Console: Logger: Network]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], HttpRoutes[F], SsoJwtReader[F], SsoJwtWriter[F])] =
     for {
       sim     <- Resource.eval(OrcidSimulator[F])
       config   = Config.local(null, None).copy(scheme = Uri.Scheme.https) // no ORCID config since we're faking ORCID
@@ -52,7 +53,7 @@ object SsoSimulator {
       ), config.ssoJwtReader, config.ssoJwtWriter)
 
   /** An Http client that hits an SSO server backed by a simulated ORCID server. */
-  def apply[F[_]: Async: Logger: Console]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F], SsoJwtWriter[F])] = {
+  def apply[F[_]: Async: Logger: Console: Network]: Resource[F, (Resource[F, Database[F]], OrcidSimulator[F], Client[F], SsoJwtReader[F], SsoJwtWriter[F])] = {
     httpRoutes[F].flatMap { case (pool, sim, routes, reader, writer) =>
       val client = Client.fromHttpApp(Router("/" -> routes).orNotFound)
       val clientʹ = Client[F] { req =>
