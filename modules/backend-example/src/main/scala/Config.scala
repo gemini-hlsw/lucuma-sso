@@ -7,6 +7,7 @@ import cats.effect._
 import cats.syntax.all._
 import ciris._
 import com.comcast.ip4s.Port
+import fs2.io.net.Network
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
 import lucuma.sso.client.SsoJwtReader
@@ -36,11 +37,11 @@ case class Config(
 
   // People also send us their API keys. We need to be able to exchange them for [longer-lived] JWTs
   // via an API call to SSO, so we need an HTTP client for that.
-  def httpClientResource[F[_]: Async]: Resource[F, Client[F]] =
+  def httpClientResource[F[_]: Async: Network]: Resource[F, Client[F]] =
     EmberClientBuilder.default[F].build
 
   // SSO Client resource (has to be a resource because it owns an HTTP client).
-  def ssoClient[F[_]: Async: Trace]: Resource[F, SsoClient[F, UserInfo]] =
+  def ssoClient[F[_]: Async: Trace: Network]: Resource[F, SsoClient[F, UserInfo]] =
     httpClientResource[F].evalMap { httpClient =>
       SsoClient.initial(
         serviceJwt = serviceJwt,

@@ -66,7 +66,7 @@ object Main extends CommandIOApp(
     Command(
       name   = "serve",
       header = "Run the SSO service.",
-    )(FMain.serve[IO].pure[Opts])
+    )(FMain.serve.pure[Opts])
 
   lazy val createServiceUser =
     Command(
@@ -158,7 +158,7 @@ object FMain extends AnsiColor {
     }
 
   /** A resource that yields an OrcidService. */
-  def orcidServiceResource[F[_]: Async: Trace](config: OrcidConfig) =
+  def orcidServiceResource[F[_]: Async: Trace: Network](config: OrcidConfig) =
     EmberClientBuilder.default[F].build.map(org.http4s.client.middleware.Logger[F](
       logHeaders = true,
       logBody    = true,
@@ -221,19 +221,19 @@ object FMain extends AnsiColor {
    * Our main server, as a resource that starts up our server on acquire and shuts it all down
    * in cleanup, yielding an `ExitCode`. Users will `use` this resource and hold it forever.
    */
-  def server[F[_]: Async: Logger: Console]: Resource[F, ExitCode] =
+  def server(using Logger[IO]): Resource[IO, ExitCode] =
     for {
-      c  <- Resource.eval(Config.config.load[F])
-      _  <- Resource.eval(banner[F](c))
-      _  <- Resource.eval(migrateDatabase[F](c.database))
-      ep <- entryPointResource(c.honeycomb)
+      c  <- Resource.eval(Config.config.load[IO])
+      _  <- Resource.eval(banner[IO](c))
+      _  <- Resource.eval(migrateDatabase[IO](c.database))
+      ep <- entryPointResource[IO](c.honeycomb)
       ap <- ep.wsLiftR(routesResource(c)).map(_.map(_.orNotFound))
       _  <- serverResource(c.httpPort, ap)
     } yield ExitCode.Success
 
   /** Our main server, which runs forever. */
-  def serve[F[_]: Async: Logger: Console]: F[ExitCode] =
-    server.use(_ => Concurrent[F].never[ExitCode])
+  def serve(using Logger[IO]): IO[ExitCode] =
+    server.useForever
 
   /** Standalone single-use database instance for one-off commands. */
   def standaloneDatabase[F[_]: Temporal: Network: Console](
