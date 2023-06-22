@@ -5,7 +5,6 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole

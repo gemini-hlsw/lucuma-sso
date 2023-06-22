@@ -9,7 +9,6 @@ import _root_.skunk.implicits._
 import cats.data.NonEmptyChain
 import cats.effect.{Unique => _, _}
 import cats.syntax.all._
-import edu.gemini.grackle.Path._
 import edu.gemini.grackle.Predicate._
 import edu.gemini.grackle.Query._
 import edu.gemini.grackle.QueryCompiler

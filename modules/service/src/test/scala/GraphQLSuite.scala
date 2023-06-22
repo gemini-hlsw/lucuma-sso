@@ -5,7 +5,6 @@ package lucuma.sso.service
 
 import cats.effect._
 import cats.implicits._
-import eu.timepit.refined.auto._
 import io.circe.Json
 import io.circe.literal._
 import lucuma.core.model._
