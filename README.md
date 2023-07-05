@@ -109,13 +109,10 @@ under a PI role. If the user has no such role (possible but unusual) it will be 
 
 ### Set Role
 
-> This is not implemented yet.
-
-- Post to `/api/v1/setRole?role=<role-id>` to switch the user's current role.
-  - Be sure to pass the `Authorization` header.
+- GET `/auth/v1/set-role?role=<role-id>` to start a new session with the same user in a different role (taken from the user's `otherRoles` collection).
+  - This will set a new session cookie.
   - The response body will contain a new JWT.
-    - Continue with **Normal Operation** above.
-
+  - Continue with **Normal Operation** above.
 
 ## Back-End Service Workflow
 
@@ -144,7 +141,8 @@ It is possible to implement authentication as a middleware, but this makes compo
 
 ## Local Development QuickStart
 
-Edit `/etc/hosts` to add `local.lucuma.xyz` as an alias of localhost.
+- Step 1 is `chmod 0600 test-cert/*`
+- Edit `/etc/hosts` to add `local.lucuma.xyz` as an alias of localhost.
 
 ```
 127.0.0.1       localhost local.lucuma.xyz

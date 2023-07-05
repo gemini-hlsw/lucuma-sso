@@ -84,6 +84,34 @@ object Routes {
         // TODO: get the user so we can trace this!
         Ok("Logged out.").flatMap(cookies.removeCookie)
 
+      // Start a new session wih the same user, but a different role. On success we replace the
+      // session cookie and return a new JWT.
+      case r@(GET -> Root / "auth" / "v1" / "set-role" :? Role(rid)) =>
+        cookies.findSessionToken(r).flatMap {
+          case None      => Forbidden("Not logged in.")
+          case Some(tok) =>
+            dbPool.use { db =>
+              db.findStandardUserFromToken(tok).flatMap {
+                case None    => Forbidden("Standard user required.")
+                case Some(u) =>
+                  if (u.role.id === rid) { 
+                    jwtWriter.newJwt(u).flatMap(Ok(_)) // nothing to do 
+                  } else {
+                    u.otherRoles.find(_.id === rid) match
+                      case None    => Forbidden("User does not own role.")
+                      case Some(r) =>
+                        for {
+                          tok <- db.createStandardUserSessionToken(r.id)
+                          coo <- cookies.sessionCookie(tok)
+                          usr <- db.getStandardUserFromToken(tok)
+                          jwt <- jwtWriter.newJwt(usr)
+                          res <- Ok(jwt)
+                        } yield res.addCookie(coo)
+                  }
+              }
+            }
+        }
+
       // Create an API key
       case r@(POST -> Root / "api" / "v1" / "create-api-key" :? Role(rid)) =>
         jwtReader.findStandardUser(r).flatMap {
