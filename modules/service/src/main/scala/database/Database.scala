@@ -38,6 +38,8 @@ trait Database[F[_]] {
 
   def getStandardUserFromToken(token: SessionToken): F[StandardUser]
 
+  def findStandardUserFromToken(token: SessionToken): F[Option[StandardUser]]
+
   def findUserFromToken(token: SessionToken): F[Option[User]]
 
   def getUserFromToken(token: SessionToken): F[User]
@@ -47,6 +49,9 @@ trait Database[F[_]] {
     person:    OrcidPerson,
     role:      RoleRequest
   ) : F[SessionToken]
+
+  /** Create (if necessary) and return the specified role. */
+  def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id]
 
   def promoteGuestUser(
     access:    OrcidAccess,
@@ -223,6 +228,9 @@ object Database extends Codecs {
 
         }
 
+      def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id] =
+        s.transaction.use(_ => canonicalizeRole(user.id, role))
+        
       private def canonicalizeRole(userId: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("canonicalizeRole") {
           // we assume we're in a transction … would be nice if we could put this in the type
