@@ -23,6 +23,8 @@ import org.http4s.implicits._
 import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
 import org.http4s.server.middleware.ErrorAction
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.annotation.unused
 import scala.concurrent.duration._
@@ -31,6 +33,9 @@ object Main extends IOApp {
 
   val host: Host =
     Host.fromString("0.0.0.0").getOrElse(sys.error("unpossible: invalid host"))
+
+  implicit val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName("lucuma-sso")
 
   // A normal server.
   def serverResource[F[_]: Async: Network](
@@ -58,7 +63,7 @@ object Main extends IOApp {
   }
 
   // Our routes, with middleware
-  def wrappedRoutes[F[_]: Async: Trace: Network](
+  def wrappedRoutes[F[_]: Async: Trace: Network: Logger](
     cfg: Config
   ): Resource[F, HttpRoutes[F]] =
     cfg.ssoClient[F].map { ssoClient =>
@@ -78,9 +83,10 @@ object Main extends IOApp {
   def log[F[_]: Async](@unused r: Request[F], t: Throwable): F[Unit] =
     Async[F].delay(t.printStackTrace())
 
-  def cors[F[_]: Monad](routes: HttpRoutes[F]): HttpRoutes[F] =
+  def cors[F[_]: Monad](routes: HttpRoutes[F], domain: String): HttpRoutes[F] =
     CORS.policy
       .withAllowCredentials(true)
+      .withAllowOriginHost(_.host.value.endsWith(domain))
       .withMaxAge(1.day)
       .apply(routes)
 
@@ -91,7 +97,7 @@ object Main extends IOApp {
     for {
       ep      <- entryPoint[IO](cfg)
       routes  <- ep.liftR(wrappedRoutes(cfg))
-      httpApp  = ErrorAction.httpRoutes(cors(routes), log[IO]).orNotFound
+      httpApp  = ErrorAction.httpRoutes(cors(routes, "lucuma.xyz"), log[IO]).orNotFound
       server  <- serverResource(cfg.port, httpApp)
     } yield server
 
