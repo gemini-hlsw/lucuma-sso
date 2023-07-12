@@ -16,6 +16,7 @@ import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Authorization
 import org.typelevel.ci.CIString
+import org.typelevel.log4cats.Logger
 
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration._
@@ -88,7 +89,7 @@ object SsoClient {
    * exchanging and caching API keys as required. Transformations of this client share the same
    * underlyiny API key cache. Note that the cache is never expunged; we rely on server cycling.
    */
-  def initial[F[_]: Concurrent: Clock](
+  def initial[F[_]: Concurrent: Clock: Logger](
     httpClient:  Client[F],
     ssoRoot:     Uri,
     jwtReader:   SsoJwtReader[F],
@@ -138,7 +139,10 @@ object SsoClient {
           user  <- claim.getUser.liftTo[F]
           info   = UserInfo(user, claim, authorization(bearerAuthorization))
         } yield info
-      } .attempt.map(_.toOption)
+      } .attempt.flatMap {
+        case Right(ui) => Some(ui).pure[F]
+        case Left(ex)  => Logger[F].warn(ex)(s"JWT validation failed for $bearerAuthorization").as(None)
+      }
 
       def getUserInfo(bearerAuthorization: String): F[Option[UserInfo]] =
         (OptionT(getApiInfo(bearerAuthorization)) <+> OptionT(getJwtInfo(bearerAuthorization))).value
