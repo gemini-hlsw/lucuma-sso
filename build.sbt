@@ -1,4 +1,4 @@
-val bcpgVersion                = "1.76"
+val bcpgVersion                = "1.75"
 val circeVersion               = "0.14.5"
 val cirisVersion               = "3.2.0"
 val declineVersion             = "2.4.1"
