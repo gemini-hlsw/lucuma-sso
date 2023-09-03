@@ -18,7 +18,7 @@ val natcchezHttp4sVersion      = "0.5.0"
 val natchezVersion             = "0.3.3"
 val postgresVersion            = "42.6.0"
 val skunkVersion               = "0.5.1"
-val slf4jVersion               = "2.0.7"
+val slf4jVersion               = "2.0.8"
 val weaverVersion              = "0.8.3"
 
 // If we don't do this we get a spurious warning about an unused key.
