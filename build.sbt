@@ -25,8 +25,8 @@ val weaverVersion              = "0.8.3"
 Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion := "0.6"
-ThisBuild / scalaVersion       := "3.3.0"
-ThisBuild / crossScalaVersions := Seq("3.3.0")
+ThisBuild / scalaVersion       := "3.3.1"
+ThisBuild / crossScalaVersions := Seq("3.3.1")
 ThisBuild / scalacOptions ++= Seq(
   "-language:implicitConversions"
 )
