@@ -11,7 +11,7 @@ val http4sEmberVersion         = "0.23.22"
 val http4sXmlVersion           = "0.23.13"
 val jwtVersion                 = "9.4.4"
 val log4catsVersion            = "2.6.0"
-val lucumaCoreVersion          = "0.85.0"
+val lucumaCoreVersion          = "0.85.1"
 val lucumaGraphQLRoutesVersion = "0.5.11"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.5.0"
@@ -25,8 +25,8 @@ val weaverVersion              = "0.8.3"
 Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion := "0.6"
-ThisBuild / scalaVersion       := "3.3.0"
-ThisBuild / crossScalaVersions := Seq("3.3.0")
+ThisBuild / scalaVersion       := "3.3.1"
+ThisBuild / crossScalaVersions := Seq("3.3.1")
 ThisBuild / scalacOptions ++= Seq(
   "-language:implicitConversions"
 )
