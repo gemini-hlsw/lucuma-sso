@@ -7,9 +7,9 @@ package graphql
 import cats.data.OptionT
 import cats.effect._
 import cats.implicits._
-import edu.gemini.grackle.skunk.SkunkMonitor
+import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
-import lucuma.graphql.routes.GrackleGraphQLService
+import lucuma.graphql.routes.GraphQLService
 import lucuma.graphql.routes.{ Routes => LucumaGraphQLRoutes }
 import lucuma.sso.client.SsoClient
 import natchez.Trace
@@ -33,7 +33,7 @@ object GraphQLRoutes {
           auth <- OptionT.fromOption[F](oa)
           user <- OptionT(client.get(auth))
           map  <- OptionT.liftF(SsoMapping(channels, pool, monitor).map(_(user)))
-        } yield new GrackleGraphQLService(map)
+        } yield new GraphQLService(map)
       } .widen.value,
       wsb
     )

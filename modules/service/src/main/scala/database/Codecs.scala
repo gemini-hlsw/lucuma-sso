@@ -55,7 +55,7 @@ trait Codecs {
     enums[Partner](Enumerated[Partner].tag(_).toLowerCase, x => Enumerated[Partner].fromTag(toPrefix(x)), Type("lucuma_ngo"))
 
   val session_token: Codec[SessionToken] =
-    uuid.gimap
+    uuid.to
 
   val api_key: Decoder[ApiKey] =
     text.map(ApiKey.fromString.getOption).emap(_.toRight("Invalid API Key"))

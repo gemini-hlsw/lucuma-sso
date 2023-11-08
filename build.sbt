@@ -1,23 +1,23 @@
-val bcpgVersion                = "1.75"
+val bcpgVersion                = "1.76"
 val circeVersion               = "0.14.6"
 val cirisVersion               = "3.4.0"
 val declineVersion             = "2.4.1"
 val disciplineMunitVersion     = "1.0.9"
 val flywayVersion              = "9.22.3"
-val grackleVersion             = "0.10.3"
-val http4sVersion              = "0.23.22"
+val grackleVersion             = "0.16.0"
+val http4sVersion              = "0.23.23"
 val http4sBlazeVersion         = "0.23.15"
-val http4sEmberVersion         = "0.23.22"
+val http4sEmberVersion         = "0.23.23"
 val http4sXmlVersion           = "0.23.13"
 val jwtVersion                 = "9.4.4"
 val log4catsVersion            = "2.6.0"
-val lucumaCoreVersion          = "0.88.0"
-val lucumaGraphQLRoutesVersion = "0.5.11"
+val lucumaCoreVersion          = "0.88.2"
+val lucumaGraphQLRoutesVersion = "0.8.2"
 val munitVersion               = "0.7.29"
 val natcchezHttp4sVersion      = "0.5.0"
-val natchezVersion             = "0.3.3"
+val natchezVersion             = "0.3.4"
 val postgresVersion            = "42.6.0"
-val skunkVersion               = "0.5.1"
+val skunkVersion               = "0.6.1"
 val slf4jVersion               = "2.0.9"
 val weaverVersion              = "0.8.3"
 
@@ -104,8 +104,8 @@ lazy val service = project
       "org.postgresql" %  "postgresql"          % postgresVersion,
       "com.monovore"   %% "decline-effect"      % declineVersion,
       "com.monovore"   %% "decline"             % declineVersion,
-      "edu.gemini"     %% "gsp-graphql-skunk"   % grackleVersion,
-      "edu.gemini"     %% "lucuma-graphql-routes-grackle" % lucumaGraphQLRoutesVersion,
+      "org.typelevel"   %% "grackle-skunk"   % grackleVersion,
+      "edu.gemini"     %% "lucuma-graphql-routes" % lucumaGraphQLRoutesVersion,
       "io.circe"       %% "circe-literal"       % circeVersion       % Test,
       "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
       "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
