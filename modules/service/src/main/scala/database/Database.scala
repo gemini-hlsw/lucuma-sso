@@ -100,7 +100,7 @@ object Database extends Codecs {
             userId match {
               case Some(u) =>
                 Trace[F].put("userId" -> Gid[User.Id].fromString.reverseGet(u)) *>
-                s.prepareR(DeleteApiKeyForUser).use(_.execute(keyId ~ u))
+                s.prepareR(DeleteApiKeyForUser).use(_.execute(keyId, u))
               case None =>
                 s.prepareR(DeleteApiKey).use(_.execute(keyId))
             }
@@ -247,7 +247,7 @@ object Database extends Codecs {
               FROM   lucuma_role
               WHERE  user_id = $user_id
               AND    role_type = $role_type
-            """.apply(userId ~ role.tpe) |+|
+            """.apply(userId, role.tpe) |+|
             role.partnerOption.fold(AppliedFragment.empty)(sql" AND partner = $partner")
 
           // Done
@@ -273,7 +273,7 @@ object Database extends Codecs {
       // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
       def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[User.Id]] =
         Trace[F].span("updateProfile") {
-          s.prepareR(UpdateProfile).use(_.option(access ~ person))
+          s.prepareR(UpdateProfile).use(_.option(access, person))
         }
 
       def promoteGuest(
@@ -285,7 +285,7 @@ object Database extends Codecs {
         Trace[F].span("promoteGuest") {
           s.prepareR(PromoteGuest).use { pq =>
             for {
-              userId <- pq.unique(gid ~ access ~ person)
+              userId <- pq.unique(gid, access, person)
               rid    <- addRole(userId, role)
             } yield rid
           }
@@ -299,7 +299,7 @@ object Database extends Codecs {
         Trace[F].span("createStandardUser") {
           s.prepareR(InsertStandardUser).use { pq =>
             for {
-              userId <- pq.unique(access ~ person)
+              userId <- pq.unique(access, person)
               rid    <- addRole(userId, role)
             } yield rid
           }
@@ -307,7 +307,7 @@ object Database extends Codecs {
 
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("addRole") {
-          s.prepareR(InsertRole).use(_.unique(user ~ role))
+          s.prepareR(InsertRole).use(_.unique(user, role))
         }
 
       def getStandardUserFromToken(token: SessionToken): F[StandardUser] =
@@ -325,8 +325,8 @@ object Database extends Codecs {
           s.prepareR(SelectStandardUserByToken).use { pq =>
             pq.stream(token, 64).compile.toList flatMap {
               case Nil => none[StandardUser].pure[F]
-              case all @ ((roleId ~ user ~ _) :: _) =>
-                val roles = all.map(_._2)
+              case all @ ((roleId, user, _) :: _) =>
+                val roles = all.map(_._3)
                 roles.find(_.id === roleId) match {
                   case None => Concurrent[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user token: ${token.value}"))
                   case Some(activeRole) =>
@@ -343,8 +343,8 @@ object Database extends Codecs {
           s.prepareR(SelectStandardUserByApiKey).use { pq =>
             pq.stream(apiKey, 64).compile.toList flatMap {
               case Nil => none[StandardUser].pure[F]
-              case all @ ((roleId ~ user ~ _) :: _) =>
-                val roles = all.map(_._2)
+              case all @ ((roleId, user, _) :: _) =>
+                val roles = all.map(_._3)
                 roles.find(_.id === roleId) match {
                   case None => Concurrent[F].raiseError(new RuntimeException(s"Unpossible: active role was not found for standard user associated with API key: ${apiKey.id}"))
                   case Some(activeRole) =>
@@ -362,7 +362,7 @@ object Database extends Codecs {
       RETURNING user_id
     """.query(user_id.map(GuestUser(_)))
 
-  private val UpdateProfile: Query[OrcidAccess ~ OrcidPerson, User.Id] =
+  private val UpdateProfile: Query[(OrcidAccess, OrcidPerson), User.Id] =
     sql"""
       UPDATE lucuma_user
       SET orcid_access_token     = $uuid,
@@ -375,17 +375,17 @@ object Database extends Codecs {
       RETURNING (user_id)
     """
       .query(user_id)
-      .contramap[OrcidAccess ~ OrcidPerson] {
-        case access ~ person =>
-          access.accessToken               ~ // TODO: expiration
-          person.name.givenName            ~
-          person.name.creditName           ~
-          person.name.familyName           ~
-          person.primaryEmail.map(_.email) ~
-          access.orcidId
+      .contramap[(OrcidAccess, OrcidPerson)] {
+        case (access, person) =>
+          access.accessToken               *: // TODO: expiration
+          person.name.givenName            *:
+          person.name.creditName           *:
+          person.name.familyName           *:
+          person.primaryEmail.map(_.email) *:
+          access.orcidId                   *: EmptyTuple
       }
 
-  private val PromoteGuest: Query[User.Id ~ OrcidAccess ~ OrcidPerson, User.Id] =
+  private val PromoteGuest: Query[(User.Id, OrcidAccess, OrcidPerson), User.Id] =
     sql"""
       UPDATE lucuma_user
       SET user_type              = 'standard',
@@ -401,18 +401,18 @@ object Database extends Codecs {
       RETURNING (user_id)
     """
       .query(user_id)
-      .contramap[User.Id ~ OrcidAccess ~ OrcidPerson] {
-        case id ~ access ~ person =>
-          access.orcidId                   ~
-          access.accessToken               ~ // TODO: expiration
-          person.name.givenName            ~
-          person.name.creditName           ~
-          person.name.familyName           ~
-          person.primaryEmail.map(_.email) ~
-          id
+      .contramap[(User.Id, OrcidAccess, OrcidPerson)] {
+        case (id, access, person) =>
+          access.orcidId                   *:
+          access.accessToken               *: // TODO: expiration
+          person.name.givenName            *:
+          person.name.creditName           *:
+          person.name.familyName           *:
+          person.primaryEmail.map(_.email) *:
+          id                               *: EmptyTuple
       }
 
-  private val InsertStandardUser: Query[OrcidAccess ~ OrcidPerson, User.Id] =
+  private val InsertStandardUser: Query[(OrcidAccess, OrcidPerson), User.Id] =
     sql"""
       INSERT INTO lucuma_user (
         user_type,
@@ -436,14 +436,14 @@ object Database extends Codecs {
       RETURNING (user_id)
     """
       .query(user_id)
-      .contramap[OrcidAccess ~ OrcidPerson] {
-        case access ~ person =>
-          access.orcidId                   ~
-          access.accessToken               ~ // TODO: expiration
-          person.name.givenName            ~
-          person.name.creditName           ~
-          person.name.familyName           ~
-          person.primaryEmail.map(_.email)
+      .contramap[(OrcidAccess, OrcidPerson)] {
+        case (access, person) =>
+          access.orcidId                   *:
+          access.accessToken               *: // TODO: expiration
+          person.name.givenName            *:
+          person.name.creditName           *:
+          person.name.familyName           *:
+          person.primaryEmail.map(_.email) *: EmptyTuple
       }
 
   /**
@@ -451,7 +451,7 @@ object Database extends Codecs {
    * constant (active role id, user with null role and Nil otherRoles) and the last value is a unique
    * role, from which the active and other roles must be selected.
    */
-  private val SelectStandardUserByToken: Query[SessionToken, StandardRole.Id ~ StandardUser ~ StandardRole] =
+  private val SelectStandardUserByToken: Query[SessionToken, (StandardRole.Id, StandardUser, StandardRole)] =
     sql"""
       SELECT
         s.role_id,
@@ -470,34 +470,34 @@ object Database extends Codecs {
       WHERE s.refresh_token = $session_token
       AND   s.user_type     = 'standard'
     """.query(
-        role_id ~
-        (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
-          case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
-          StandardUser(
-            id         = id,
-            role       = null, // TODO
-            otherRoles = Nil, // TODO
-            profile    = OrcidProfile(
-              orcidId      = orcidId,
-              givenName    = givenName,
-              creditName   = creditName,
-              familyName   = familyName,
-              primaryEmail = email
+        role_id *:
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email) =>
+            StandardUser(
+              id         = id,
+              role       = null, // TODO
+              otherRoles = Nil, // TODO
+              profile    = OrcidProfile(
+                orcidId      = orcidId,
+                givenName    = givenName,
+                creditName   = creditName,
+                familyName   = familyName,
+                primaryEmail = email
+              )
             )
-          )
-        } ~
-        (role_id ~ role_type ~ partner.opt).map {
+        } *:
+        (role_id *: role_type *: partner.opt).map {
           // we really need emap here
-          case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id)
-          case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id)
-          case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p)
-          case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id)
+          case (id, RoleType.Admin, None)    => StandardRole.Admin(id)
+          case (id, RoleType.Staff, None)    => StandardRole.Staff(id)
+          case (id, RoleType.Ngo,   Some(p)) => StandardRole.Ngo(id, p)
+          case (id, RoleType.Pi,    None)    => StandardRole.Pi(id)
           case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
         }
       )
 
 
-  val SelectStandardUserByApiKey: Query[ApiKey, StandardRole.Id ~ StandardUser ~ StandardRole] =
+  val SelectStandardUserByApiKey: Query[ApiKey, (StandardRole.Id, StandardUser, StandardRole)] =
     sql"""
       SELECT
         k.role_id,
@@ -516,11 +516,11 @@ object Database extends Codecs {
       WHERE k.api_key_id = $varchar
       AND   k.api_key_hash = md5($varchar);
     """
-      .contramap[ApiKey](k => k.id.value.toHexString ~ k.body)
+      .contramap[ApiKey](k => (k.id.value.toHexString, k.body))
       .query(
-        role_id ~
-        (user_id ~ orcid_id ~ varchar.opt ~ varchar.opt ~ varchar.opt ~ varchar.opt).map {
-          case id ~ orcidId ~ givenName ~ creditName ~ familyName ~ email =>
+        role_id *:
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email) =>
           StandardUser(
             id         = id,
             role       = null, // NOTE
@@ -533,12 +533,12 @@ object Database extends Codecs {
               primaryEmail = email
             )
           )
-        } ~
-        (role_id ~ role_type ~ partner.opt).emap {
-          case id ~ RoleType.Admin ~ None    => StandardRole.Admin(id).asRight
-          case id ~ RoleType.Staff ~ None    => StandardRole.Staff(id).asRight
-          case id ~ RoleType.Ngo   ~ Some(p) => StandardRole.Ngo(id, p).asRight
-          case id ~ RoleType.Pi    ~ None    => StandardRole.Pi(id).asRight
+        } *:
+        (role_id *: role_type *: partner.opt).emap {
+          case (id, RoleType.Admin, None   ) => StandardRole.Admin(id).asRight
+          case (id, RoleType.Staff, None   ) => StandardRole.Staff(id).asRight
+          case (id, RoleType.Ngo  , Some(p)) => StandardRole.Ngo(id, p).asRight
+          case (id, RoleType.Pi   , None   ) => StandardRole.Pi(id).asRight
           case hmm                           => s"Invalid: $hmm".asLeft
         }
       )
@@ -548,14 +548,14 @@ object Database extends Codecs {
       DELETE FROM lucuma_user WHERE user_id = $user_id
     """.command
 
-  private val InsertRole: Query[User.Id ~ RoleRequest, StandardRole.Id] =
+  private val InsertRole: Query[(User.Id, RoleRequest), StandardRole.Id] =
     sql"""
       INSERT INTO lucuma_role (user_id, role_type, role_ngo)
       VALUES ($user_id, $role_type, ${partner.opt})
       RETURNING role_id
     """
       .query(role_id)
-      .contramap { case id ~ rr => id ~ rr.tpe ~ rr.partnerOption }
+      .contramap { case (id, rr) => (id, rr.tpe, rr.partnerOption) }
 
 
   /** Create a session token for a guest user. */
@@ -600,13 +600,13 @@ object Database extends Codecs {
       .contramap[PosLong](_.value.toHexString)
       .command
 
-  private val DeleteApiKeyForUser: Command[PosLong ~ User.Id] =
+  private val DeleteApiKeyForUser: Command[(PosLong, User.Id)] =
     sql"""
       DELETE FROM lucuma_api_key
       WHERE  api_key_id = $varchar
       AND    user_id = $user_id
     """
-      .contramap[(PosLong ~ User.Id)] { case key ~ user => key.value.toHexString ~ user }
+      .contramap[(PosLong, User.Id)] { case (key, user) => (key.value.toHexString, user) }
       .command
 
   val CanonicalizeServiceUser: Query[String, ServiceUser] =
@@ -617,7 +617,7 @@ object Database extends Codecs {
         UPDATE SET service_name=EXCLUDED.service_name
       RETURNING user_id, service_name
     """
-      .query(user_id ~ varchar)
-      .gmap[ServiceUser]
+      .query(user_id *: varchar)
+      .to[ServiceUser]
 
 }
