@@ -12,8 +12,8 @@ import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
 import com.monovore.decline._
 import com.monovore.decline.effect.CommandIOApp
-import edu.gemini.grackle.skunk.SkunkMonitor
 import fs2.io.net.Network
+import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
 import lucuma.sso.service.config._
 import lucuma.sso.service.database.Database

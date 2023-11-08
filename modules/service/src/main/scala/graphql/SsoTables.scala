@@ -3,7 +3,7 @@
 
 package lucuma.sso.service.graphql
 
-import edu.gemini.grackle.skunk.SkunkMapping
+import grackle.skunk.SkunkMapping
 import io.circe
 import io.circe.Json
 import lucuma.core.util.Enumerated

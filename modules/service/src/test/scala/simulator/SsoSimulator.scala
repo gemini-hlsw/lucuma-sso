@@ -7,8 +7,8 @@ package simulator
 import cats.effect._
 import cats.effect.std.Console
 import cats.syntax.all._
-import edu.gemini.grackle.skunk.SkunkMonitor
 import fs2.io.net.Network
+import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.service.config.Config
