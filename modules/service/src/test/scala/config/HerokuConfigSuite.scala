@@ -24,7 +24,7 @@ object HerokuConfigSuite extends IOSuite {
 
   // Remove system properties whose keys contain the given substring.
   def removeAllSystemProperties(substring: String): IO[Unit] =
-     IO(sys.props.keySet.toList.filter(_ contains substring)).flatMap(_.traverse_(removeSystemProperty))
+     IO(sys.props.keySet.toList.filter(_.contains(substring))).flatMap(_.traverse_(removeSystemProperty))
 
   // Clear out all app-specific system properties
   val reset =
