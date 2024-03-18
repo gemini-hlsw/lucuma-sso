@@ -6,14 +6,14 @@ package lucuma.sso.client
 import cats.kernel.Eq
 import io.circe.testing.CodecTests
 import io.circe.testing.instances.arbitraryJson
-import lucuma.core.model._
-import lucuma.core.model.arb.ArbOrcidProfile._
-import lucuma.core.model.arb.ArbStandardRole._
-import lucuma.core.model.arb.ArbUser._
-import lucuma.core.util.arb.ArbGid._
-import lucuma.sso.client.codec.orcidProfile._
-import lucuma.sso.client.codec.role._
-import lucuma.sso.client.codec.user._
+import lucuma.core.model.*
+import lucuma.core.model.arb.ArbOrcidProfile.given
+import lucuma.core.model.arb.ArbStandardRole.given
+import lucuma.core.model.arb.ArbUser.given
+import lucuma.core.util.arb.ArbGid.given
+import lucuma.sso.client.codec.orcidProfile.*
+import lucuma.sso.client.codec.role.*
+import lucuma.sso.client.codec.user.*
 import munit.DisciplineSuite
 import munit.ScalaCheckSuite
 

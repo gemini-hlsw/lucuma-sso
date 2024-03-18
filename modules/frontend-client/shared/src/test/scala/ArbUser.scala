@@ -3,14 +3,14 @@
 
 package lucuma.core.model.arb
 
-import lucuma.core.model._
-import lucuma.core.model.arb.ArbOrcidProfile._
-import lucuma.core.util.arb.ArbGid._
+import lucuma.core.model.*
+import lucuma.core.model.arb.ArbOrcidProfile.given
+import lucuma.core.util.arb.ArbGid.given
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck._
+import org.scalacheck.*
 
 trait ArbUser {
-  import ArbStandardRole._
+  import ArbStandardRole.given
 
   val GenGuestUser: Gen[GuestUser] =
     arbitrary[User.Id].map(GuestUser(_))
@@ -26,7 +26,7 @@ trait ArbUser {
       id <- arbitrary[User.Id]
       r  <- arbitrary[StandardRole]
       rs <- arbitrary[List[StandardRole]].map(_.distinct)
-      p  <- arbitrary(ArbOrcidProfile) // y u no infer?
+      p  <- arbitrary[OrcidProfile]
     } yield StandardUser(id, r, rs, p)
 
 

@@ -3,14 +3,14 @@
 
 package lucuma.core.model.arb
 
-import cats.syntax.all._
-import lucuma.core.model.StandardRole._
-import lucuma.core.model._
-import lucuma.core.util.arb.ArbEnumerated._
-import lucuma.core.util.arb.ArbGid._
+import cats.syntax.all.*
+import lucuma.core.model.StandardRole.*
+import lucuma.core.model.*
+import lucuma.core.util.arb.ArbEnumerated.given
+import lucuma.core.util.arb.ArbGid.given
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck._
-import org.scalacheck.cats.implicits._
+import org.scalacheck.*
+import org.scalacheck.cats.implicits.*
 
 trait ArbStandardRole {
 
