@@ -3,23 +3,23 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.implicits._
+import cats.effect.*
+import cats.implicits.*
 import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid
+import lucuma.sso.client.*
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.client.SsoMiddleware.traceUser
-import lucuma.sso.client._
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleRequest
 import lucuma.sso.service.orcid.OrcidService
 import natchez.Trace
-import org.http4s._
+import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import org.typelevel.log4cats.Logger
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object Routes {
 

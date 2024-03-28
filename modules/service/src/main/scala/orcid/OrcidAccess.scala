@@ -7,11 +7,11 @@ import cats.effect.Concurrent
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 import lucuma.core.model.OrcidId
 import org.http4s.EntityDecoder
 import org.http4s.EntityEncoder
-import org.http4s.circe._
+import org.http4s.circe.*
 
 import java.time.Duration
 import java.util.UUID

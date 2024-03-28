@@ -4,11 +4,11 @@
 package lucuma.sso.client.util
 
 import cats.effect.Concurrent
-import cats.syntax.all._
+import cats.syntax.all.*
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
-import org.bouncycastle.openpgp._
-import org.bouncycastle.openpgp.operator.jcajce._
+import org.bouncycastle.openpgp.*
+import org.bouncycastle.openpgp.operator.jcajce.*
 import org.http4s.DecodeResult
 import org.http4s.EntityDecoder
 import org.http4s.EntityEncoder
@@ -17,7 +17,7 @@ import org.http4s.MalformedMessageBodyFailure
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.security.PublicKey
-import java.{util => ju}
+import java.util as ju
 import scala.util.control.NonFatal
 
 /** Methods to convert between GPG ASCII-amored text and JCA `PublicKey`. */

@@ -3,9 +3,9 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.implicits._
-import lucuma.core.model._
+import cats.effect.*
+import cats.implicits.*
+import lucuma.core.model.*
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.headers.Location
 

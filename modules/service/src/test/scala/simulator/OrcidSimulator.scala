@@ -4,16 +4,16 @@
 package lucuma.sso.service.simulator
 
 import cats.data.OptionT
+import cats.effect.*
 import cats.effect.Ref
-import cats.effect._
-import cats.implicits._
+import cats.implicits.*
 import lucuma.core.model.OrcidId
-import lucuma.sso.service.orcid._
-import org.http4s._
+import lucuma.sso.service.orcid.*
+import org.http4s.*
 import org.http4s.client.Client
 import org.http4s.dsl.Http4sDsl
-import org.http4s.implicits._
-import org.http4s.server._
+import org.http4s.implicits.*
+import org.http4s.server.*
 
 import java.time.Duration
 import java.util.UUID

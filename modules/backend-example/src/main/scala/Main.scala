@@ -3,8 +3,8 @@
 
 package lucuma.sso.example
 
-import cats._
-import cats.effect._
+import cats.*
+import cats.effect.*
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
 import fs2.io.net.Network
@@ -15,11 +15,11 @@ import natchez.EntryPoint
 import natchez.Trace
 import natchez.honeycomb.Honeycomb
 import natchez.http4s.NatchezMiddleware
-import natchez.http4s.implicits._
-import org.http4s._
+import natchez.http4s.implicits.*
+import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.implicits._
+import org.http4s.implicits.*
 import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
 import org.http4s.server.middleware.ErrorAction
@@ -27,7 +27,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.annotation.unused
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object Main extends IOApp {
 

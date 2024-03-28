@@ -3,7 +3,7 @@
 
 package lucuma.sso.service.database
 
-import lucuma.core.model._
+import lucuma.core.model.*
 
 sealed abstract class RoleRequest(
   val tpe: RoleType,

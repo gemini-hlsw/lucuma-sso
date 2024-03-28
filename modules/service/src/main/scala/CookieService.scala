@@ -6,7 +6,7 @@ package lucuma.sso.service
 import cats.Applicative
 import cats.MonadThrow
 import cats.data.OptionT
-import cats.syntax.all._
+import cats.syntax.all.*
 import org.http4s.HttpDate
 import org.http4s.Request
 import org.http4s.RequestCookie

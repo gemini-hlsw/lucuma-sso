@@ -3,8 +3,8 @@
 
 package lucuma.sso.client.util
 
-import cats._
-import cats.implicits._
+import cats.*
+import cats.implicits.*
 import pdi.jwt.Jwt
 import pdi.jwt.JwtClaim
 import pdi.jwt.exceptions.JwtEmptyAlgorithmException

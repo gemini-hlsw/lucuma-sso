@@ -7,8 +7,8 @@ import io.circe.Decoder
 import io.circe.DecodingFailure
 import io.circe.Encoder
 import io.circe.Json
-import io.circe.syntax._
-import lucuma.core.model._
+import io.circe.syntax.*
+import lucuma.core.model.*
 
 trait UserCodec {
   import gid._

@@ -3,10 +3,10 @@
 
 package lucuma.sso.service
 
-import cats.effect._
+import cats.effect.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import weaver._
+import weaver.*
 
 trait SsoSuite extends SimpleIOSuite {
 

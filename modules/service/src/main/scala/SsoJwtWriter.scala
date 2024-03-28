@@ -4,12 +4,12 @@
 package lucuma.sso.service
 
 import cats.effect.Sync
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 import lucuma.core.model.User
 import lucuma.sso.client.SsoJwtClaim
-import lucuma.sso.client.codec.user._
+import lucuma.sso.client.codec.user.*
 import lucuma.sso.service.util.JwtEncoder
 import org.http4s.Credentials
 import org.http4s.Request

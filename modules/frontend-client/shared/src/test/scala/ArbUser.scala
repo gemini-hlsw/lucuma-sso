@@ -6,8 +6,8 @@ package lucuma.core.model.arb
 import lucuma.core.model.*
 import lucuma.core.model.arb.ArbOrcidProfile.given
 import lucuma.core.util.arb.ArbGid.given
-import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.*
+import org.scalacheck.Arbitrary.arbitrary
 
 trait ArbUser {
   import ArbStandardRole.given

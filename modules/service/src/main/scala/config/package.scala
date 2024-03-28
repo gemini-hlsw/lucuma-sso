@@ -3,8 +3,8 @@
 
 package lucuma.sso.service
 
-import cats.implicits._
-import ciris._
+import cats.implicits.*
+import ciris.*
 import com.comcast.ip4s.Port
 import lucuma.sso.client.util.GpgPublicKeyReader
 import lucuma.sso.service.util.GpgPrivateKeyReader

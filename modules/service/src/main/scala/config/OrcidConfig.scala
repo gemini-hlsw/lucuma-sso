@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.config
 
-import cats.implicits._
-import ciris._
+import cats.implicits.*
+import ciris.*
 import lucuma.sso.service.config.Environment.Local
 import lucuma.sso.service.config.Environment.Production
 import lucuma.sso.service.config.Environment.Review

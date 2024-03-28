@@ -4,7 +4,7 @@
 package lucuma.sso.service
 
 import cats.effect.IO
-import cats.syntax.all._
+import cats.syntax.all.*
 import weaver.Expectations
 
 trait FlakyTests {

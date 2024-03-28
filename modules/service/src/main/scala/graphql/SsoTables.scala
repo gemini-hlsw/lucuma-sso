@@ -9,7 +9,7 @@ import io.circe.Json
 import lucuma.core.util.Enumerated
 import lucuma.sso.service.database.Codecs
 import lucuma.sso.service.database.RoleType
-import skunk.codec.all._
+import skunk.codec.all.*
 
 trait SsoTables[F[_]] extends Codecs { this: SkunkMapping[F] =>
 

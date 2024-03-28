@@ -6,8 +6,8 @@ package lucuma.sso.service.config
 import cats.effect.IO
 import cats.effect.Resource
 import cats.effect.std.Semaphore
-import cats.implicits._
-import weaver._
+import cats.implicits.*
+import weaver.*
 
 object HerokuConfigSuite extends IOSuite {
 

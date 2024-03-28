@@ -3,19 +3,19 @@
 
 package lucuma.sso.service
 
-import cats._
+import cats.*
 import cats.data.Kleisli
-import cats.effect._
+import cats.effect.*
 import cats.effect.std.Console
-import cats.implicits._
+import cats.implicits.*
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
-import com.monovore.decline._
+import com.monovore.decline.*
 import com.monovore.decline.effect.CommandIOApp
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
-import lucuma.sso.service.config._
+import lucuma.sso.service.config.*
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.graphql.GraphQLRoutes
 import lucuma.sso.service.graphql.SsoMapping
@@ -23,22 +23,22 @@ import lucuma.sso.service.orcid.OrcidService
 import natchez.EntryPoint
 import natchez.Trace
 import natchez.honeycomb.Honeycomb
-import natchez.http4s.implicits._
+import natchez.http4s.implicits.*
 import natchez.log.Log
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
+import org.http4s.*
 import org.http4s.Uri.Scheme
-import org.http4s._
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.implicits._
-import org.http4s.server._
+import org.http4s.implicits.*
+import org.http4s.server.*
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import skunk.{Command => _, _}
+import skunk.{Command as _, *}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.io.AnsiColor
 
 object Main extends CommandIOApp(

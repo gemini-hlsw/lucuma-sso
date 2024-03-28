@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.config
 
-import cats.syntax.all._
-import ciris._
+import cats.syntax.all.*
+import ciris.*
 
 case class HoneycombConfig(
   writeKey: String,

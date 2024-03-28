@@ -4,9 +4,9 @@
 package lucuma.sso.service.orcid
 
 // import lucuma.core.model.OrcidProfile
-import io.circe._
-import io.circe.generic.semiauto._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.generic.semiauto.*
+import io.circe.syntax.*
 import lucuma.core.model.OrcidId
 import lucuma.core.model.OrcidProfile
 

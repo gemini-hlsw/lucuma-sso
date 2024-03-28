@@ -5,7 +5,7 @@ package lucuma.sso.client
 
 import io.circe.parser.parse
 import lucuma.core.model.User
-import lucuma.sso.client.codec.user._
+import lucuma.sso.client.codec.user.*
 import pdi.jwt.JwtClaim
 
 import java.time.Instant
