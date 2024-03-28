@@ -4,9 +4,9 @@
 package lucuma.sso.service
 package simulator
 
-import cats.effect._
+import cats.effect.*
 import cats.effect.std.Console
-import cats.syntax.all._
+import cats.syntax.all.*
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
@@ -23,7 +23,7 @@ import org.http4s.HttpRoutes
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.middleware.CookieJar
-import org.http4s.implicits._
+import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.typelevel.log4cats.Logger
 

@@ -5,8 +5,8 @@ package lucuma.sso.client
 
 import cats.Order
 import cats.effect.Concurrent
-import cats.implicits._
-import eu.timepit.refined.cats._
+import cats.implicits.*
+import eu.timepit.refined.cats.*
 import eu.timepit.refined.types.numeric.PosLong
 import monocle.Prism
 import org.http4s.DecodeResult

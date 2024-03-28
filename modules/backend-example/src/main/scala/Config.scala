@@ -3,9 +3,9 @@
 
 package lucuma.sso.example
 
-import cats.effect._
-import cats.syntax.all._
-import ciris._
+import cats.effect.*
+import cats.syntax.all.*
+import ciris.*
 import com.comcast.ip4s.Port
 import fs2.io.net.Network
 import lucuma.sso.client.SsoClient

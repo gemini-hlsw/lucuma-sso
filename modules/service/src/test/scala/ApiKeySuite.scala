@@ -3,14 +3,14 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.implicits._
+import cats.effect.*
+import cats.implicits.*
 import eu.timepit.refined.numeric.Positive
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.User
 import lucuma.core.util.Gid
-import lucuma.refined._
+import lucuma.refined.*
 import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoJwtClaim
 import lucuma.sso.service.simulator.SsoSimulator

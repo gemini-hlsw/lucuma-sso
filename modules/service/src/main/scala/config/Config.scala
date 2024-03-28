@@ -3,9 +3,9 @@
 
 package lucuma.sso.service.config
 
-import cats.effect._
-import cats.syntax.all._
-import ciris._
+import cats.effect.*
+import cats.syntax.all.*
+import ciris.*
 import com.comcast.ip4s.Port
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.client.util.JwtDecoder
@@ -20,7 +20,7 @@ import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.SecureRandom
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final case class Config(
   environment:  Environment,

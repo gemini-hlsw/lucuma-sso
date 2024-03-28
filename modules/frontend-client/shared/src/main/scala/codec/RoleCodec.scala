@@ -3,15 +3,15 @@
 
 package lucuma.sso.client.codec
 
-import cats.syntax.all._
+import cats.syntax.all.*
 import io.circe.Decoder
 import io.circe.DecodingFailure
 import io.circe.Encoder
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 import lucuma.core.model.Partner
 import lucuma.core.model.StandardRole
-import lucuma.core.model.StandardRole._
+import lucuma.core.model.StandardRole.*
 
 trait RoleCodec {
   import gid._

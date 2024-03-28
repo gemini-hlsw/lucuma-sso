@@ -5,15 +5,15 @@ package lucuma.sso.service
 package graphql
 
 import cats.data.OptionT
-import cats.effect._
-import cats.implicits._
+import cats.effect.*
+import cats.implicits.*
 import grackle.skunk.SkunkMonitor
 import lucuma.core.model.StandardUser
 import lucuma.graphql.routes.GraphQLService
-import lucuma.graphql.routes.{ Routes => LucumaGraphQLRoutes }
+import lucuma.graphql.routes.Routes as LucumaGraphQLRoutes
 import lucuma.sso.client.SsoClient
 import natchez.Trace
-import org.http4s._
+import org.http4s.*
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.typelevel.log4cats.Logger
 import skunk.Session

@@ -8,7 +8,7 @@ package lucuma.sso.service.orcid
 import cats.effect.Concurrent
 import io.circe.Decoder
 import org.http4s.EntityDecoder
-import org.http4s.circe._
+import org.http4s.circe.*
 
 final case class OrcidException(error: String, description: String)
   extends Exception(s"$error: $description")

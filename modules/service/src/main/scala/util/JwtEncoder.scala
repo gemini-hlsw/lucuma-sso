@@ -4,7 +4,7 @@
 package lucuma.sso.service.util
 
 import cats.ApplicativeThrow
-import cats.implicits._
+import cats.implicits.*
 import pdi.jwt.Jwt
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtClaim

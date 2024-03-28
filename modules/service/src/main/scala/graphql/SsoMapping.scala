@@ -5,18 +5,18 @@ package lucuma.sso.service.graphql
 
 import _root_.skunk.Channel
 import _root_.skunk.Session
-import _root_.skunk.implicits._
-import cats.effect.{Unique => _, _}
-import cats.syntax.all._
+import _root_.skunk.implicits.*
+import cats.effect.{Unique as _, *}
+import cats.syntax.all.*
 import eu.timepit.refined.types.numeric.PosLong
 import fs2.Stream
-import grackle.Predicate._
-import grackle.Query._
+import grackle.*
+import grackle.Predicate.*
+import grackle.Query.*
 import grackle.QueryCompiler
 import grackle.QueryCompiler.Elab
 import grackle.QueryCompiler.SelectElaborator
 import grackle.Schema
-import grackle._
 import grackle.skunk.SkunkMapping
 import grackle.skunk.SkunkMonitor
 import lucuma.core.model

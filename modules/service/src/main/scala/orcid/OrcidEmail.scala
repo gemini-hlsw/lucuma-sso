@@ -3,8 +3,8 @@
 
 package lucuma.sso.service.orcid
 
-import io.circe._
-import io.circe.generic.semiauto._
+import io.circe.*
+import io.circe.generic.semiauto.*
 
 case class OrcidEmail(
   email:    String,

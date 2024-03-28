@@ -6,7 +6,7 @@ package lucuma.sso.client
 import cats.data.Kleisli
 import cats.data.OptionT
 import cats.effect.MonadCancelThrow
-import cats.syntax.all._
+import cats.syntax.all.*
 import lucuma.core.model.User
 import natchez.Trace
 import org.http4s.HttpRoutes

@@ -3,11 +3,11 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.implicits._
+import cats.effect.*
+import cats.implicits.*
 import io.circe.Json
-import io.circe.literal._
-import lucuma.core.model._
+import io.circe.literal.*
+import lucuma.core.model.*
 import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
 import lucuma.sso.service.simulator.SsoSimulator
@@ -16,7 +16,7 @@ import org.http4s.Headers
 import org.http4s.Method
 import org.http4s.QueryParamEncoder
 import org.http4s.Request
-import org.http4s.circe._
+import org.http4s.circe.*
 import org.http4s.headers.Authorization
 import org.http4s.headers.Location
 import org.typelevel.ci.CIString

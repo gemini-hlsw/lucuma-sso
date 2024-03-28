@@ -4,11 +4,11 @@
 package lucuma.sso.service.orcid
 
 import cats.effect.Concurrent
-import io.circe._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.syntax.*
 import org.http4s.EntityDecoder
 import org.http4s.EntityEncoder
-import org.http4s.circe._
+import org.http4s.circe.*
 
 case class OrcidPerson(
   name:   OrcidName,

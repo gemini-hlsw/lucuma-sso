@@ -4,11 +4,11 @@
 package lucuma.sso.service
 
 import cats.effect.IO
-import cats.implicits._
-import lucuma.core.model.StandardRole._
-import lucuma.core.model._
-import lucuma.sso.service.orcid._
-import org.http4s.implicits._
+import cats.implicits.*
+import lucuma.core.model.*
+import lucuma.core.model.StandardRole.*
+import lucuma.sso.service.orcid.*
+import org.http4s.implicits.*
 import weaver.SimpleMutableIOSuite
 
 trait Fixture { self: SimpleMutableIOSuite =>

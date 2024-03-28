@@ -3,9 +3,9 @@
 
 package lucuma.sso.client
 
-import cats.data._
+import cats.data.*
 import cats.effect.Concurrent
-import cats.implicits._
+import cats.implicits.*
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User

@@ -8,7 +8,7 @@ import io.circe.testing.CodecTests
 import io.circe.testing.instances.arbitraryJson
 import lucuma.core.model.*
 import lucuma.core.model.arb.ArbOrcidProfile.given
-import lucuma.core.model.arb.ArbStandardRole.given
+import lucuma.core.model.arb.ArbStandardRole.*
 import lucuma.core.model.arb.ArbUser.given
 import lucuma.core.util.arb.ArbGid.given
 import lucuma.sso.client.codec.orcidProfile.*

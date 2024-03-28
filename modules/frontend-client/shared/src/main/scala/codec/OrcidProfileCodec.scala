@@ -3,8 +3,8 @@
 
 package lucuma.sso.client.codec
 
-import io.circe._
-import io.circe.generic.semiauto._
+import io.circe.*
+import io.circe.generic.semiauto.*
 import lucuma.core.model.OrcidProfile
 
 trait OrcidProfileCodec {

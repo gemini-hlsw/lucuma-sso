@@ -3,9 +3,9 @@
 
 package lucuma.sso.service
 
-import cats.effect._
+import cats.effect.*
 import lucuma.sso.service.simulator.SsoSimulator
-import org.http4s._
+import org.http4s.*
 import org.http4s.headers.Cookie
 
 object RefreshTokenSuite extends SsoSuite with Fixture with FlakyTests {

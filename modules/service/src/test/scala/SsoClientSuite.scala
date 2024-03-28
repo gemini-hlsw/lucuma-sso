@@ -3,27 +3,27 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.syntax.all._
+import cats.effect.*
+import cats.syntax.all.*
 import eu.timepit.refined.numeric.Positive
 import lucuma.core.model.ServiceUser
 import lucuma.core.model.User
-import lucuma.refined._
+import lucuma.refined.*
 import lucuma.sso.client.ApiKey
 import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
 import lucuma.sso.service.simulator.SsoSimulator
+import org.http4s.*
 import org.http4s.Credentials
 import org.http4s.Headers
 import org.http4s.HttpRoutes
-import org.http4s._
 import org.http4s.client.Client
-import org.http4s.dsl.io._
-import org.http4s.headers._
-import org.http4s.implicits._
+import org.http4s.dsl.io.*
+import org.http4s.headers.*
+import org.http4s.implicits.*
 import org.typelevel.ci.CIString
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object SsoClientSuite extends SsoSuite with Fixture with FlakyTests {
   inline given Predicate[Long, Positive] with

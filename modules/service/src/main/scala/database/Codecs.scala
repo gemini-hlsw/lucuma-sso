@@ -3,13 +3,13 @@
 
 package lucuma.sso.service.database
 
-import lucuma.core.model._
+import lucuma.core.model.*
 import lucuma.core.util.Enumerated
 import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
 import lucuma.sso.service.SessionToken
-import skunk._
-import skunk.codec.all._
+import skunk.*
+import skunk.codec.all.*
 import skunk.data.Type
 
 // Codecs for some atomic types.

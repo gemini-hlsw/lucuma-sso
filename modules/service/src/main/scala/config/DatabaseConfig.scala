@@ -4,7 +4,7 @@
 package lucuma.sso.service.config
 
 import cats.Show
-import ciris._
+import ciris.*
 
 import java.net.URI
 

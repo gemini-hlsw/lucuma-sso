@@ -3,14 +3,14 @@
 
 package lucuma.sso.service
 
-import cats.effect._
-import cats.syntax.all._
+import cats.effect.*
+import cats.syntax.all.*
 import lucuma.core.model.GuestRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
 import lucuma.sso.client.SsoJwtClaim
 import lucuma.sso.service.simulator.SsoSimulator
-import org.http4s._
+import org.http4s.*
 import org.http4s.headers.Location
 
 object GuestUserSuite extends SsoSuite with Fixture with FlakyTests {

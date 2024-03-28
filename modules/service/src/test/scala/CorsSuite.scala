@@ -3,10 +3,10 @@
 
 package lucuma.sso.service
 
-import cats.effect._
+import cats.effect.*
 import natchez.Trace.Implicits.noop
-import org.http4s._
-import org.http4s.implicits._
+import org.http4s.*
+import org.http4s.implicits.*
 import org.typelevel.ci.CIString
 
 object CorsSuite extends SsoSuite {

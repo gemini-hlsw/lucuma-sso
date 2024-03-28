@@ -4,8 +4,8 @@
 package lucuma.sso.service.util
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.openpgp._
-import org.bouncycastle.openpgp.operator.jcajce._
+import org.bouncycastle.openpgp.*
+import org.bouncycastle.openpgp.operator.jcajce.*
 
 import java.io.ByteArrayInputStream
 import java.security.PrivateKey
