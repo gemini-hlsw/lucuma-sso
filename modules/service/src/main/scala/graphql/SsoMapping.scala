@@ -19,9 +19,9 @@ import grackle.QueryCompiler.SelectElaborator
 import grackle.Schema
 import grackle.skunk.SkunkMapping
 import grackle.skunk.SkunkMonitor
+import lucuma.core.enums.Partner
 import lucuma.core.model
 import lucuma.core.model.OrcidId
-import lucuma.core.model.Partner
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.sso.service.database.Database
@@ -176,10 +176,10 @@ object SsoMapping {
 
         override val selectElaborator = SelectElaborator {
 
-          case (QueryType, "user", Nil) => 
+          case (QueryType, "user", Nil) =>
             Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.id)), c)))
 
-          case (QueryType, "role", Nil) => 
+          case (QueryType, "role", Nil) =>
             Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.role.id)), c)))
 
           case (MutationType, "createApiKey", List(Binding("role", Value.StringValue(id)))) =>

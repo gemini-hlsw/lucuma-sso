@@ -4,6 +4,7 @@
 package lucuma.core.model.arb
 
 import cats.syntax.all.*
+import lucuma.core.enums.Partner
 import lucuma.core.model.*
 import lucuma.core.model.StandardRole.*
 import lucuma.core.util.arb.ArbEnumerated.given

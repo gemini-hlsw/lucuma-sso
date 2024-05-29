@@ -3,6 +3,7 @@
 
 package lucuma.sso.service.database
 
+import lucuma.core.enums.Partner
 import lucuma.core.model.*
 import lucuma.core.util.Enumerated
 import lucuma.core.util.Gid

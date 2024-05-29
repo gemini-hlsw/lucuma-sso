@@ -9,7 +9,7 @@ import io.circe.DecodingFailure
 import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax.*
-import lucuma.core.model.Partner
+import lucuma.core.enums.Partner
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardRole.*
 
