@@ -111,67 +111,69 @@ object SsoMapping {
         val UserIdType       = schema.ref("UserId")
         val UserType         = schema.ref("User")
 
-        val typeMappings: List[TypeMapping] =
-          List(
-            ObjectMapping(
-              tpe = QueryType,
-              fieldMappings = List(
-                SqlObject("user"),
-                SqlObject("role"),
-              )
-            ),
-            ObjectMapping(
-              tpe = MutationType,
-              fieldMappings = List(
-                RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
-                RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e))
-              )
-            ),
-            ObjectMapping(
-              tpe = UserType,
-              fieldMappings = List(
-                SqlField("id", User.Id, key = true),
-                SqlField("orcidId", User.OrcidId),
-                SqlField("givenName", User.GivenName),
-                SqlField("familyName", User.FamilyName),
-                SqlField("creditName", User.CreditName),
-                SqlField("email", User.Email),
-                SqlObject("roles", Join(User.Id, Role.UserId)),
-                SqlObject("apiKeys", Join(User.Id, ApiKey.UserId)),
-              )
-            ),
-            ObjectMapping(
-              tpe = RoleType,
-              fieldMappings = List(
-                SqlField("id", Role.Id, key = true),
-                SqlField("type", Role.Type),
-                SqlField("partner", Role.Partner),
-                SqlField("«unused»", Role.UserId, hidden = true),
-                SqlObject("user", Join(Role.UserId, User.Id)),
-              )
-            ),
-            ObjectMapping(
-              tpe = ApiKeyType,
-              fieldMappings = List(
-                SqlField("id", ApiKey.Id, key = true),
-                SqlField("«unused»", ApiKey.UserId, hidden = true),
-                SqlField("«unused»", ApiKey.RoleId, hidden = true),
-                SqlObject("user", Join(ApiKey.UserId, User.Id)),
-                SqlObject("role", Join(ApiKey.RoleId, Role.Id)),
-              )
-            ),
-            ObjectMapping(
-              tpe = SubscriptionType,
-              fieldMappings = List(
-                RootStream.computeEncodable("apiKeyRevocation")((_,_) => apiKeyRevocation)
-              )
-            ),
-            LeafMapping[model.User.Id](UserIdType),
-            LeafMapping[OrcidId](OrcidIdType),
-            LeafMapping[StandardRole.Id](RoleIdType),
-            LeafMapping[RoleType](RoleTypeType),
-            LeafMapping[Partner](PartnerType),
-            LeafMapping[String](ApiKeyIdType),
+        val typeMappings: TypeMappings =
+          TypeMappings(
+            List[TypeMapping](
+              ObjectMapping(
+                tpe = QueryType,
+                fieldMappings = List(
+                  SqlObject("user"),
+                  SqlObject("role"),
+                )
+              ),
+              ObjectMapping(
+                tpe = MutationType,
+                fieldMappings = List(
+                  RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
+                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e))
+                )
+              ),
+              ObjectMapping(
+                tpe = UserType,
+                fieldMappings = List(
+                  SqlField("id", User.Id, key = true),
+                  SqlField("orcidId", User.OrcidId),
+                  SqlField("givenName", User.GivenName),
+                  SqlField("familyName", User.FamilyName),
+                  SqlField("creditName", User.CreditName),
+                  SqlField("email", User.Email),
+                  SqlObject("roles", Join(User.Id, Role.UserId)),
+                  SqlObject("apiKeys", Join(User.Id, ApiKey.UserId)),
+                )
+              ),
+              ObjectMapping(
+                tpe = RoleType,
+                fieldMappings = List(
+                  SqlField("id", Role.Id, key = true),
+                  SqlField("type", Role.Type),
+                  SqlField("partner", Role.Partner),
+                  SqlField("«unused»", Role.UserId, hidden = true),
+                  SqlObject("user", Join(Role.UserId, User.Id)),
+                )
+              ),
+              ObjectMapping(
+                tpe = ApiKeyType,
+                fieldMappings = List(
+                  SqlField("id", ApiKey.Id, key = true),
+                  SqlField("«unused»", ApiKey.UserId, hidden = true),
+                  SqlField("«unused»", ApiKey.RoleId, hidden = true),
+                  SqlObject("user", Join(ApiKey.UserId, User.Id)),
+                  SqlObject("role", Join(ApiKey.RoleId, Role.Id)),
+                )
+              ),
+              ObjectMapping(
+                tpe = SubscriptionType,
+                fieldMappings = List(
+                  RootStream.computeEncodable("apiKeyRevocation")((_,_) => apiKeyRevocation)
+                )
+              ),
+              LeafMapping[model.User.Id](UserIdType),
+              LeafMapping[OrcidId](OrcidIdType),
+              LeafMapping[StandardRole.Id](RoleIdType),
+              LeafMapping[RoleType](RoleTypeType),
+              LeafMapping[Partner](PartnerType),
+              LeafMapping[String](ApiKeyIdType),
+            )
           )
 
         override val selectElaborator = SelectElaborator {
