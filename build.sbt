@@ -110,6 +110,8 @@ lazy val service = project
       "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
       "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
     ),
+    reStart / envVars += "PORT" -> "8082",
+    reStartArgs       += "serve"
   )
 
 lazy val backendExample = project

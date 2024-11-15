@@ -41,6 +41,27 @@ import skunk.{Command as _, *}
 import scala.concurrent.duration.*
 import scala.io.AnsiColor
 
+object MainArgs:
+  opaque type ResetDatabase = Boolean
+
+  object ResetDatabase:
+    val opt: Opts[ResetDatabase] =
+      Opts.flag("reset", help = "Drop and recreate the database before starting.").orFalse
+
+    extension (rd: ResetDatabase)
+      def toBoolean: Boolean   = rd
+      def isRequested: Boolean = toBoolean
+
+  opaque type SkipMigration = Boolean
+
+  object SkipMigration:
+    val opt: Opts[SkipMigration] =
+      Opts.flag("skip-migration", help = "Skip database migration on startup.").orFalse
+
+    extension (sm: SkipMigration)
+      def toBoolean: Boolean   = sm
+      def isRequested: Boolean = toBoolean
+
 object Main extends CommandIOApp(
   name    = "lucuma-sso",
   header  =
@@ -55,6 +76,8 @@ object Main extends CommandIOApp(
         |""".stripMargin,
 ) {
 
+  import MainArgs.*
+
   def main: Opts[IO[ExitCode]] =
     command
 
@@ -65,7 +88,13 @@ object Main extends CommandIOApp(
     Command(
       name   = "serve",
       header = "Run the SSO service.",
-    )(FMain.serve.pure[Opts])
+    )((ResetDatabase.opt, SkipMigration.opt).tupled.map { case (reset, skipMigration) =>
+      for
+        _ <- IO.whenA(reset.isRequested)(IO.println("Resetting database."))
+        _ <- IO.whenA(skipMigration.isRequested)(IO.println("Skipping migration.  Ensure that your database is up-to-date."))
+        e <- FMain.serve(reset, skipMigration)
+      yield e
+    })
 
   lazy val createServiceUser =
     Command(
@@ -216,23 +245,58 @@ object FMain extends AnsiColor {
   implicit def kleisliLogger[F[_]: Logger, A]: Logger[Kleisli[F, A, *]] =
     Logger[F].mapK(Kleisli.liftK)
 
+  def singleSession[F[_]: Async: Console: Network](
+    config:   DatabaseConfig,
+    database: Option[String] = None
+  ): Resource[F, Session[F]] =
+    import natchez.Trace.Implicits.noop
+    Session.single[F](
+      host     = config.host,
+      port     = config.port,
+      user     = config.user,
+      database = database.getOrElse(config.database),
+      password = config.password,
+      ssl      = SSL.Trusted.withFallback(true),
+      strategy = Strategy.SearchPath
+    )
+
+  def resetDatabase[F[_]: Async : Console : Network](config: DatabaseConfig): F[Unit] =
+    import skunk.*
+    import skunk.implicits.*
+
+    val drop   = sql"""DROP DATABASE "#${config.database}"""".command
+    val create = sql"""CREATE DATABASE "#${config.database}"""".command
+
+    singleSession(config, "postgres".some).use: s =>
+      for
+        _ <- s.execute(drop).void
+        _ <- s.execute(create).void
+      yield()
+
   /**
    * Our main server, as a resource that starts up our server on acquire and shuts it all down
    * in cleanup, yielding an `ExitCode`. Users will `use` this resource and hold it forever.
    */
-  def server(using Logger[IO]): Resource[IO, ExitCode] =
-    for {
+  def server(
+    reset:         MainArgs.ResetDatabase,
+    skipMigration: MainArgs.SkipMigration
+  )(using Logger[IO]): Resource[IO, ExitCode] =
+    for
       c  <- Resource.eval(Config.config.load[IO])
       _  <- Resource.eval(banner[IO](c))
-      _  <- Resource.eval(migrateDatabase[IO](c.database))
+      _  <- Applicative[Resource[IO, *]].whenA(reset.isRequested)(Resource.eval(resetDatabase[IO](c.database)))
+      _  <- Applicative[Resource[IO, *]].unlessA(skipMigration.isRequested)(Resource.eval(migrateDatabase[IO](c.database)))
       ep <- entryPointResource[IO](c.honeycomb)
       ap <- ep.wsLiftR(routesResource(c)).map(_.map(_.orNotFound))
       _  <- serverResource(c.httpPort, ap)
-    } yield ExitCode.Success
+    yield ExitCode.Success
 
   /** Our main server, which runs forever. */
-  def serve(using Logger[IO]): IO[ExitCode] =
-    server.useForever
+  def serve(
+    reset:         MainArgs.ResetDatabase,
+    skipMigration: MainArgs.SkipMigration
+  )(using Logger[IO]): IO[ExitCode] =
+    server(reset, skipMigration).useForever
 
   /** Standalone single-use database instance for one-off commands. */
   def standaloneDatabase[F[_]: Temporal: Network: Console](
