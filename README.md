@@ -169,6 +169,20 @@ Docker-compose also starts up a local nginx server that serves an example client
 
 - http://local.lucuma.xyz:8081/playground.html
 
+### Using reStart
+
+Alternatively, you can run the app from within SBT with `service/reStart`
+(stopping with `service/reStop`).  By default, this command will fail after
+running `docker-compose` `down` and then `up` as described above.  You can
+supply optional arguments to simplify development though:
+
+* `--reset` - Drops then creates the database for you. Do this after cycling
+`docker-compose` `down`, `up` to give flyway a chance to run the migration and
+update its schema table. 
+* `--skip-migration` - Skips the database migration.  This assumes that the 
+database has been initialized already.  Usually this won't be necessary since
+flyway already skips migrations that have previously run. 
+
 ### Working on the Schema
 
 The app runs the migrations in `/modules/service/src/main/resources/db/migration` on startup.
@@ -189,7 +203,7 @@ You can connect to youe dev database with locally-installed tools like `pgAdmin`
 
 If you try to run `Main` you will find that it barfs because it needs some ORCID configuration. To set this up, sign into [ORCID](http://orcid.org) as yourself, go to **Developer Tools** under the name menu and create an API key with redirect URL `http://localhost:8080/auth/v1/stage2`. This will allow you to test ORCID authentication locally.
 
-You will need to provide `GPP_ORCID_CLIENT_ID` and `GPP_ORCID_CLIENT_SECRET` either as environment variables or system properties when you run `Main`. To do this in VS-Code you can hit F5 and then set up a run configuration as follows after which hitting F5 again should run SSO locally. Output will be in the Debug Console window.
+You will need to provide `LUCUMA_ORCID_CLIENT_ID` and `LUCUMA_ORCID_CLIENT_SECRET` either as environment variables or system properties when you run `Main`. To do this in VS-Code you can hit F5 and then set up a run configuration as follows after which hitting F5 again should run SSO locally. Output will be in the Debug Console window.
 
 ```json
 {
