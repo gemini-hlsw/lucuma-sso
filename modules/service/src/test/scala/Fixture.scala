@@ -39,7 +39,7 @@ trait Fixture { self: SimpleMutableIOSuite =>
 
   def expectLoggedInAsPi(p: OrcidPerson, u: User): IO[Unit] =
     u match {
-      case StandardUser(_, Pi(_), Nil, OrcidProfile(_, Some(first), Some(last), None, email)) =>
+      case StandardUser(_, Pi(_), Nil, OrcidProfile(_, UserProfile(Some(first), Some(last), None, email), _)) =>
         for {
           _ <- expect(Option(last)  === p.name.familyName).failFast
           _ <- expect(Option(first) === p.name.givenName).failFast

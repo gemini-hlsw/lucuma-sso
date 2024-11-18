@@ -83,10 +83,12 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests {
               type
               partner
               user {
-                givenName
-                familyName
-                creditName
-                email
+                primaryProfile {
+                  givenName
+                  familyName
+                  creditName
+                  email
+                }
               }
             }
           }
@@ -97,10 +99,12 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests {
               "type" : "PI",
               "partner" : null,
               "user" : {
-                "givenName" : "Bob",
-                "familyName" : "Dobbs",
-                "creditName" : null,
-                "email" : "bob@dobbs.com"
+                "primaryProfile": {
+                  "givenName" : "Bob",
+                  "familyName" : "Dobbs",
+                  "creditName" : null,
+                  "email" : "bob@dobbs.com"
+                }
               }
             }
           }

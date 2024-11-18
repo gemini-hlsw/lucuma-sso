@@ -8,7 +8,7 @@ import cats.data.OptionT
 import cats.effect.*
 import cats.implicits.*
 import grackle.skunk.SkunkMonitor
-import lucuma.core.model.StandardUser
+import lucuma.core.model.User
 import lucuma.graphql.routes.GraphQLService
 import lucuma.graphql.routes.Routes as LucumaGraphQLRoutes
 import lucuma.sso.client.SsoClient
@@ -21,7 +21,7 @@ import skunk.Session
 object GraphQLRoutes {
 
   def apply[F[_]: Async: Trace: Logger](
-    client:   SsoClient[F, StandardUser],
+    client:   SsoClient[F, User],
     pool:     Resource[F, Session[F]],
     channels: SsoMapping.Channels[F],
     monitor:  SkunkMonitor[F],

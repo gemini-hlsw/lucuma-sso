@@ -19,11 +19,16 @@ import grackle.QueryCompiler.SelectElaborator
 import grackle.Schema
 import grackle.skunk.SkunkMapping
 import grackle.skunk.SkunkMonitor
+import grackle.syntax.*
 import lucuma.core.enums.Partner
 import lucuma.core.model
+import lucuma.core.model.Access
 import lucuma.core.model.OrcidId
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
+import lucuma.core.model.User
+import lucuma.core.model.UserProfile
+import lucuma.core.util.Gid
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleType
 import natchez.Trace
@@ -59,33 +64,38 @@ object SsoMapping {
     channels: Channels[F],
     pool:     Resource[F, Session[F]],
     monitor:  SkunkMonitor[F],
-  ): F[StandardUser => Mapping[F]] =
+  ): F[User => Mapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
+
+      def requireStaffAccess[A](a: => F[Result[A]]): F[Result[A]] =
+        if user.role.access >= Access.Staff then a
+        else Result.failure("Staff access required for this operation.").pure[F]
+
+      def requireStandardUser[A](f: StandardUser => F[Result[A]]): F[Result[A]] =
+        user match
+          case su@StandardUser(_, _, _, _) => f(su)
+          case _                           => Result.failure("A standard user is required for this operation.").pure[F]
 
       // Directly-computed result for `createApiKey` mutation.
       def createApiKey(env: Env): F[Result[String]] =
-        env.get[StandardRole.Id]("roleId") match {
-          case Some(roleId) =>
-              if ((user.role :: user.otherRoles).exists(_.id === roleId))
-                pool.map(Database.fromSession(_)).use { db =>
+        requireStandardUser: su =>
+          env
+            .getR[StandardRole.Id]("roleId")
+            .flatTraverse: roleId =>
+              if (su.role :: su.otherRoles).exists(_.id === roleId) then
+                pool.map(Database.fromSession(_)).use: db =>
                   db.createApiKey(roleId)
                     .map(apiKey => Result(lucuma.sso.client.ApiKey.fromString.reverseGet(apiKey)))
-                }
               else
                 Result.failure(show"No such role: $roleId").pure[F]
-          case None =>
-            Result.failure(s"Implementation error: `roleId` is not in $env").pure[F]
-        }
 
       def deleteApiKey(env: Env): F[Result[Boolean]] =
-        env.get[PosLong]("id") match {
-          case Some(id) =>
-            pool.map(Database.fromSession(_)).use { db =>
-              db.deleteApiKey(id, Some(user.id)).map(Result.success)
-            }
-          case None =>
-            Result.failure(s"Implementation error: `id` is not in $env").pure[F]
-        }
+        requireStandardUser: su =>
+          env
+            .getR[PosLong]("id")
+            .flatTraverse: id =>
+              pool.map(Database.fromSession(_)).use: db =>
+                db.deleteApiKey(id, Some(su.id)).map(Result.success)
 
       val apiKeyRevocation: Stream[F, Result[String]] =
         channels
@@ -93,6 +103,15 @@ object SsoMapping {
           .listen(1024)
           .evalTap(n => Async[F].delay(println(n)))
           .map(a => Result.success(a.value))
+
+      def updateFallback(env: Env): F[Result[Boolean]] =
+        requireStaffAccess:
+          (
+            env.getR[User.Id]("id"),
+            env.getR[UserProfile]("fallback")
+          ).tupled.flatTraverse: (id, fallback) =>
+            pool.map(Database.fromSession(_)).use: db =>
+              db.updateFallback(id, fallback).map(Result.success)
 
       new SkunkMapping[F](pool, monitor) with SsoTables[F] {
 
@@ -110,6 +129,16 @@ object SsoMapping {
         val SubscriptionType = schema.ref("Subscription")
         val UserIdType       = schema.ref("UserId")
         val UserType         = schema.ref("User")
+        val UserProfileType  = schema.ref("UserProfile")
+
+        def profileMapping(path: Path, p: User.Profile): ObjectMapping =
+          ObjectMapping(path)(
+            SqlField("synthetic-id", User.Id, key = true, hidden = true),
+            SqlField("givenName",  p.GivenName),
+            SqlField("familyName", p.FamilyName),
+            SqlField("creditName", p.CreditName),
+            SqlField("email",      p.Email)
+          )
 
         val typeMappings: TypeMappings =
           TypeMappings(
@@ -124,8 +153,9 @@ object SsoMapping {
               ObjectMapping(
                 tpe = MutationType,
                 fieldMappings = List(
-                  RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
-                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e))
+                  RootEffect.computeEncodable("createApiKey")((_, e)   => createApiKey(e)),
+                  RootEffect.computeEncodable("deleteApiKey")((_, e)   => deleteApiKey(e)),
+                  RootEffect.computeEncodable("updateFallback")((_, e) => updateFallback(e))
                 )
               ),
               ObjectMapping(
@@ -133,14 +163,14 @@ object SsoMapping {
                 fieldMappings = List(
                   SqlField("id", User.Id, key = true),
                   SqlField("orcidId", User.OrcidId),
-                  SqlField("givenName", User.GivenName),
-                  SqlField("familyName", User.FamilyName),
-                  SqlField("creditName", User.CreditName),
-                  SqlField("email", User.Email),
-                  SqlObject("roles", Join(User.Id, Role.UserId)),
+                  SqlObject("primaryProfile"),
+                  SqlObject("fallbackProfile"),
+                  SqlObject("roles",   Join(User.Id, Role.UserId)),
                   SqlObject("apiKeys", Join(User.Id, ApiKey.UserId)),
                 )
               ),
+              profileMapping(UserType / "primaryProfile",  User.Primary),
+              profileMapping(UserType / "fallbackProfile", User.Fallback),
               ObjectMapping(
                 tpe = RoleType,
                 fieldMappings = List(
@@ -176,13 +206,35 @@ object SsoMapping {
             )
           )
 
+        object UserProfileInput:
+          val Binding: Matcher[UserProfile] =
+            ObjectFieldsBinding.rmap {
+              case List(
+                StringBinding.Option("givenName",  rGiven),
+                StringBinding.Option("familyName", rFamily),
+                StringBinding.Option("creditName", rCredit),
+                StringBinding.Option("email",      rEmail)
+              ) => (rGiven, rFamily, rCredit, rEmail).parMapN(UserProfile.apply)
+            }
+
+        def gidBinding[A: Gid](name: String): Matcher[A] =
+          StringBinding.emap: s =>
+            Gid[A].fromString.getOption(s).toRight(s"'$s' is not a valid $name id")
+
+        val UserIdBinding: Matcher[lucuma.core.model.User.Id] =
+          gidBinding("user")
+
         override val selectElaborator = SelectElaborator {
 
           case (QueryType, "user", Nil) =>
             Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.id)), c)))
 
           case (QueryType, "role", Nil) =>
-            Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.role.id)), c)))
+            user match
+              case StandardUser(_, role, _, _) =>
+                Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(role.id)), c)))
+              case _                           =>
+                Elab.failure("'role' requires a standard user.")
 
           case (MutationType, "createApiKey", List(Binding("role", Value.StringValue(id)))) =>
             val rRoleId = Result.fromOption(StandardRole.Id.parse(id), s"Not a valid role id: $id")
@@ -192,6 +244,12 @@ object SsoMapping {
             val rKeyId = Result.fromOption(lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString), s"Not a valid API key id: $hexString")
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
 
+          case (MutationType, "updateFallback", List(
+            UserIdBinding("id", rUserId),
+            UserProfileInput.Binding("fallback", rFallback))
+          ) =>
+            Elab.liftR((rUserId, rFallback).tupled).flatMap: (userId, fallback) =>
+              Elab.env("id" -> userId, "fallback" -> fallback)
         }
 
       }

@@ -18,6 +18,7 @@ import skunk.*
 import skunk.codec.all.*
 import skunk.data.Completion
 import skunk.data.Completion.Delete
+import skunk.data.Completion.Update
 import skunk.implicits.*
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
@@ -76,6 +77,8 @@ trait Database[F[_]] {
    * Returns `true` if the API key was deleted, `false` if no such key exists.
    */
   def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean]
+
+  def updateFallback(userId: User.Id, fallback: UserProfile): F[Boolean]
 
 }
 
@@ -268,13 +271,20 @@ object Database extends Codecs {
           }
         }
 
+      def updateFallback(id: User.Id, fallback: UserProfile): F[Boolean] =
+        Trace[F].span("updateFallback"):
+          s.prepareR(UpdateProfileFallback).use: pq =>
+            pq.execute(id, fallback).map {
+              case Update(c) => c > 0
+              case _         => sys.error("unpossible")
+            }
+
       /// HELPERS
 
       // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
       def updateProfile(access: OrcidAccess, person: OrcidPerson): F[Option[User.Id]] =
-        Trace[F].span("updateProfile") {
+        Trace[F].span("updateProfile"):
           s.prepareR(UpdateProfile).use(_.option(access, person))
-        }
 
       def promoteGuest(
         access:    OrcidAccess,
@@ -385,6 +395,23 @@ object Database extends Codecs {
           access.orcidId                   *: EmptyTuple
       }
 
+  private val UpdateProfileFallback: Command[(User.Id, UserProfile)] =
+    sql"""
+      UPDATE lucuma_user
+      SET fallback_given_name  = ${varchar.opt},
+          fallback_credit_name = ${varchar.opt},
+          fallback_family_name = ${varchar.opt},
+          fallback_email       = ${varchar.opt}
+      WHERE user_id = $user_id
+    """
+      .contramap[(User.Id, UserProfile)]: (uid, up) =>
+        up.givenName  *:
+        up.creditName *:
+        up.familyName *:
+        up.email      *:
+        uid           *: EmptyTuple
+      .command
+
   private val PromoteGuest: Query[(User.Id, OrcidAccess, OrcidPerson), User.Id] =
     sql"""
       UPDATE lucuma_user
@@ -461,6 +488,10 @@ object Database extends Codecs {
         u.orcid_credit_name,
         u.orcid_family_name,
         u.orcid_email,
+        u.fallback_given_name,
+        u.fallback_credit_name,
+        u.fallback_family_name,
+        u.fallback_email,
         r.role_id,
         r.role_type,
         r.role_ngo
@@ -471,18 +502,26 @@ object Database extends Codecs {
       AND   s.user_type     = 'standard'
     """.query(
         role_id *:
-        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
-          case (id, orcidId, givenName, creditName, familyName, email) =>
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email, fbGivenName, fbCreditName, fbFamilyName, fbEmail) =>
             StandardUser(
               id         = id,
               role       = null, // TODO
               otherRoles = Nil, // TODO
               profile    = OrcidProfile(
                 orcidId      = orcidId,
-                givenName    = givenName,
-                creditName   = creditName,
-                familyName   = familyName,
-                primaryEmail = email
+                UserProfile(
+                  givenName  = givenName,
+                  creditName = creditName,
+                  familyName = familyName,
+                  email      = email
+                ),
+                UserProfile(
+                  givenName  = fbGivenName,
+                  creditName = fbCreditName,
+                  familyName = fbFamilyName,
+                  email      = fbEmail
+                )
               )
             )
         } *:
@@ -507,6 +546,10 @@ object Database extends Codecs {
         u.orcid_credit_name,
         u.orcid_family_name,
         u.orcid_email,
+        u.fallback_given_name,
+        u.fallback_credit_name,
+        u.fallback_family_name,
+        u.fallback_email,
         r.role_id,
         r.role_type,
         r.role_ngo
@@ -519,18 +562,26 @@ object Database extends Codecs {
       .contramap[ApiKey](k => (k.id.value.toHexString, k.body))
       .query(
         role_id *:
-        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
-          case (id, orcidId, givenName, creditName, familyName, email) =>
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email, fbGivenName, fbCreditName, fbFamilyName, fbEmail) =>
           StandardUser(
             id         = id,
             role       = null, // NOTE
             otherRoles = Nil,  // NOTE
             profile    = OrcidProfile(
               orcidId      = orcidId,
-              givenName    = givenName,
-              creditName   = creditName,
-              familyName   = familyName,
-              primaryEmail = email
+              UserProfile(
+                givenName  = givenName,
+                creditName = creditName,
+                familyName = familyName,
+                email      = email
+              ),
+              UserProfile(
+                givenName  = fbGivenName,
+                creditName = fbCreditName,
+                familyName = fbFamilyName,
+                email      = fbEmail
+              )
             )
           )
         } *:

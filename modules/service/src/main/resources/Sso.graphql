@@ -12,6 +12,8 @@ type Mutation {
   "Delete the specified API key, if owned by the current user. Returns the constant value `true`."
   deleteApiKey(id: ApiKeyId!): Boolean!
 
+  "Updates the fallback profile for the specific user."
+  updateFallback(id: UserId!, fallback: UserProfile!): User!
 }
 
 type Subscription {
@@ -22,14 +24,26 @@ type Subscription {
 }
 
 type User {
-  id:           UserId!
-  orcidId:      OrcidId!
-  givenName:    String
-  familyName:   String,
-  creditName:   String,
-  email:        String,
-  roles:        [Role!]!
-  apiKeys:      [ApiKey!]!
+  id:              UserId!
+  orcidId:         OrcidId!
+  primaryProfile:  UserProfile!
+  fallbackProfile: UserProfile!
+  roles:           [Role!]!
+  apiKeys:         [ApiKey!]!
+}
+
+type UserProfile {
+  givenName:  String
+  familyName: String
+  creditName: String
+  email:      String
+}
+
+input UserProfileInput {
+  givenName:  String
+  familyName: String
+  creditName: String
+  email:      String
 }
 
 type Role {
@@ -52,4 +66,3 @@ scalar ApiKeyId
 
 enum RoleType { PI NGO STAFF ADMIN }
 enum Partner { AR BR CA CL KR UH US }
-

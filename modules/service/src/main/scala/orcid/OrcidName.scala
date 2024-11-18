@@ -3,22 +3,22 @@
 
 package lucuma.sso.service.orcid
 
-// import lucuma.core.model.OrcidProfile
 import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
 import lucuma.core.model.OrcidId
 import lucuma.core.model.OrcidProfile
+import lucuma.core.model.UserProfile
 
 case class OrcidName(
   familyName: Option[String],
   givenName:  Option[String],
   creditName: Option[String],
-) {
+):
   def displayName(orcidId: OrcidId): String =
-    OrcidProfile(orcidId, givenName, familyName, creditName, None).displayName
-}
-object OrcidName {
+    OrcidProfile(orcidId, UserProfile(givenName, familyName, creditName, None), UserProfile.Empty).displayName
+
+object OrcidName:
 
   case class Value(value: String) // annoying
   object Value {
@@ -39,6 +39,3 @@ object OrcidName {
       "given-names" -> n.givenName.map(Value(_)).asJson,
       "credit-name" -> n.creditName.map(Value(_)).asJson,
     )
-
-}
-

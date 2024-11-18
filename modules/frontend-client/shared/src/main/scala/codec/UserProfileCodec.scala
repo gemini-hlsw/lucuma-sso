@@ -5,12 +5,10 @@ package lucuma.sso.client.codec
 
 import io.circe.*
 import io.circe.generic.semiauto.*
-import lucuma.core.model.OrcidProfile
+import lucuma.core.model.UserProfile
 
-trait OrcidProfileCodec:
-  import userProfile.given
+trait UserProfileCodec:
+  given Encoder[UserProfile] = deriveEncoder
+  given Decoder[UserProfile] = deriveDecoder
 
-  given Encoder[OrcidProfile] = deriveEncoder
-  given Decoder[OrcidProfile] = deriveDecoder
-
-object orcidProfile extends OrcidProfileCodec
+object userProfile extends UserProfileCodec

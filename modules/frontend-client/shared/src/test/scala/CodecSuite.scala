@@ -11,7 +11,7 @@ import lucuma.core.model.arb.ArbOrcidProfile.given
 import lucuma.core.model.arb.ArbStandardRole.*
 import lucuma.core.model.arb.ArbUser.given
 import lucuma.core.util.arb.ArbGid.given
-import lucuma.sso.client.codec.orcidProfile.*
+import lucuma.sso.client.codec.orcidProfile.given
 import lucuma.sso.client.codec.role.*
 import lucuma.sso.client.codec.user.*
 import munit.DisciplineSuite
