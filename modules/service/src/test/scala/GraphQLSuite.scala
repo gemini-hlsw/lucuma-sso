@@ -10,6 +10,8 @@ import io.circe.literal.*
 import lucuma.core.model.*
 import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
+import lucuma.sso.service.database.RoleRequest.Staff
+import lucuma.sso.service.orcid.OrcidIdGenerator
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.Credentials
 import org.http4s.Headers
@@ -17,55 +19,75 @@ import org.http4s.Method
 import org.http4s.QueryParamEncoder
 import org.http4s.Request
 import org.http4s.circe.*
+import org.http4s.client.Client
 import org.http4s.headers.Authorization
 import org.http4s.headers.Location
 import org.typelevel.ci.CIString
 
-object GraphQLSuite extends SsoSuite with Fixture with FlakyTests {
+object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGenerator[IO] {
 
   implicit def gidQueryParamEncoder[A: Gid]: QueryParamEncoder[A] =
     QueryParamEncoder[String].contramap(Gid[A].fromString.reverseGet)
 
+  def doQueryAs(user: StandardUser, query: String, sso: Client[IO]): IO[Json] =
+    for
+      jwt <- sso.expect[String](Request[IO](method = Method.POST, uri = SsoRoot / "api" / "v1" / "refresh-token"))
+
+      // Create an API Key
+      apiKey <- sso.expect[ApiKey](
+        Request[IO](
+          method  = Method.POST,
+          uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", user.role.id),
+          headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
+        )
+      )
+
+      // Run a query!
+      result <- sso.fetchAs[Json](
+        Request[IO](
+          method  = Method.POST,
+          uri     = SsoRoot / "graphql",
+          headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), ApiKey.fromString.reverseGet(apiKey)))),
+        ).withEntity(
+          Json.obj(
+            "query" -> Json.fromString(query)
+          )
+        )
+      )
+    yield result
 
   def queryAsBob(query: String): IO[Json] =
     queryAsBob(_ => query)
 
   def queryAsBob(query: StandardUser => String): IO[Json] =
-    SsoSimulator[IO].use { case (_, sim, sso, reader, _) =>
+    SsoSimulator[IO].use: (db, sim, sso, _, _) =>
       val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
-      for {
+      for
+        redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
+        stage2 <- sim.authenticate(redir, Bob, None) // Log in as Bob
+        tok    <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
+        user   <- db.use(_.getStandardUserFromToken(tok))
+        result <- doQueryAs(user, query(user), sso)
+      yield result
+    .onError(e => IO(println(e)))
 
-        // Log in as Bob
+  def setRole(rid: StandardRole.Id)  =
+    (SsoRoot / "auth" / "v1" / "set-role").withQueryParam("role", rid.toString)
+
+  def queryAsStaffBob(query: StandardUser => String): IO[Json] =
+    SsoSimulator[IO].use: (db, sim, sso, _, _) =>
+      val stage1  = (SsoRoot / "auth" / "v1" / "stage1").withQueryParam("state", ExploreRoot)
+      for
         redir  <- sso.get(stage1)(_.headers.get[Location].map(_.uri).get.pure[IO])
         stage2 <- sim.authenticate(redir, Bob, None)
-        _      <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
-        jwt    <- sso.expect[String](Request[IO](method = Method.POST, uri = SsoRoot / "api" / "v1" / "refresh-token"))
-        user   <- reader.decodeStandardUser(jwt)
-
-        // Create an API Key
-        apiKey <- sso.expect[ApiKey](
-          Request[IO](
-            method  = Method.POST,
-            uri     = (SsoRoot / "api" / "v1" / "create-api-key").withQueryParam("role", user.role.id),
-            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), jwt))),
-          )
-        )
-
-        // Run a query!
-        result <- sso.fetchAs[Json](
-          Request[IO](
-            method  = Method.POST,
-            uri     = SsoRoot / "graphql",
-            headers = Headers(Authorization(Credentials.Token(CIString("Bearer"), ApiKey.fromString.reverseGet(apiKey)))),
-          ).withEntity(
-            Json.obj(
-              "query" -> Json.fromString(query(user))
-            )
-          )
-        )
-
-      } yield result
-    } .onError(e => IO(println(e)))
+        tok1   <- sso.get(stage2)(CookieReader[IO].getSessionToken) // ensure we have our cookie
+        user1  <- db.use(_.getStandardUserFromToken(tok1))
+        rid    <- db.use(_.canonicalizeRole(user1, Staff))
+        tok2   <- sso.get(setRole(rid))(CookieReader[IO].getSessionToken)
+        user2  <- db.use(_.getStandardUserFromToken(tok2))
+        result <- doQueryAs(user2, query(user2), sso)
+      yield result
+    .onError(e => IO(println(e)))
 
   def expectQueryAsBob(query: String, expected: Json) =
     queryAsBob(query).map { result =>
@@ -173,5 +195,55 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests {
       }
     )
   }
+
+  test("Cannot create a pre-auth user as PI"):
+    flaky()(
+      for
+        orcid <- randomOrcidId
+        ex    <- expectQueryAsBob(
+          show"""
+            mutation {
+              canonicalizePreAuthUser(
+                orcid: "${orcid.value}",
+                fallback: { email: "biff@henderson.org" }
+              )
+            }
+          """,
+          expected = json"""{
+            "errors" : [
+              {
+                "message" : "Staff access required for this operation."
+              }
+            ],
+            "data" : null
+          }"""
+        )
+      yield ex
+    )
+
+  test("Create a pre-auth user as Staff"):
+    flaky()(
+      for
+        orcid <- randomOrcidId
+        json  <- queryAsStaffBob: user =>
+          show"""
+            mutation {
+              canonicalizePreAuthUser(
+                orcid: "${orcid.value}",
+                fallback: { email: "biff@henderson.org" }
+              )
+            }
+          """
+      yield
+        expect(
+          json.hcursor
+          .downField("data")
+          .downField("canonicalizePreAuthUser")
+          .as[String]
+          .toOption
+          .map(User.Id.parse)
+          .isDefined
+        )
+    )
 
 }

@@ -106,7 +106,7 @@ object SsoMapping {
       def canonicalizePreAuthUser(env: Env): F[Result[User.Id]] =
         requireStaffAccess:
           (
-            env.getR[OrcidId]("id"),
+            env.getR[OrcidId]("orcid"),
             env.getR[UserProfile]("fallback")
           ).tupled.flatTraverse: (orcid, fallback) =>
             pool.map(Database.fromSession(_)).use: db =>
@@ -115,7 +115,7 @@ object SsoMapping {
       def updateFallback(env: Env): F[Result[Option[User.Id]]] =
         requireStaffAccess:
           (
-            env.getR[OrcidId]("id"),
+            env.getR[OrcidId]("orcid"),
             env.getR[UserProfile]("fallback")
           ).tupled.flatTraverse: (orcid, fallback) =>
             pool.map(Database.fromSession(_)).use: db =>
@@ -250,18 +250,18 @@ object SsoMapping {
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
 
           case (MutationType, "canonicalizePreAuthUser", List(
-            OrcidIdBinding("id", rOrcidId),
+            OrcidIdBinding("orcid", rOrcidId),
             UserProfileInput.Binding("fallback", rFallback))
           ) =>
             Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("id" -> orcid, "fallback" -> fallback)
+              Elab.env("orcid" -> orcid, "fallback" -> fallback)
 
           case (MutationType, "updateFallback", List(
-            OrcidIdBinding("id", rOrcidId),
+            OrcidIdBinding("orcid", rOrcidId),
             UserProfileInput.Binding("fallback", rFallback))
           ) =>
             Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("id" -> orcid, "fallback" -> fallback)
+              Elab.env("orcid" -> orcid, "fallback" -> fallback)
         }
 
       }

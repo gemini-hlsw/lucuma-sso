@@ -17,13 +17,13 @@ type Mutation {
   profile if any, or if a user with this ORCiD already exists, updates its
   fallback profile.  Staff access is required for this operation.
   """
-  canonicalizePreAuthUser(orcid: OrcidId!, fallback: UserProfile!): User!
+  canonicalizePreAuthUser(orcid: OrcidId!, fallback: UserProfileInput!): UserId!
 
   """
   Updates the fallback profile for the specific user.  Staff access is required
   for this operation.
   """
-  updateFallback(orcid: OrcidId!, fallback: UserProfile!): User!
+  updateFallback(orcid: OrcidId!, fallback: UserProfileInput!): UserId
 
 }
 
