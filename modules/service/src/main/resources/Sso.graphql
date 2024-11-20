@@ -12,8 +12,19 @@ type Mutation {
   "Delete the specified API key, if owned by the current user. Returns the constant value `true`."
   deleteApiKey(id: ApiKeyId!): Boolean!
 
-  "Updates the fallback profile for the specific user."
-  updateFallback(id: UserId!, fallback: UserProfile!): User!
+  """
+  Creates a user associated with the given orcid, using the existing fallback
+  profile if any, or if a user with this ORCiD already exists, updates its
+  fallback profile.  Staff access is required for this operation.
+  """
+  canonicalizePreAuthUser(orcid: OrcidId!, fallback: UserProfile!): User!
+
+  """
+  Updates the fallback profile for the specific user.  Staff access is required
+  for this operation.
+  """
+  updateFallback(orcid: OrcidId!, fallback: UserProfile!): User!
+
 }
 
 type Subscription {

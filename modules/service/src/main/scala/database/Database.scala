@@ -18,7 +18,6 @@ import skunk.*
 import skunk.codec.all.*
 import skunk.data.Completion
 import skunk.data.Completion.Delete
-import skunk.data.Completion.Update
 import skunk.implicits.*
 
 // Minimal operations to support the basic use cases … add more when we add the GraphQL interface
@@ -51,6 +50,8 @@ trait Database[F[_]] {
     role:      RoleRequest
   ) : F[SessionToken]
 
+  def canonicalizePreAuthUser(orcid: OrcidId, fallback: UserProfile): F[User.Id]
+
   /** Create (if necessary) and return the specified role. */
   def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id]
 
@@ -78,7 +79,7 @@ trait Database[F[_]] {
    */
   def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean]
 
-  def updateFallback(userId: User.Id, fallback: UserProfile): F[Boolean]
+  def updateFallback(orcid: OrcidId, fallback: UserProfile): F[Option[User.Id]]
 
 }
 
@@ -231,6 +232,18 @@ object Database extends Codecs {
 
         }
 
+      def canonicalizePreAuthUser(
+        orcid:    OrcidId,
+        fallback: UserProfile
+      ): F[User.Id] =
+        Trace[F].span("canonicalizePreAuthUser"):
+          s.transaction.use: _ =>
+            updateFallback(orcid, fallback).flatMap {
+              case Some(existingUserId) => existingUserId.pure[F]
+              case None                 => createPreAuthStandardUser(orcid, fallback)
+            }
+
+
       def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id] =
         s.transaction.use(_ => canonicalizeRole(user.id, role))
         
@@ -271,13 +284,9 @@ object Database extends Codecs {
           }
         }
 
-      def updateFallback(id: User.Id, fallback: UserProfile): F[Boolean] =
+      def updateFallback(orcid: OrcidId, fallback: UserProfile): F[Option[User.Id]] =
         Trace[F].span("updateFallback"):
-          s.prepareR(UpdateProfileFallback).use: pq =>
-            pq.execute(id, fallback).map {
-              case Update(c) => c > 0
-              case _         => sys.error("unpossible")
-            }
+          s.prepareR(UpdateProfileFallback).use(_.option(orcid, fallback))
 
       /// HELPERS
 
@@ -314,6 +323,14 @@ object Database extends Codecs {
             } yield rid
           }
         }
+
+      def createPreAuthStandardUser(
+        orcidId:  OrcidId,
+        fallback: UserProfile
+      ): F[User.Id] =
+        Trace[F].span("createPreAuthStandardUser"):
+          s.prepareR(InsertPreAuthStandardUser).use: pq =>
+            pq.unique(orcidId, fallback)
 
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("addRole") {
@@ -395,22 +412,23 @@ object Database extends Codecs {
           access.orcidId                   *: EmptyTuple
       }
 
-  private val UpdateProfileFallback: Command[(User.Id, UserProfile)] =
+  private val UpdateProfileFallback: Query[(OrcidId, UserProfile), User.Id] =
     sql"""
       UPDATE lucuma_user
       SET fallback_given_name  = ${varchar.opt},
           fallback_credit_name = ${varchar.opt},
           fallback_family_name = ${varchar.opt},
           fallback_email       = ${varchar.opt}
-      WHERE user_id = $user_id
+      WHERE orcid_id = $orcid_id
+      RETURNING user_id
     """
-      .contramap[(User.Id, UserProfile)]: (uid, up) =>
+      .query(user_id)
+      .contramap[(OrcidId, UserProfile)]: (orcid, up) =>
         up.givenName  *:
         up.creditName *:
         up.familyName *:
         up.email      *:
-        uid           *: EmptyTuple
-      .command
+        orcid         *: EmptyTuple
 
   private val PromoteGuest: Query[(User.Id, OrcidAccess, OrcidPerson), User.Id] =
     sql"""
@@ -472,6 +490,34 @@ object Database extends Codecs {
           person.name.familyName           *:
           person.primaryEmail.map(_.email) *: EmptyTuple
       }
+
+  private val InsertPreAuthStandardUser: Query[(OrcidId, UserProfile), User.Id] =
+    sql"""
+      INSERT INTO lucuma_user (
+        user_type,
+        orcid_id,
+        fallback_given_name,
+        fallback_credit_name,
+        fallback_family_name,
+        fallback_email
+      )
+      VALUES (
+        'standard',
+        $orcid_id,
+        ${varchar.opt},
+        ${varchar.opt},
+        ${varchar.opt},
+        ${varchar.opt}
+      )
+      RETURNING (user_id)
+    """
+      .query(user_id)
+      .contramap[(OrcidId, UserProfile)]: (orcid, person) =>
+        orcid             *:
+        person.givenName  *:
+        person.creditName *:
+        person.familyName *:
+        person.email      *: EmptyTuple
 
   /**
    * Query that reads a single standard user as a list of triples. The first two values are

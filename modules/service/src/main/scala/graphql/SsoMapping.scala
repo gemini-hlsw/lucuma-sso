@@ -28,7 +28,6 @@ import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
 import lucuma.core.model.UserProfile
-import lucuma.core.util.Gid
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleType
 import natchez.Trace
@@ -104,14 +103,23 @@ object SsoMapping {
           .evalTap(n => Async[F].delay(println(n)))
           .map(a => Result.success(a.value))
 
-      def updateFallback(env: Env): F[Result[Boolean]] =
+      def canonicalizePreAuthUser(env: Env): F[Result[User.Id]] =
         requireStaffAccess:
           (
-            env.getR[User.Id]("id"),
+            env.getR[OrcidId]("id"),
             env.getR[UserProfile]("fallback")
-          ).tupled.flatTraverse: (id, fallback) =>
+          ).tupled.flatTraverse: (orcid, fallback) =>
             pool.map(Database.fromSession(_)).use: db =>
-              db.updateFallback(id, fallback).map(Result.success)
+              db.canonicalizePreAuthUser(orcid, fallback).map(Result.success)
+
+      def updateFallback(env: Env): F[Result[Option[User.Id]]] =
+        requireStaffAccess:
+          (
+            env.getR[OrcidId]("id"),
+            env.getR[UserProfile]("fallback")
+          ).tupled.flatTraverse: (orcid, fallback) =>
+            pool.map(Database.fromSession(_)).use: db =>
+              db.updateFallback(orcid, fallback).map(Result.success)
 
       new SkunkMapping[F](pool, monitor) with SsoTables[F] {
 
@@ -153,9 +161,10 @@ object SsoMapping {
               ObjectMapping(
                 tpe = MutationType,
                 fieldMappings = List(
-                  RootEffect.computeEncodable("createApiKey")((_, e)   => createApiKey(e)),
-                  RootEffect.computeEncodable("deleteApiKey")((_, e)   => deleteApiKey(e)),
-                  RootEffect.computeEncodable("updateFallback")((_, e) => updateFallback(e))
+                  RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
+                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e)),
+                  RootEffect.computeEncodable("updateFallback")((_, e) => updateFallback(e)),
+                  RootEffect.computeEncodable("canonicalizePreAuthUser")((_, e) => canonicalizePreAuthUser(e))
                 )
               ),
               ObjectMapping(
@@ -217,12 +226,8 @@ object SsoMapping {
               ) => (rGiven, rFamily, rCredit, rEmail).parMapN(UserProfile.apply)
             }
 
-        def gidBinding[A: Gid](name: String): Matcher[A] =
-          StringBinding.emap: s =>
-            Gid[A].fromString.getOption(s).toRight(s"'$s' is not a valid $name id")
-
-        val UserIdBinding: Matcher[lucuma.core.model.User.Id] =
-          gidBinding("user")
+        val OrcidIdBinding: Matcher[OrcidId] =
+          StringBinding.emap(OrcidId.fromValue)
 
         override val selectElaborator = SelectElaborator {
 
@@ -244,12 +249,19 @@ object SsoMapping {
             val rKeyId = Result.fromOption(lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString), s"Not a valid API key id: $hexString")
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
 
-          case (MutationType, "updateFallback", List(
-            UserIdBinding("id", rUserId),
+          case (MutationType, "canonicalizePreAuthUser", List(
+            OrcidIdBinding("id", rOrcidId),
             UserProfileInput.Binding("fallback", rFallback))
           ) =>
-            Elab.liftR((rUserId, rFallback).tupled).flatMap: (userId, fallback) =>
-              Elab.env("id" -> userId, "fallback" -> fallback)
+            Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
+              Elab.env("id" -> orcid, "fallback" -> fallback)
+
+          case (MutationType, "updateFallback", List(
+            OrcidIdBinding("id", rOrcidId),
+            UserProfileInput.Binding("fallback", rFallback))
+          ) =>
+            Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
+              Elab.env("id" -> orcid, "fallback" -> fallback)
         }
 
       }
