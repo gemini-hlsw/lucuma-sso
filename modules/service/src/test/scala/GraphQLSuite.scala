@@ -7,6 +7,7 @@ import cats.effect.*
 import cats.implicits.*
 import io.circe.Json
 import io.circe.literal.*
+import io.circe.syntax.*
 import lucuma.core.model.*
 import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
@@ -204,9 +205,11 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
           show"""
             mutation {
               canonicalizePreAuthUser(
-                orcid: "${orcid.value}",
-                fallback: { email: "biff@henderson.org" }
-              )
+                orcidId: "${orcid.value}",
+                fallbackProfile: { email: "biff@henderson.org" }
+              ) {
+                id
+              }
             }
           """,
           expected = json"""{
@@ -229,21 +232,105 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
           show"""
             mutation {
               canonicalizePreAuthUser(
-                orcid: "${orcid.value}",
-                fallback: { email: "biff@henderson.org" }
-              )
+                orcidId: "${orcid.value}",
+                fallbackProfile: { email: "biff@henderson.org" }
+              ) {
+                orcidId
+                fallbackProfile {
+                  email
+                }
+              }
             }
           """
       yield
-        expect(
-          json.hcursor
-          .downField("data")
-          .downField("canonicalizePreAuthUser")
-          .as[String]
-          .toOption
-          .map(User.Id.parse)
-          .isDefined
-        )
+        val expected = json"""
+          {
+            "data": {
+              "canonicalizePreAuthUser": {
+                "orcidId": ${orcid.value.asJson},
+                "fallbackProfile": {
+                  "email": "biff@henderson.org"
+                }
+              }
+            }
+          }
+        """
+        expect(json == expected)
     )
 
+  test("Edit fallback profile"):
+    flaky()(
+      for
+        orcid <- randomOrcidId
+        _     <- queryAsStaffBob: user =>
+          show"""
+            mutation {
+              canonicalizePreAuthUser(
+                orcidId: "${orcid.value}",
+                fallbackProfile: { email: "biff@henderson.org" }
+              ) {
+                orcidId
+              }
+            }
+          """
+        json  <- queryAsStaffBob: user =>
+          show"""
+            mutation {
+              updateFallback(
+                orcidId: "${orcid.value}",
+                fallbackProfile: { email: "gavrilo@princip.com" }
+              ) {
+                orcidId
+                fallbackProfile {
+                  email
+                }
+              }
+            }
+          """
+
+      yield
+        val expected = json"""
+          {
+            "data": {
+              "updateFallback": {
+                "orcidId": ${orcid.value.asJson},
+                "fallbackProfile": {
+                  "email": "gavrilo@princip.com"
+                }
+              }
+            }
+          }
+        """
+        expect(json == expected)
+    )
+
+  test("Edit unknown orcid profile"):
+    flaky()(
+      for
+        orcid <- randomOrcidId
+        json  <- queryAsStaffBob: user =>
+          show"""
+            mutation {
+              updateFallback(
+                orcidId: "${orcid.value}",
+                fallbackProfile: { email: "gavrilo@princip.com" }
+              ) {
+                orcidId
+                fallbackProfile {
+                  email
+                }
+              }
+            }
+          """
+
+      yield
+        val expected = json"""
+          {
+            "data": {
+              "updateFallback": null
+            }
+          }
+        """
+        expect(json == expected)
+    )
 }

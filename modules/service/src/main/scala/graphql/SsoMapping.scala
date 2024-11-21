@@ -106,8 +106,8 @@ object SsoMapping {
       def canonicalizePreAuthUser(env: Env): F[Result[User.Id]] =
         requireStaffAccess:
           (
-            env.getR[OrcidId]("orcid"),
-            env.getR[UserProfile]("fallback")
+            env.getR[OrcidId]("orcidId"),
+            env.getR[UserProfile]("fallbackProfile")
           ).tupled.flatTraverse: (orcid, fallback) =>
             pool.map(Database.fromSession(_)).use: db =>
               db.canonicalizePreAuthUser(orcid, fallback).map(Result.success)
@@ -115,8 +115,8 @@ object SsoMapping {
       def updateFallback(env: Env): F[Result[Option[User.Id]]] =
         requireStaffAccess:
           (
-            env.getR[OrcidId]("orcid"),
-            env.getR[UserProfile]("fallback")
+            env.getR[OrcidId]("orcidId"),
+            env.getR[UserProfile]("fallbackProfile")
           ).tupled.flatTraverse: (orcid, fallback) =>
             pool.map(Database.fromSession(_)).use: db =>
               db.updateFallback(orcid, fallback).map(Result.success)
@@ -163,8 +163,16 @@ object SsoMapping {
                 fieldMappings = List(
                   RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
                   RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e)),
-                  RootEffect.computeEncodable("updateFallback")((_, e) => updateFallback(e)),
-                  RootEffect.computeEncodable("canonicalizePreAuthUser")((_, e) => canonicalizePreAuthUser(e))
+                  RootEffect.computeChild("canonicalizePreAuthUser") { (child, _, env) =>
+                    canonicalizePreAuthUser(env).map: result =>
+                      result.map: uid =>
+                        Unique(Filter(Eql(UserType / "id", Const(uid)), child))
+                  },
+                  RootEffect.computeChild("updateFallback") { (child, _, env) =>
+                    updateFallback(env).map: result =>
+                      result.map: ouid =>
+                        ouid.fold(Filter(False, child))(uid => Unique(Filter(Eql(UserType / "id", Const(uid)), child)))
+                  }
                 )
               ),
               ObjectMapping(
@@ -250,18 +258,18 @@ object SsoMapping {
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
 
           case (MutationType, "canonicalizePreAuthUser", List(
-            OrcidIdBinding("orcid", rOrcidId),
-            UserProfileInput.Binding("fallback", rFallback))
+            OrcidIdBinding("orcidId", rOrcidId),
+            UserProfileInput.Binding("fallbackProfile", rFallback))
           ) =>
             Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("orcid" -> orcid, "fallback" -> fallback)
+              Elab.env("orcidId" -> orcid, "fallbackProfile" -> fallback)
 
           case (MutationType, "updateFallback", List(
-            OrcidIdBinding("orcid", rOrcidId),
-            UserProfileInput.Binding("fallback", rFallback))
+            OrcidIdBinding("orcidId", rOrcidId),
+            UserProfileInput.Binding("fallbackProfile", rFallback))
           ) =>
             Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("orcid" -> orcid, "fallback" -> fallback)
+              Elab.env("orcidId" -> orcid, "fallbackProfile" -> fallback)
         }
 
       }
