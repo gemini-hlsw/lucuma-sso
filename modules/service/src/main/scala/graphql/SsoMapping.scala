@@ -24,6 +24,7 @@ import lucuma.core.enums.Partner
 import lucuma.core.model
 import lucuma.core.model.Access
 import lucuma.core.model.OrcidId
+import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
@@ -63,7 +64,7 @@ object SsoMapping {
     channels: Channels[F],
     pool:     Resource[F, Session[F]],
     monitor:  SkunkMonitor[F],
-  ): F[User => Mapping[F]] =
+  ): F[StandardUser | ServiceUser => Mapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
 
       def requireStaffAccess[A](a: => F[Result[A]]): F[Result[A]] =
