@@ -1,6 +1,7 @@
 val bcpgVersion                = "1.77"
 val circeVersion               = "0.14.10"
 val cirisVersion               = "3.6.0"
+val clueVersion                = "0.40.0"
 val declineVersion             = "2.4.1"
 val disciplineMunitVersion     = "2.0.0"
 val flywayVersion              = "9.22.3"
@@ -74,6 +75,9 @@ lazy val backendClient = project
     libraryDependencies ++= Seq(
       "com.github.jwt-scala" %% "jwt-core"       % jwtVersion,
       "com.github.jwt-scala" %% "jwt-circe"      % jwtVersion,
+      "edu.gemini"           %% "clue-model"     % clueVersion,
+      "edu.gemini"           %% "clue-http4s"    % clueVersion,
+      "edu.gemini"           %% "clue-core"      % clueVersion,
       "org.bouncycastle"     %  "bcpg-jdk18on"   % bcpgVersion,
       "org.http4s"           %% "http4s-circe"   % http4sVersion,
       "org.http4s"           %% "http4s-dsl"     % http4sVersion,

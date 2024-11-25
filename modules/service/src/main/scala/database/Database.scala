@@ -330,7 +330,10 @@ object Database extends Codecs {
       ): F[User.Id] =
         Trace[F].span("createPreAuthStandardUser"):
           s.prepareR(InsertPreAuthStandardUser).use: pq =>
-            pq.unique(orcidId, fallback)
+            for
+              userId <- pq.unique(orcidId, fallback)
+              _      <- addRole(userId, RoleRequest.Pi)
+            yield userId
 
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("addRole") {
