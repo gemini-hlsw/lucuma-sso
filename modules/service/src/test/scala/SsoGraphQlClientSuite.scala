@@ -6,9 +6,10 @@ package lucuma.sso.service
 import cats.effect.*
 import cats.syntax.all.*
 import eu.timepit.refined.types.numeric.PosLong
+import lucuma.core.model.OrcidId
 import lucuma.core.model.ServiceUser
+import lucuma.core.model.StandardUser
 import lucuma.core.model.User
-import lucuma.core.model.UserProfile
 import lucuma.refined.*
 import lucuma.sso.client.SsoGraphQlClient
 import lucuma.sso.service.orcid.OrcidIdGenerator
@@ -38,53 +39,26 @@ object SsoGraphQlClientSuite extends SsoSuite with Fixture with OrcidIdGenerator
       )
     yield client
 
-  test("canonicalizePreAuthUser"):
-    val fallback = UserProfile("Gavrilo".some, "Princip".some, none, "gprincip@mladabosnia.org".some)
+  def extractOrcidId(u: User): Option[OrcidId] =
+    u match
+      case StandardUser(_, _, _, p) => p.orcidId.some
+      case _                        => none
 
+  test("canonicalizePreAuthUser"):
     SsoSimulator[IO].use:
       case (_, _, sso, _, writer) =>
         for
           client  <- createClient(1L.refined, sso, writer)
           orcidId <- randomOrcidId
-          user    <- client.canonicalizePreAuthUser(orcidId, fallback)
-        yield expect(user.displayName === "Gavrilo Princip")
+          user    <- client.canonicalizePreAuthUser(orcidId)
+        yield expect(extractOrcidId(user) === orcidId.some)
 
   test("canonicalizePreAuthUser existing user"):
-    val fallback1 = UserProfile("Gavrilo".some, "Princip".some, none, "gprincip@mladabosnia.org".some)
-    val fallback2 = UserProfile("Charles".some, "Guiteau".some, none, "cguiteau@oneida.org".some)
-
     SsoSimulator[IO].use:
       case (_, _, sso, _, writer) =>
         for
           client  <- createClient(1L.refined, sso, writer)
           orcidId <- randomOrcidId
-          user1   <- client.canonicalizePreAuthUser(orcidId, fallback1)
-          user2   <- client.canonicalizePreAuthUser(orcidId, fallback2)
-        yield expect.all(
-          user1.id === user2.id,
-          user2.displayName === "Charles Guiteau"
-        )
-
-  test("updateFallback"):
-    val fallback1 = UserProfile("Charles".some, "Guiteau".some, none, "cguiteau@oneida.org".some)
-    val fallback2 = UserProfile("Leon".some, "Czolgosz".some, none, "lczolgosz@silaclub.org".some)
-
-    SsoSimulator[IO].use:
-      case (_, _, sso, _, writer) =>
-        for
-          client  <- createClient(1L.refined, sso, writer)
-          orcidId <- randomOrcidId
-          _       <- client.canonicalizePreAuthUser(orcidId, fallback1)
-          user    <- client.updateFallback(orcidId, fallback2)
-        yield expect(user.get.displayName === "Leon Czolgosz")
-
-  test("updateFallback unknown orcid"):
-    val fallback = UserProfile("Charles".some, "Guiteau".some, none, "cguiteau@oneida.org".some)
-
-    SsoSimulator[IO].use:
-      case (_, _, sso, _, writer) =>
-        for
-          client  <- createClient(1L.refined, sso, writer)
-          orcidId <- randomOrcidId
-          user    <- client.updateFallback(orcidId, fallback)
-        yield expect(user.isEmpty)
+          user1   <- client.canonicalizePreAuthUser(orcidId)
+          user2   <- client.canonicalizePreAuthUser(orcidId)
+        yield expect(user1.id === user2.id)

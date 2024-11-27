@@ -28,7 +28,6 @@ import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
-import lucuma.core.model.UserProfile
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleType
 import natchez.Trace
@@ -106,21 +105,9 @@ object SsoMapping {
 
       def canonicalizePreAuthUser(env: Env): F[Result[User.Id]] =
         requireStaffAccess:
-          (
-            env.getR[OrcidId]("orcidId"),
-            env.getR[UserProfile]("fallbackProfile")
-          ).tupled.flatTraverse: (orcid, fallback) =>
+          env.getR[OrcidId]("orcidId").flatTraverse: orcidId =>
             pool.map(Database.fromSession(_)).use: db =>
-              db.canonicalizePreAuthUser(orcid, fallback).map(Result.success)
-
-      def updateFallback(env: Env): F[Result[Option[User.Id]]] =
-        requireStaffAccess:
-          (
-            env.getR[OrcidId]("orcidId"),
-            env.getR[UserProfile]("fallbackProfile")
-          ).tupled.flatTraverse: (orcid, fallback) =>
-            pool.map(Database.fromSession(_)).use: db =>
-              db.updateFallback(orcid, fallback).map(Result.success)
+              db.canonicalizePreAuthUser(orcidId).map(Result.success)
 
       new SkunkMapping[F](pool, monitor) with SsoTables[F] {
 
@@ -139,15 +126,6 @@ object SsoMapping {
         val UserIdType       = schema.ref("UserId")
         val UserType         = schema.ref("User")
         val UserProfileType  = schema.ref("UserProfile")
-
-        def profileMapping(path: Path, p: User.Profile): ObjectMapping =
-          ObjectMapping(path)(
-            SqlField("synthetic-id", User.Id, key = true, hidden = true),
-            SqlField("givenName",  p.GivenName),
-            SqlField("familyName", p.FamilyName),
-            SqlField("creditName", p.CreditName),
-            SqlField("email",      p.Email)
-          )
 
         val typeMappings: TypeMappings =
           TypeMappings(
@@ -168,11 +146,6 @@ object SsoMapping {
                     canonicalizePreAuthUser(env).map: result =>
                       result.map: uid =>
                         Unique(Filter(Eql(UserType / "id", Const(uid)), child))
-                  },
-                  RootEffect.computeChild("updateFallback") { (child, _, env) =>
-                    updateFallback(env).map: result =>
-                      result.map: ouid =>
-                        ouid.fold(Filter(False, child))(uid => Unique(Filter(Eql(UserType / "id", Const(uid)), child)))
                   }
                 )
               ),
@@ -181,14 +154,21 @@ object SsoMapping {
                 fieldMappings = List(
                   SqlField("id", User.Id, key = true),
                   SqlField("orcidId", User.OrcidId),
-                  SqlObject("primaryProfile"),
-                  SqlObject("fallbackProfile"),
+                  SqlObject("profile"),
                   SqlObject("roles",   Join(User.Id, Role.UserId)),
                   SqlObject("apiKeys", Join(User.Id, ApiKey.UserId)),
                 )
               ),
-              profileMapping(UserType / "primaryProfile",  User.Primary),
-              profileMapping(UserType / "fallbackProfile", User.Fallback),
+              ObjectMapping(
+                tpe = UserProfileType,
+                fieldMappings = List(
+                  SqlField("synthetic-id", User.Id, key = true, hidden = true),
+                  SqlField("givenName",  User.Profile.GivenName),
+                  SqlField("familyName", User.Profile.FamilyName),
+                  SqlField("creditName", User.Profile.CreditName),
+                  SqlField("email",      User.Profile.Email)
+                )
+              ),
               ObjectMapping(
                 tpe = RoleType,
                 fieldMappings = List(
@@ -224,20 +204,6 @@ object SsoMapping {
             )
           )
 
-        object UserProfileInput:
-          val Binding: Matcher[UserProfile] =
-            ObjectFieldsBinding.rmap {
-              case List(
-                StringBinding.Option("givenName",  rGiven),
-                StringBinding.Option("familyName", rFamily),
-                StringBinding.Option("creditName", rCredit),
-                StringBinding.Option("email",      rEmail)
-              ) => (rGiven, rFamily, rCredit, rEmail).parMapN(UserProfile.apply)
-            }
-
-        val OrcidIdBinding: Matcher[OrcidId] =
-          StringBinding.emap(OrcidId.fromValue)
-
         override val selectElaborator = SelectElaborator {
 
           case (QueryType, "user", Nil) =>
@@ -258,19 +224,10 @@ object SsoMapping {
             val rKeyId = Result.fromOption(lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString), s"Not a valid API key id: $hexString")
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
 
-          case (MutationType, "canonicalizePreAuthUser", List(
-            OrcidIdBinding("orcidId", rOrcidId),
-            UserProfileInput.Binding("fallbackProfile", rFallback))
-          ) =>
-            Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("orcidId" -> orcid, "fallbackProfile" -> fallback)
-
-          case (MutationType, "updateFallback", List(
-            OrcidIdBinding("orcidId", rOrcidId),
-            UserProfileInput.Binding("fallbackProfile", rFallback))
-          ) =>
-            Elab.liftR((rOrcidId, rFallback).tupled).flatMap: (orcid, fallback) =>
-              Elab.env("orcidId" -> orcid, "fallbackProfile" -> fallback)
+          case (MutationType, "canonicalizePreAuthUser", List(Binding("orcidId", Value.StringValue(orcidIdString)))) =>
+            val rOrcidId = Result.fromEither(OrcidId.parse(orcidIdString))
+            Elab.liftR(rOrcidId).flatMap: orcidId =>
+              Elab.env("orcidId" -> orcidId)
         }
 
       }

@@ -50,7 +50,7 @@ trait Database[F[_]] {
     role:      RoleRequest
   ) : F[SessionToken]
 
-  def canonicalizePreAuthUser(orcid: OrcidId, fallback: UserProfile): F[User.Id]
+  def canonicalizePreAuthUser(orcidId: OrcidId): F[User.Id]
 
   /** Create (if necessary) and return the specified role. */
   def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id]
@@ -78,9 +78,6 @@ trait Database[F[_]] {
    * Returns `true` if the API key was deleted, `false` if no such key exists.
    */
   def deleteApiKey(keyId: PosLong, userId: Option[User.Id]): F[Boolean]
-
-  def updateFallback(orcid: OrcidId, fallback: UserProfile): F[Option[User.Id]]
-
 }
 
 object Database extends Codecs {
@@ -232,17 +229,13 @@ object Database extends Codecs {
 
         }
 
-      def canonicalizePreAuthUser(
-        orcid:    OrcidId,
-        fallback: UserProfile
-      ): F[User.Id] =
+      def canonicalizePreAuthUser(orcidId: OrcidId): F[User.Id] =
         Trace[F].span("canonicalizePreAuthUser"):
           s.transaction.use: _ =>
-            updateFallback(orcid, fallback).flatMap {
-              case Some(existingUserId) => existingUserId.pure[F]
-              case None                 => createPreAuthStandardUser(orcid, fallback)
-            }
-
+            for
+              u <- s.prepareR(InsertPreAuthStandardUser).use(_.unique(orcidId))
+              _ <- s.prepareR(InsertPreAuthUserRole).use(_.execute(u).void)
+            yield u
 
       def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id] =
         s.transaction.use(_ => canonicalizeRole(user.id, role))
@@ -284,10 +277,6 @@ object Database extends Codecs {
           }
         }
 
-      def updateFallback(orcid: OrcidId, fallback: UserProfile): F[Option[User.Id]] =
-        Trace[F].span("updateFallback"):
-          s.prepareR(UpdateProfileFallback).use(_.option(orcid, fallback))
-
       /// HELPERS
 
       // Update the specified ORCID profile and yield the associated `StandardUser`, if any.
@@ -323,17 +312,6 @@ object Database extends Codecs {
             } yield rid
           }
         }
-
-      def createPreAuthStandardUser(
-        orcidId:  OrcidId,
-        fallback: UserProfile
-      ): F[User.Id] =
-        Trace[F].span("createPreAuthStandardUser"):
-          s.prepareR(InsertPreAuthStandardUser).use: pq =>
-            for
-              userId <- pq.unique(orcidId, fallback)
-              _      <- addRole(userId, RoleRequest.Pi)
-            yield userId
 
       def addRole(user: User.Id, role: RoleRequest): F[StandardRole.Id] =
         Trace[F].span("addRole") {
@@ -415,24 +393,6 @@ object Database extends Codecs {
           access.orcidId                   *: EmptyTuple
       }
 
-  private val UpdateProfileFallback: Query[(OrcidId, UserProfile), User.Id] =
-    sql"""
-      UPDATE lucuma_user
-      SET fallback_given_name  = ${varchar.opt},
-          fallback_credit_name = ${varchar.opt},
-          fallback_family_name = ${varchar.opt},
-          fallback_email       = ${varchar.opt}
-      WHERE orcid_id = $orcid_id
-      RETURNING user_id
-    """
-      .query(user_id)
-      .contramap[(OrcidId, UserProfile)]: (orcid, up) =>
-        up.givenName  *:
-        up.creditName *:
-        up.familyName *:
-        up.email      *:
-        orcid         *: EmptyTuple
-
   private val PromoteGuest: Query[(User.Id, OrcidAccess, OrcidPerson), User.Id] =
     sql"""
       UPDATE lucuma_user
@@ -494,33 +454,28 @@ object Database extends Codecs {
           person.primaryEmail.map(_.email) *: EmptyTuple
       }
 
-  private val InsertPreAuthStandardUser: Query[(OrcidId, UserProfile), User.Id] =
+  // Inserts a pre-auth standard user, if it doesn't already exist.  If it does
+  // exist, a noop "update" is performed so that the RETURNING clause always
+  // returns a value.
+  private val InsertPreAuthStandardUser: Query[OrcidId, User.Id] =
     sql"""
-      INSERT INTO lucuma_user (
-        user_type,
-        orcid_id,
-        fallback_given_name,
-        fallback_credit_name,
-        fallback_family_name,
-        fallback_email
-      )
-      VALUES (
-        'standard',
-        $orcid_id,
-        ${varchar.opt},
-        ${varchar.opt},
-        ${varchar.opt},
-        ${varchar.opt}
-      )
-      RETURNING (user_id)
+      INSERT INTO lucuma_user (user_type, orcid_id)
+      VALUES ('standard', $orcid_id)
+      ON CONFLICT (orcid_id) DO UPDATE
+      SET user_type = lucuma_user.user_type
+      RETURNING user_id
+    """.query(user_id)
+
+  // Inserts a PI role for a user, if it doesn't already exist
+  private val InsertPreAuthUserRole: Command[User.Id] =
+    sql"""
+      INSERT INTO lucuma_role (user_id, role_type, role_ngo)
+      VALUES ($user_id, $role_type, null)
+      ON CONFLICT DO NOTHING
     """
-      .query(user_id)
-      .contramap[(OrcidId, UserProfile)]: (orcid, person) =>
-        orcid             *:
-        person.givenName  *:
-        person.creditName *:
-        person.familyName *:
-        person.email      *: EmptyTuple
+      .command
+      .contramap: id =>
+        (id, RoleType.Pi)
 
   /**
    * Query that reads a single standard user as a list of triples. The first two values are
@@ -537,10 +492,6 @@ object Database extends Codecs {
         u.orcid_credit_name,
         u.orcid_family_name,
         u.orcid_email,
-        u.fallback_given_name,
-        u.fallback_credit_name,
-        u.fallback_family_name,
-        u.fallback_email,
         r.role_id,
         r.role_type,
         r.role_ngo
@@ -551,25 +502,19 @@ object Database extends Codecs {
       AND   s.user_type     = 'standard'
     """.query(
         role_id *:
-        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
-          case (id, orcidId, givenName, creditName, familyName, email, fbGivenName, fbCreditName, fbFamilyName, fbEmail) =>
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email) =>
             StandardUser(
               id         = id,
               role       = null, // TODO
               otherRoles = Nil, // TODO
               profile    = OrcidProfile(
-                orcidId      = orcidId,
-                UserProfile(
+                orcidId  = orcidId,
+                profile  = UserProfile(
                   givenName  = givenName,
                   creditName = creditName,
                   familyName = familyName,
                   email      = email
-                ),
-                UserProfile(
-                  givenName  = fbGivenName,
-                  creditName = fbCreditName,
-                  familyName = fbFamilyName,
-                  email      = fbEmail
                 )
               )
             )
@@ -595,10 +540,6 @@ object Database extends Codecs {
         u.orcid_credit_name,
         u.orcid_family_name,
         u.orcid_email,
-        u.fallback_given_name,
-        u.fallback_credit_name,
-        u.fallback_family_name,
-        u.fallback_email,
         r.role_id,
         r.role_type,
         r.role_ngo
@@ -611,25 +552,19 @@ object Database extends Codecs {
       .contramap[ApiKey](k => (k.id.value.toHexString, k.body))
       .query(
         role_id *:
-        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
-          case (id, orcidId, givenName, creditName, familyName, email, fbGivenName, fbCreditName, fbFamilyName, fbEmail) =>
+        (user_id *: orcid_id *: varchar.opt *: varchar.opt *: varchar.opt *: varchar.opt).map {
+          case (id, orcidId, givenName, creditName, familyName, email) =>
           StandardUser(
             id         = id,
             role       = null, // NOTE
             otherRoles = Nil,  // NOTE
             profile    = OrcidProfile(
-              orcidId      = orcidId,
-              UserProfile(
+              orcidId  = orcidId,
+              profile  = UserProfile(
                 givenName  = givenName,
                 creditName = creditName,
                 familyName = familyName,
                 email      = email
-              ),
-              UserProfile(
-                givenName  = fbGivenName,
-                creditName = fbCreditName,
-                familyName = fbFamilyName,
-                email      = fbEmail
               )
             )
           )

@@ -33,7 +33,7 @@ object NewUserSuite extends SsoSuite with Fixture with FlakyTests {
           bob  <- db.use(_.getStandardUserFromToken(tok))
 
           _ <- expect(bob.role.access == Access.Pi).failFast
-          _ <- expect(bob.profile.primary.familyName == Bob.name.familyName).failFast
+          _ <- expect(bob.profile.profile.familyName == Bob.name.familyName).failFast
 
         } yield success
       }

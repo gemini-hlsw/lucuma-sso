@@ -16,7 +16,7 @@ case class OrcidName(
   creditName: Option[String],
 ):
   def displayName(orcidId: OrcidId): String =
-    OrcidProfile(orcidId, UserProfile(givenName, familyName, creditName, None), UserProfile.Empty).displayName
+    OrcidProfile(orcidId, UserProfile(givenName, familyName, creditName, None)).displayName
 
 object OrcidName:
 

@@ -106,7 +106,7 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
               type
               partner
               user {
-                primaryProfile {
+                profile {
                   givenName
                   familyName
                   creditName
@@ -122,7 +122,7 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
               "type" : "PI",
               "partner" : null,
               "user" : {
-                "primaryProfile": {
+                "profile": {
                   "givenName" : "Bob",
                   "familyName" : "Dobbs",
                   "creditName" : null,
@@ -205,8 +205,7 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
           show"""
             mutation {
               canonicalizePreAuthUser(
-                orcidId: "${orcid.value}",
-                fallbackProfile: { email: "biff@henderson.org" }
+                orcidId: "${orcid.value}"
               ) {
                 id
               }
@@ -232,12 +231,11 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
           show"""
             mutation {
               canonicalizePreAuthUser(
-                orcidId: "${orcid.value}",
-                fallbackProfile: { email: "biff@henderson.org" }
+                orcidId: "${orcid.value}"
               ) {
                 orcidId
-                fallbackProfile {
-                  email
+                roles {
+                  type
                 }
               }
             }
@@ -248,86 +246,12 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
             "data": {
               "canonicalizePreAuthUser": {
                 "orcidId": ${orcid.value.asJson},
-                "fallbackProfile": {
-                  "email": "biff@henderson.org"
-                }
+                "roles": [
+                  {
+                    "type": "PI"
+                  }
+                ]
               }
-            }
-          }
-        """
-        expect(json == expected)
-    )
-
-  test("Edit fallback profile"):
-    flaky()(
-      for
-        orcid <- randomOrcidId
-        _     <- queryAsStaffBob: user =>
-          show"""
-            mutation {
-              canonicalizePreAuthUser(
-                orcidId: "${orcid.value}",
-                fallbackProfile: { email: "biff@henderson.org" }
-              ) {
-                orcidId
-              }
-            }
-          """
-        json  <- queryAsStaffBob: user =>
-          show"""
-            mutation {
-              updateFallback(
-                orcidId: "${orcid.value}",
-                fallbackProfile: { email: "gavrilo@princip.com" }
-              ) {
-                orcidId
-                fallbackProfile {
-                  email
-                }
-              }
-            }
-          """
-
-      yield
-        val expected = json"""
-          {
-            "data": {
-              "updateFallback": {
-                "orcidId": ${orcid.value.asJson},
-                "fallbackProfile": {
-                  "email": "gavrilo@princip.com"
-                }
-              }
-            }
-          }
-        """
-        expect(json == expected)
-    )
-
-  test("Edit unknown orcid profile"):
-    flaky()(
-      for
-        orcid <- randomOrcidId
-        json  <- queryAsStaffBob: user =>
-          show"""
-            mutation {
-              updateFallback(
-                orcidId: "${orcid.value}",
-                fallbackProfile: { email: "gavrilo@princip.com" }
-              ) {
-                orcidId
-                fallbackProfile {
-                  email
-                }
-              }
-            }
-          """
-
-      yield
-        val expected = json"""
-          {
-            "data": {
-              "updateFallback": null
             }
           }
         """

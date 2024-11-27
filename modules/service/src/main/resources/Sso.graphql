@@ -13,17 +13,10 @@ type Mutation {
   deleteApiKey(id: ApiKeyId!): Boolean!
 
   """
-  Creates a user associated with the given orcid, using the existing fallback
-  profile if any, or if a user with this ORCiD already exists, updates its
-  fallback profile.  Staff access is required for this operation.
+  Creates a user associated with the given orcid, or returns the existing user
+  if it already exists. Staff access is required for this operation.
   """
-  canonicalizePreAuthUser(orcidId: OrcidId!, fallbackProfile: UserProfileInput!): User!
-
-  """
-  Updates the fallback profile for the specific user.  Staff access is required
-  for this operation.
-  """
-  updateFallback(orcidId: OrcidId!, fallbackProfile: UserProfileInput!): User
+  canonicalizePreAuthUser(orcidId: OrcidId!): User!
 
 }
 
@@ -35,22 +28,14 @@ type Subscription {
 }
 
 type User {
-  id:              UserId!
-  orcidId:         OrcidId!
-  primaryProfile:  UserProfile!
-  fallbackProfile: UserProfile!
-  roles:           [Role!]!
-  apiKeys:         [ApiKey!]!
+  id:       UserId!
+  orcidId:  OrcidId!
+  profile:  UserProfile!
+  roles:    [Role!]!
+  apiKeys:  [ApiKey!]!
 }
 
 type UserProfile {
-  givenName:  String
-  familyName: String
-  creditName: String
-  email:      String
-}
-
-input UserProfileInput {
   givenName:  String
   familyName: String
   creditName: String

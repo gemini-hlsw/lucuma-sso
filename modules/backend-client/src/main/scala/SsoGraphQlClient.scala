@@ -39,28 +39,12 @@ import org.typelevel.log4cats.Logger
 trait SsoGraphQlClient[F[_]]:
 
   /**
-   * Creates a pre-authentication user and records it in the user database
-   * along with its fallback profile information. If a user with the given
-   * ORCiD already exists, its fallback profile is updated.
+   * Creates a pre-authentication user and records it in the user database.
    *
    * @return new user, or existing user if a user with this ORCiD already
    *         exists
    */
-  def canonicalizePreAuthUser(
-    orcidId:         OrcidId,
-    fallbackProfile: UserProfile
-  ): F[User]
-
-  /**
-   * Updates the fallback profile for a user with the given ORCiD, if any.
-   *
-   * @return Some updated user, or None if there is no user corresponding to
-   *         orcidId
-   */
-  def updateFallback(
-    orcidId:         OrcidId,
-    fallbackProfile: UserProfile
-  ): F[Option[User]]
+  def canonicalizePreAuthUser(orcidId: OrcidId): F[User]
 
 object SsoGraphQlClient:
   def apply[F[_]](using ev: SsoGraphQlClient[F]): SsoGraphQlClient[F] = ev
@@ -77,102 +61,54 @@ object SsoGraphQlClient:
     Http4sHttpClient
       .of[F, Unit](uri, headers = Headers(authorization))(Async[F], Http4sHttpBackend(client), Logger[F])
       .map: http =>
-        new SsoGraphQlClient[F] with SsoGraphQlClientOps:
-
-          private def go(
-            op:              PreAuthUserOperation,
-            name:            String,
-            orcidId:         OrcidId,
-            fallbackProfile: UserProfile
-          ): F[op.Data] =
+        new SsoGraphQlClient[F]:
+          override def canonicalizePreAuthUser(orcidId: OrcidId): F[User] =
             for
-              _ <- Logger[F].debug(s"$name($orcidId, ${fallbackProfile.asJson.spaces2})")
-              u <- http.request(op, name.capitalize.some)(using ErrorPolicy.RaiseAlways)
-                       .withInput((orcidId, fallbackProfile))
-              _ <- Logger[F].debug(s"$name result: $u")
+              _ <- Logger[F].debug(s"canonicalizePreAuthUser($orcidId)")
+              u <- http.request(CanonicalizePreAuthUser, "CanonicalizePreAuthUser".some)(using ErrorPolicy.RaiseAlways)
+                       .withInput(orcidId)
+              _ <- Logger[F].debug(s"canonicalizePreAuthUser: $u")
             yield u
 
-          override def canonicalizePreAuthUser(
-            orcidId:         OrcidId,
-            fallbackProfile: UserProfile
-          ): F[User] =
-            go(CanonicalizePreAuthUser, "canonicalizePreAuthUser", orcidId, fallbackProfile)
+object CanonicalizePreAuthUser extends GraphQLOperation[Unit]:
+  type Variables = OrcidId
+  type Data      = User
 
-          override def updateFallback(
-            orcidId:         OrcidId,
-            fallbackProfile: UserProfile
-          ): F[Option[User]] =
-            go(UpdateFallback, "updateFallback", orcidId, fallbackProfile)
+  override val varEncoder: Encoder.AsObject[Variables] =
+    Encoder.AsObject.instance[Variables]: input =>
+      JsonObject("orcidId" -> input._1.asJson)
 
-trait SsoGraphQlClientOps:
-  trait PreAuthUserOperation extends GraphQLOperation[Unit]:
-    type Variables = (OrcidId, UserProfile)
+  // The `User` codec in `lucuma.sso.client.codec.user` doesn't correspond
+  // to the schema so we'll make a decoder here for the special case of
+  // creating a pre-auth standard user.
+  given Decoder[User] =
+    (c: HCursor) =>
+      for
+        id <- c.get[User.Id]("id")
+        oi <- c.get[OrcidId]("orcidId")
+        pr <- c.get[UserProfile]("profile")
+        sr <- c.downField("roles").downArray.downField("id").as[StandardRole.Id]
+      yield StandardUser(id, StandardRole.Pi(sr), Nil, OrcidProfile(oi, pr))
 
-    override val varEncoder: Encoder.AsObject[Variables] =
-      Encoder.AsObject.instance[Variables]: input =>
-        JsonObject(
-          "orcidId"         -> input._1.asJson,
-          "fallbackProfile" -> input._2.asJson
-        )
+  override val dataDecoder: Decoder[User] =
+    (c: HCursor) => c.get[User]("canonicalizePreAuthUser")
 
-    // The `User` codec in `lucuma.sso.client.codec.user` doesn't correspond
-    // to the schema so we'll make a decoder here for the special case of
-    // creating a pre-auth standard user.
-    given Decoder[User] =
-      (c: HCursor) =>
-        for
-          id <- c.get[User.Id]("id")
-          oi <- c.get[OrcidId]("orcidId")
-          pp <- c.get[UserProfile]("primaryProfile")
-          fp <- c.get[UserProfile]("fallbackProfile")
-          sr <- c.downField("roles").downArray.downField("id").as[StandardRole.Id]
-        yield StandardUser(id, StandardRole.Pi(sr), Nil, OrcidProfile(oi, pp, fp))
-
-    override val document: String =
-      """
-        fragment UserProfileFields on UserProfile {
-          givenName
-          familyName
-          creditName
-          email
-        }
-
-        fragment UserFields on User {
+  override val document: String =
+    """
+      mutation CanonicalizePreAuthUser($orcidId: OrcidId!) {
+        canonicalizePreAuthUser(orcidId: $orcidId) {
           id
           orcidId
-          primaryProfile {
-            ...UserProfileFields
-          }
-          fallbackProfile {
-            ...UserProfileFields
+          profile {
+            givenName
+            familyName
+            creditName
+            email
           }
           roles {
             id
             type
           }
         }
-
-        mutation CanonicalizePreAuthUser($orcidId: OrcidId!, $fallbackProfile: UserProfileInput!) {
-          canonicalizePreAuthUser(orcidId: $orcidId, fallbackProfile: $fallbackProfile) {
-            ...UserFields
-          }
-        }
-
-        mutation UpdateFallback($orcidId: OrcidId!, $fallbackProfile: UserProfileInput!) {
-          updateFallback(orcidId: $orcidId, fallbackProfile: $fallbackProfile) {
-            ...UserFields
-          }
-        }
-      """
-
-  object CanonicalizePreAuthUser extends PreAuthUserOperation:
-    type Data = User
-
-    override val dataDecoder: Decoder[User] =
-      (c: HCursor) => c.get[User]("canonicalizePreAuthUser")
-
-  object UpdateFallback extends PreAuthUserOperation:
-    type Data = Option[User]
-
-    override val dataDecoder: Decoder[Option[User]] =
-      (c: HCursor) => c.get[Option[User]]("updateFallback")
+      }
+    """
