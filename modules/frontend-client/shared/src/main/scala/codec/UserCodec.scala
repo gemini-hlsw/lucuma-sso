@@ -13,7 +13,7 @@ import lucuma.core.model.*
 trait UserCodec {
   import gid._
   import role._
-  import orcidProfile._
+  import orcidProfile.given
 
   implicit val EncoderUser: Encoder[User] =
     Encoder.instance {

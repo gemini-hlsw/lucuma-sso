@@ -17,7 +17,6 @@ import org.http4s.server.*
 
 import java.time.Duration
 import java.util.UUID
-import scala.util.Random
 
 /** An ORCID simulator. */
 trait OrcidSimulator[F[_]] {
@@ -45,7 +44,7 @@ object OrcidSimulator {
       // When we do a token exchange we add an access token to this map.
       tokens  <- Ref[F].of(Map.empty[Token, OrcidId])
 
-    } yield new OrcidSimulator[F] with Http4sDsl[F] {
+    } yield new OrcidSimulator[F] with Http4sDsl[F] with OrcidIdGenerator[F] {
 
       object State       extends OptionalQueryParamDecoderMatcher[String]("state")
       object RedirectUri extends QueryParamDecoderMatcher[Uri]("redirect_uri")
@@ -105,30 +104,6 @@ object OrcidSimulator {
 
       def client: Client[F] =
         Client.fromHttpApp(Router("/" -> httpRoutes).orNotFound)
-
-      def randomOrcidId: F[OrcidId] =
-        Sync[F].delay {
-          def digit = Random.nextInt(10).toString
-          val a, b, c = List.fill(4)(digit).mkString
-          val d = List.fill(3)(digit).mkString
-          val x = checkDigit(a + b + c + d)
-          OrcidId.fromValue(s"$a-$b-$c-$d$x") match {
-            case Left(s)  => sys.error(s)
-            case Right(o) => o
-          }
-        }
-
-      // Copied from OrcidId.scala, where it is private :-\
-      def checkDigit(baseDigits: String): String = {
-        require(baseDigits.forall(c => c >= '0' && c <= '9'))
-        val total = baseDigits.foldLeft(0) { (acc, c) =>
-          val digit = c - '0'
-          (acc + digit) * 2
-        }
-        val remainder = total % 11
-        val result    = (12 - remainder) % 11
-        if (result == 10) "X" else result.toString
-      }
 
       def authenticate(uri: Uri, person: OrcidPerson, id: Option[OrcidId]): F[Uri] =
         Request[F](uri = uri) match {

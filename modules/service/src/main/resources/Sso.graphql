@@ -12,6 +12,12 @@ type Mutation {
   "Delete the specified API key, if owned by the current user. Returns the constant value `true`."
   deleteApiKey(id: ApiKeyId!): Boolean!
 
+  """
+  Creates a user associated with the given orcid, or returns the existing user
+  if it already exists. Staff access is required for this operation.
+  """
+  canonicalizePreAuthUser(orcidId: OrcidId!): User!
+
 }
 
 type Subscription {
@@ -22,14 +28,18 @@ type Subscription {
 }
 
 type User {
-  id:           UserId!
-  orcidId:      OrcidId!
-  givenName:    String
-  familyName:   String,
-  creditName:   String,
-  email:        String,
-  roles:        [Role!]!
-  apiKeys:      [ApiKey!]!
+  id:       UserId!
+  orcidId:  OrcidId!
+  profile:  UserProfile!
+  roles:    [Role!]!
+  apiKeys:  [ApiKey!]!
+}
+
+type UserProfile {
+  givenName:  String
+  familyName: String
+  creditName: String
+  email:      String
 }
 
 type Role {
@@ -52,4 +62,3 @@ scalar ApiKeyId
 
 enum RoleType { PI NGO STAFF ADMIN }
 enum Partner { AR BR CA CL KR UH US }
-
