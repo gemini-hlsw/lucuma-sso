@@ -50,8 +50,6 @@ trait Database[F[_]] {
     role:      RoleRequest
   ) : F[SessionToken]
 
-  def canonicalizePreAuthUser(orcidId: OrcidId): F[User.Id]
-
   /** Create (if necessary) and return the specified role. */
   def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id]
 
@@ -228,14 +226,6 @@ object Database extends Codecs {
           }
 
         }
-
-      def canonicalizePreAuthUser(orcidId: OrcidId): F[User.Id] =
-        Trace[F].span("canonicalizePreAuthUser"):
-          s.transaction.use: _ =>
-            for
-              u <- s.prepareR(InsertPreAuthStandardUser).use(_.unique(orcidId))
-              _ <- s.prepareR(InsertPreAuthUserRole).use(_.execute(u).void)
-            yield u
 
       def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id] =
         s.transaction.use(_ => canonicalizeRole(user.id, role))
@@ -453,29 +443,6 @@ object Database extends Codecs {
           person.name.familyName           *:
           person.primaryEmail.map(_.email) *: EmptyTuple
       }
-
-  // Inserts a pre-auth standard user, if it doesn't already exist.  If it does
-  // exist, a noop "update" is performed so that the RETURNING clause always
-  // returns a value.
-  private val InsertPreAuthStandardUser: Query[OrcidId, User.Id] =
-    sql"""
-      INSERT INTO lucuma_user (user_type, orcid_id)
-      VALUES ('standard', $orcid_id)
-      ON CONFLICT (orcid_id) DO UPDATE
-      SET user_type = lucuma_user.user_type
-      RETURNING user_id
-    """.query(user_id)
-
-  // Inserts a PI role for a user, if it doesn't already exist
-  private val InsertPreAuthUserRole: Command[User.Id] =
-    sql"""
-      INSERT INTO lucuma_role (user_id, role_type, role_ngo)
-      VALUES ($user_id, $role_type, null)
-      ON CONFLICT DO NOTHING
-    """
-      .command
-      .contramap: id =>
-        (id, RoleType.Pi)
 
   /**
    * Query that reads a single standard user as a list of triples. The first two values are

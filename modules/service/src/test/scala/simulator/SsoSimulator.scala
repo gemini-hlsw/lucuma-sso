@@ -9,7 +9,6 @@ import cats.effect.std.Console
 import cats.syntax.all.*
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
-import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardUser
 import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.service.config.Config
@@ -46,10 +45,7 @@ object SsoSimulator {
         publicUri = config.publicUri,
         cookies   = CookieService[F]("lucuma.xyz", true),
       ) <+> GraphQLRoutes(
-        LocalSsoClient(config.ssoJwtReader, dbPool).collect {
-          case su: ServiceUser  => su: ServiceUser | StandardUser
-          case su: StandardUser => su: ServiceUser | StandardUser
-        },
+        LocalSsoClient(config.ssoJwtReader, dbPool).collect { case su: StandardUser => su },
         pool,
         chans,
         SkunkMonitor.noopMonitor[F],
