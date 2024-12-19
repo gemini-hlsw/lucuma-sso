@@ -22,9 +22,7 @@ import grackle.skunk.SkunkMonitor
 import grackle.syntax.*
 import lucuma.core.enums.Partner
 import lucuma.core.model
-import lucuma.core.model.Access
 import lucuma.core.model.OrcidId
-import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
@@ -63,38 +61,27 @@ object SsoMapping {
     channels: Channels[F],
     pool:     Resource[F, Session[F]],
     monitor:  SkunkMonitor[F],
-  ): F[StandardUser | ServiceUser => Mapping[F]] =
+  ): F[StandardUser => Mapping[F]] =
     loadSchema[F].map { loadedSchema => user =>
-
-      def requireStaffAccess[A](a: => F[Result[A]]): F[Result[A]] =
-        if user.role.access >= Access.Staff then a
-        else Result.failure("Staff access required for this operation.").pure[F]
-
-      def requireStandardUser[A](f: StandardUser => F[Result[A]]): F[Result[A]] =
-        user match
-          case su@StandardUser(_, _, _, _) => f(su)
-          case _                           => Result.failure("A standard user is required for this operation.").pure[F]
 
       // Directly-computed result for `createApiKey` mutation.
       def createApiKey(env: Env): F[Result[String]] =
-        requireStandardUser: su =>
-          env
-            .getR[StandardRole.Id]("roleId")
-            .flatTraverse: roleId =>
-              if (su.role :: su.otherRoles).exists(_.id === roleId) then
-                pool.map(Database.fromSession(_)).use: db =>
-                  db.createApiKey(roleId)
-                    .map(apiKey => Result(lucuma.sso.client.ApiKey.fromString.reverseGet(apiKey)))
-              else
-                Result.failure(show"No such role: $roleId").pure[F]
+        env
+          .getR[StandardRole.Id]("roleId")
+          .flatTraverse: roleId =>
+            if (user.role :: user.otherRoles).exists(_.id === roleId) then
+              pool.map(Database.fromSession(_)).use: db =>
+                db.createApiKey(roleId)
+                  .map(apiKey => Result(lucuma.sso.client.ApiKey.fromString.reverseGet(apiKey)))
+            else
+              Result.failure(show"No such role: $roleId").pure[F]
 
       def deleteApiKey(env: Env): F[Result[Boolean]] =
-        requireStandardUser: su =>
-          env
-            .getR[PosLong]("id")
-            .flatTraverse: id =>
-              pool.map(Database.fromSession(_)).use: db =>
-                db.deleteApiKey(id, Some(su.id)).map(Result.success)
+        env
+          .getR[PosLong]("id")
+          .flatTraverse: id =>
+            pool.map(Database.fromSession(_)).use: db =>
+              db.deleteApiKey(id, Some(user.id)).map(Result.success)
 
       val apiKeyRevocation: Stream[F, Result[String]] =
         channels
@@ -102,12 +89,6 @@ object SsoMapping {
           .listen(1024)
           .evalTap(n => Async[F].delay(println(n)))
           .map(a => Result.success(a.value))
-
-      def canonicalizePreAuthUser(env: Env): F[Result[User.Id]] =
-        requireStaffAccess:
-          env.getR[OrcidId]("orcidId").flatTraverse: orcidId =>
-            pool.map(Database.fromSession(_)).use: db =>
-              db.canonicalizePreAuthUser(orcidId).map(Result.success)
 
       new SkunkMapping[F](pool, monitor) with SsoTables[F] {
 
@@ -141,12 +122,7 @@ object SsoMapping {
                 tpe = MutationType,
                 fieldMappings = List(
                   RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
-                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e)),
-                  RootEffect.computeChild("canonicalizePreAuthUser") { (child, _, env) =>
-                    canonicalizePreAuthUser(env).map: result =>
-                      result.map: uid =>
-                        Unique(Filter(Eql(UserType / "id", Const(uid)), child))
-                  }
+                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e))
                 )
               ),
               ObjectMapping(
@@ -205,16 +181,11 @@ object SsoMapping {
           )
 
         override val selectElaborator = SelectElaborator {
-
           case (QueryType, "user", Nil) =>
             Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.id)), c)))
 
           case (QueryType, "role", Nil) =>
-            user match
-              case StandardUser(_, role, _, _) =>
-                Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(role.id)), c)))
-              case _                           =>
-                Elab.failure("'role' requires a standard user.")
+            Elab.transformChild(c => Unique(Filter(Eql(UserType / "id", Const(user.role.id)), c)))
 
           case (MutationType, "createApiKey", List(Binding("role", Value.StringValue(id)))) =>
             val rRoleId = Result.fromOption(StandardRole.Id.parse(id), s"Not a valid role id: $id")
@@ -223,11 +194,6 @@ object SsoMapping {
           case (MutationType, "deleteApiKey", List(Binding("id", Value.StringValue(hexString)))) =>
             val rKeyId = Result.fromOption(lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString), s"Not a valid API key id: $hexString")
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
-
-          case (MutationType, "canonicalizePreAuthUser", List(Binding("orcidId", Value.StringValue(orcidIdString)))) =>
-            val rOrcidId = Result.fromEither(OrcidId.parse(orcidIdString))
-            Elab.liftR(rOrcidId).flatMap: orcidId =>
-              Elab.env("orcidId" -> orcidId)
         }
 
       }
