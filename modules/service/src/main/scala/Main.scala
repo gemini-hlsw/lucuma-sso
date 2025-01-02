@@ -14,7 +14,6 @@ import com.monovore.decline.*
 import com.monovore.decline.effect.CommandIOApp
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
-import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardUser
 import lucuma.sso.service.config.*
 import lucuma.sso.service.database.Database
@@ -204,8 +203,7 @@ object FMain extends AnsiColor {
     } yield wsb => ServerMiddleware[F](config).apply {
       val dbPool = pool.map(Database.fromSession(_))
       val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect:
-        case su: ServiceUser  => su: ServiceUser | StandardUser
-        case su: StandardUser => su: ServiceUser | StandardUser
+        case su: StandardUser => su
       Routes[F](
         dbPool    = dbPool,
         orcid     = orcid,

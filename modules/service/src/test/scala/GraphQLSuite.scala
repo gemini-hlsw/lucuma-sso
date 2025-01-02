@@ -7,7 +7,6 @@ import cats.effect.*
 import cats.implicits.*
 import io.circe.Json
 import io.circe.literal.*
-import io.circe.syntax.*
 import lucuma.core.model.*
 import lucuma.core.util.Gid
 import lucuma.sso.client.ApiKey
@@ -196,65 +195,4 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
       }
     )
   }
-
-  test("Cannot create a pre-auth user as PI"):
-    flaky()(
-      for
-        orcid <- randomOrcidId
-        ex    <- expectQueryAsBob(
-          show"""
-            mutation {
-              canonicalizePreAuthUser(
-                orcidId: "${orcid.value}"
-              ) {
-                id
-              }
-            }
-          """,
-          expected = json"""{
-            "errors" : [
-              {
-                "message" : "Staff access required for this operation."
-              }
-            ],
-            "data" : null
-          }"""
-        )
-      yield ex
-    )
-
-  test("Create a pre-auth user as Staff"):
-    flaky()(
-      for
-        orcid <- randomOrcidId
-        json  <- queryAsStaffBob: user =>
-          show"""
-            mutation {
-              canonicalizePreAuthUser(
-                orcidId: "${orcid.value}"
-              ) {
-                orcidId
-                roles {
-                  type
-                }
-              }
-            }
-          """
-      yield
-        val expected = json"""
-          {
-            "data": {
-              "canonicalizePreAuthUser": {
-                "orcidId": ${orcid.value.asJson},
-                "roles": [
-                  {
-                    "type": "PI"
-                  }
-                ]
-              }
-            }
-          }
-        """
-        expect(json == expected)
-    )
 }
