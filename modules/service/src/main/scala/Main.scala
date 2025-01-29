@@ -353,10 +353,10 @@ object FMain extends AnsiColor {
         for
           tok <- db.createStandardUserSessionToken(roleId)
           usr <- db.getStandardUserFromToken(tok)
-          _    <- Sync[F].delay(println())
-          _    <- Sync[F].delay(println(s"⚠️  JWT for user '${usr.profile.displayName}' (${usr.id}, role $roleId) is valid for 1 hour."))
-          _    <- Sync[F].delay(println())
           jwt <- config.ssoJwtWriter.newJwt(usr, Some(1.hour))
+          _   <- Console[F].println("")
+          _   <- Console[F].println(s"⚠️  JWT for user '${usr.profile.displayName}' (${usr.id}, role $roleId) is valid for 1 hour.")
+          _   <- Console[F].println("")
           _   <- Console[F].println(jwt)
         yield ExitCode.Success
 
