@@ -5,6 +5,7 @@ package lucuma.sso.service
 
 import cats.*
 import cats.data.Kleisli
+import cats.data.Validated
 import cats.effect.*
 import cats.effect.std.Console
 import cats.implicits.*
@@ -15,7 +16,9 @@ import com.monovore.decline.effect.CommandIOApp
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
 import lucuma.core.model.ServiceUser
+import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
+import lucuma.core.util.Gid
 import lucuma.sso.service.config.*
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.graphql.GraphQLRoutes
@@ -103,10 +106,23 @@ object Main extends CommandIOApp(
       header = "Create a new service user."
     )(Opts.argument[String](metavar = "name").map(FMain.createServiceUser[IO](_)))
 
+  given Argument[StandardRole.Id] =
+    Argument.from("role-id"): s =>
+      Gid[StandardRole.Id].fromString.getOption(s) match
+        case Some(id) => Validated.valid(id)
+        case None     => Validated.invalidNel(s"Not a valid role id: $s")
+
+  lazy val createJwt =
+    Command(
+      name   = "create-jwt",
+      header = "Create and return a JWT for an existing user role, valid for one hour."
+    )(Opts.argument[StandardRole.Id]().map(FMain.createJwt[IO](_)))
+
   lazy val command =
     Opts.subcommands(
       serve,
-      createServiceUser
+      createServiceUser,
+      createJwt,
     )
 
 }
@@ -328,6 +344,21 @@ object FMain extends AnsiColor {
         } yield ExitCode.Success
       }
     }
+
+  def createJwt[F[_]: Async: Network: Console](
+    roleId: StandardRole.Id
+  ): F[ExitCode] =
+    Config.config.load[F].flatMap: config =>
+      standaloneDatabase(config.database).use: db =>
+        for
+          tok <- db.createStandardUserSessionToken(roleId)
+          usr <- db.getStandardUserFromToken(tok)
+          _    <- Sync[F].delay(println())
+          _    <- Sync[F].delay(println(s"⚠️  JWT for user '${usr.profile.displayName}' (${usr.id}, role $roleId) is valid for 1 hour."))
+          _    <- Sync[F].delay(println())
+          jwt <- config.ssoJwtWriter.newJwt(usr, Some(1.hour))
+          _   <- Console[F].println(jwt)
+        yield ExitCode.Success
 
 }
 
