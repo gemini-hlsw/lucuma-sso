@@ -16,7 +16,9 @@ case class OrcidPerson(
 ) {
 
   def primaryEmail: Option[OrcidEmail] =
-    emails.find(_.primary)
+    emails.find(_.primary)  orElse
+    emails.find(_.verified) orElse
+    emails.headOption
 
 }
 
