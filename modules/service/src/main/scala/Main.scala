@@ -15,7 +15,6 @@ import com.monovore.decline.*
 import com.monovore.decline.effect.CommandIOApp
 import fs2.io.net.Network
 import grackle.skunk.SkunkMonitor
-import lucuma.core.model.ServiceUser
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.util.Gid
