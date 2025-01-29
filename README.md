@@ -133,6 +133,14 @@ Each back-end service must have its own service JWT for communicating with other
 heroku run -a <sso-app-name> create-service-user <service-name>
 ```
 
+### Obtaining a User JWT
+
+For testing purposes it may sometimes be helpful to generate a JWT for a specific user. Generated JWTs are valid for one hour.
+
+```
+heroku run -a <sso-app-name> create-jwt <role-id>
+```
+
 ### Discussion
 
 It is possible to implement authentication as a middleware, but this makes composition of routes via `<+>` difficult because the middleware can either (a) reject unauthorized requests with `403 Forbidden`, which means no following routes can possibly match; or (b) ignore unauthorized requests, which means the user will see a `404 Not Found` instead of `403 Forbidden`. So the recommended strategy for now is to check authorization on each route as described above.
