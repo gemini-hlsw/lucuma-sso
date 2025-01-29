@@ -220,8 +220,7 @@ object FMain extends AnsiColor {
     } yield wsb => ServerMiddleware[F](config).apply {
       val dbPool = pool.map(Database.fromSession(_))
       val localClient = LocalSsoClient(config.ssoJwtReader, dbPool).collect:
-        case su: ServiceUser  => su: ServiceUser | StandardUser
-        case su: StandardUser => su: ServiceUser | StandardUser
+        case su: StandardUser => su
       Routes[F](
         dbPool    = dbPool,
         orcid     = orcid,
