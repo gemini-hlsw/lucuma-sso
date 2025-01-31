@@ -13,7 +13,8 @@ val jwtVersion                 = "10.0.1"
 val log4catsVersion            = "2.7.0"
 val lucumaCoreVersion          = "0.115.0"
 val lucumaGraphQLRoutesVersion = "0.8.17"
-val munitVersion               = "1.0.0"
+val munitVersion               = "1.0.4"
+val munitScalacheckVersion     = "1.1.0"
 val natcchezHttp4sVersion      = "0.6.1"
 val natchezVersion             = "0.3.7"
 val postgresVersion            = "42.7.5"
@@ -61,7 +62,7 @@ lazy val frontendClient = crossProject(JVMPlatform, JSPlatform)
       "io.circe"      %%% "circe-generic"       % circeVersion,
       "edu.gemini"    %%% "lucuma-core-testkit" % lucumaCoreVersion       % Test,
       "org.scalameta" %%% "munit"               % munitVersion            % Test,
-      "org.scalameta" %%% "munit-scalacheck"    % munitVersion            % Test,
+      "org.scalameta" %%% "munit-scalacheck"    % munitScalacheckVersion  % Test,
       "org.typelevel" %%% "discipline-munit"    % disciplineMunitVersion  % Test,
     )
   )
@@ -90,23 +91,23 @@ lazy val service = project
   .settings(
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"       %% "circe-parser"        % circeVersion,
-      "is.cir"         %% "ciris"               % cirisVersion,
-      "org.http4s"     %% "http4s-blaze-server" % http4sBlazeVersion,
-      "org.http4s"     %% "http4s-ember-client" % http4sEmberVersion,
-      "org.http4s"     %% "http4s-scala-xml"    % http4sXmlVersion,
-      "org.slf4j"      %  "slf4j-simple"        % slf4jVersion,
-      "org.tpolecat"   %% "natchez-honeycomb"   % natchezVersion,
-      "org.tpolecat"   %% "natchez-log"         % natchezVersion,
-      "org.tpolecat"   %% "natchez-http4s"      % natcchezHttp4sVersion,
-      "org.tpolecat"   %% "skunk-core"          % skunkVersion,
-      "org.flywaydb"   %  "flyway-core"         % flywayVersion,
-      "org.postgresql" %  "postgresql"          % postgresVersion,
-      "com.monovore"   %% "decline-effect"      % declineVersion,
-      "com.monovore"   %% "decline"             % declineVersion,
-      "org.typelevel"   %% "grackle-skunk"   % grackleVersion,
-      "edu.gemini"     %% "lucuma-graphql-routes" % lucumaGraphQLRoutesVersion,
-      "io.circe"       %% "circe-literal"       % circeVersion       % Test,
+      "io.circe"       %% "circe-parser"           % circeVersion,
+      "is.cir"         %% "ciris"                  % cirisVersion,
+      "org.http4s"     %% "http4s-blaze-server"    % http4sBlazeVersion,
+      "org.http4s"     %% "http4s-ember-client"    % http4sEmberVersion,
+      "org.http4s"     %% "http4s-scala-xml"       % http4sXmlVersion,
+      "org.slf4j"      %  "slf4j-simple"           % slf4jVersion,
+      "org.tpolecat"   %% "natchez-honeycomb"      % natchezVersion,
+      "org.tpolecat"   %% "natchez-log"            % natchezVersion,
+      "org.tpolecat"   %% "natchez-http4s"         % natcchezHttp4sVersion,
+      "org.tpolecat"   %% "skunk-core"             % skunkVersion,
+      "org.flywaydb"   %  "flyway-core"            % flywayVersion,
+      "org.postgresql" %  "postgresql"             % postgresVersion,
+      "com.monovore"   %% "decline-effect"         % declineVersion,
+      "com.monovore"   %% "decline"                % declineVersion,
+      "org.typelevel"  %% "grackle-skunk"          % grackleVersion,
+      "edu.gemini"     %% "lucuma-graphql-routes"  % lucumaGraphQLRoutesVersion,
+      "io.circe"       %% "circe-literal"          % circeVersion       % Test,
       "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
       "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
     ),
