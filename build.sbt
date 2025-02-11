@@ -3,7 +3,7 @@ val circeVersion               = "0.14.10"
 val cirisVersion               = "3.7.0"
 val declineVersion             = "2.5.0"
 val disciplineMunitVersion     = "2.0.0"
-val flywayVersion              = "9.22.3"
+val flywayVersion              = "11.3.0"
 val grackleVersion             = "0.22.0"
 val http4sVersion              = "0.23.30"
 val http4sBlazeVersion         = "0.23.17"
@@ -91,25 +91,26 @@ lazy val service = project
   .settings(
     name := "lucuma-sso-service",
     libraryDependencies ++= Seq(
-      "io.circe"       %% "circe-parser"           % circeVersion,
-      "is.cir"         %% "ciris"                  % cirisVersion,
-      "org.http4s"     %% "http4s-blaze-server"    % http4sBlazeVersion,
-      "org.http4s"     %% "http4s-ember-client"    % http4sEmberVersion,
-      "org.http4s"     %% "http4s-scala-xml"       % http4sXmlVersion,
-      "org.slf4j"      %  "slf4j-simple"           % slf4jVersion,
-      "org.tpolecat"   %% "natchez-honeycomb"      % natchezVersion,
-      "org.tpolecat"   %% "natchez-log"            % natchezVersion,
-      "org.tpolecat"   %% "natchez-http4s"         % natcchezHttp4sVersion,
-      "org.tpolecat"   %% "skunk-core"             % skunkVersion,
-      "org.flywaydb"   %  "flyway-core"            % flywayVersion,
-      "org.postgresql" %  "postgresql"             % postgresVersion,
-      "com.monovore"   %% "decline-effect"         % declineVersion,
-      "com.monovore"   %% "decline"                % declineVersion,
-      "org.typelevel"  %% "grackle-skunk"          % grackleVersion,
-      "edu.gemini"     %% "lucuma-graphql-routes"  % lucumaGraphQLRoutesVersion,
-      "io.circe"       %% "circe-literal"          % circeVersion       % Test,
-      "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
-      "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
+      "io.circe"       %% "circe-parser"               % circeVersion,
+      "is.cir"         %% "ciris"                      % cirisVersion,
+      "org.http4s"     %% "http4s-blaze-server"        % http4sBlazeVersion,
+      "org.http4s"     %% "http4s-ember-client"        % http4sEmberVersion,
+      "org.http4s"     %% "http4s-scala-xml"           % http4sXmlVersion,
+      "org.slf4j"      %  "slf4j-simple"               % slf4jVersion,
+      "org.tpolecat"   %% "natchez-honeycomb"          % natchezVersion,
+      "org.tpolecat"   %% "natchez-log"                % natchezVersion,
+      "org.tpolecat"   %% "natchez-http4s"             % natcchezHttp4sVersion,
+      "org.tpolecat"   %% "skunk-core"                 % skunkVersion,
+      "org.flywaydb"   %  "flyway-core"                % flywayVersion,
+      "org.flywaydb"   %  "flyway-database-postgresql" % flywayVersion,
+      "org.postgresql" %  "postgresql"                 % postgresVersion,
+      "com.monovore"   %% "decline-effect"             % declineVersion,
+      "com.monovore"   %% "decline"                    % declineVersion,
+      "org.typelevel"  %% "grackle-skunk"              % grackleVersion,
+      "edu.gemini"     %% "lucuma-graphql-routes"      % lucumaGraphQLRoutesVersion,
+      "io.circe"       %% "circe-literal"              % circeVersion       % Test,
+      "com.disneystreaming" %% "weaver-cats"           % weaverVersion % Test,
+      "com.disneystreaming" %% "weaver-scalacheck"     % weaverVersion % Test,
     ),
     reStart / envVars += "PORT" -> "8082",
     reStartArgs       += "serve"
