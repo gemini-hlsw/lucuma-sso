@@ -13,13 +13,10 @@ import fs2.Stream
 import grackle.*
 import grackle.Predicate.*
 import grackle.Query.*
-import grackle.QueryCompiler
 import grackle.QueryCompiler.Elab
 import grackle.QueryCompiler.SelectElaborator
-import grackle.Schema
 import grackle.skunk.SkunkMapping
 import grackle.skunk.SkunkMonitor
-import grackle.syntax.*
 import lucuma.core.enums.Partner
 import lucuma.core.model
 import lucuma.core.model.OrcidId

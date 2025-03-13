@@ -14,9 +14,6 @@ import lucuma.sso.client.SsoClient
 import lucuma.sso.client.SsoClient.UserInfo
 import lucuma.sso.service.simulator.SsoSimulator
 import org.http4s.*
-import org.http4s.Credentials
-import org.http4s.Headers
-import org.http4s.HttpRoutes
 import org.http4s.client.Client
 import org.http4s.dsl.io.*
 import org.http4s.headers.*
