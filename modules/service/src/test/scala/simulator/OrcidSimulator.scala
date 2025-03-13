@@ -5,7 +5,6 @@ package lucuma.sso.service.simulator
 
 import cats.data.OptionT
 import cats.effect.*
-import cats.effect.Ref
 import cats.implicits.*
 import lucuma.core.model.OrcidId
 import lucuma.sso.service.orcid.*

@@ -8,7 +8,6 @@ import cats.implicits.*
 import lucuma.core.model.StandardRole
 import lucuma.core.util.Gid
 import lucuma.sso.client.*
-import lucuma.sso.client.SsoJwtReader
 import lucuma.sso.client.SsoMiddleware.traceUser
 import lucuma.sso.service.database.Database
 import lucuma.sso.service.database.RoleRequest
@@ -94,8 +93,8 @@ object Routes {
               db.findStandardUserFromToken(tok).flatMap {
                 case None    => Forbidden("Standard user required.")
                 case Some(u) =>
-                  if (u.role.id === rid) { 
-                    jwtWriter.newJwt(u).flatMap(Ok(_)) // nothing to do 
+                  if (u.role.id === rid) {
+                    jwtWriter.newJwt(u).flatMap(Ok(_)) // nothing to do
                   } else {
                     u.otherRoles.find(_.id === rid) match
                       case None    => Forbidden("User does not own role.")
