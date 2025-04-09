@@ -11,12 +11,12 @@ val http4sEmberVersion         = "0.23.30"
 val http4sXmlVersion           = "0.23.14"
 val jwtVersion                 = "10.0.4"
 val log4catsVersion            = "2.7.0"
-val lucumaCoreVersion          = "0.121.2"
+val lucumaCoreVersion          = "0.123.0"
 val lucumaGraphQLRoutesVersion = "0.8.18"
 val munitVersion               = "1.1.0"
 val munitScalacheckVersion     = "1.1.0"
-val natcchezHttp4sVersion      = "0.6.1"
 val natchezVersion             = "0.3.7"
+val natchezHttp4sVersion       = "0.6.1"
 val postgresVersion            = "42.7.5"
 val skunkVersion               = "0.6.4"
 val slf4jVersion               = "2.0.17"
@@ -80,7 +80,7 @@ lazy val backendClient = project
       "org.http4s"           %% "http4s-dsl"     % http4sVersion,
       "org.http4s"           %% "http4s-client"  % http4sVersion,
       "org.typelevel"        %% "log4cats-slf4j" % log4catsVersion,
-      "org.tpolecat"         %% "natchez-http4s" % natcchezHttp4sVersion,
+      "org.tpolecat"         %% "natchez-http4s" % natchezHttp4sVersion,
     ),
   )
 
@@ -99,7 +99,7 @@ lazy val service = project
       "org.slf4j"      %  "slf4j-simple"           % slf4jVersion,
       "org.tpolecat"   %% "natchez-honeycomb"      % natchezVersion,
       "org.tpolecat"   %% "natchez-log"            % natchezVersion,
-      "org.tpolecat"   %% "natchez-http4s"         % natcchezHttp4sVersion,
+      "org.tpolecat"   %% "natchez-http4s"         % natchezHttp4sVersion,
       "org.tpolecat"   %% "skunk-core"             % skunkVersion,
       "org.flywaydb"   %  "flyway-core"            % flywayVersion,
       "org.postgresql" %  "postgresql"             % postgresVersion,
