@@ -118,7 +118,7 @@ object Config {
           HoneycombConfig.config.option,
         ).parTupled.flatMap { case (port, dbc, orc, pkey, text, pass, domain, host, heroku, honeycomb) =>
           for {
-            skey <- default(text).as[PrivateKey](privateKey(pass))
+            skey <- default(text).as[PrivateKey](using privateKey(pass))
           } yield Config(envi, dbc, orc, pkey, skey, port, domain, Uri.Scheme.https, host, heroku, honeycomb)
         }
 

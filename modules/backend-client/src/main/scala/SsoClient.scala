@@ -117,7 +117,7 @@ object SsoClient {
 
       def fetchApiInfo(apiKey: ApiKey): F[UserInfo] =
         for {
-          jwt   <- httpClient.expect[String](exchangeRequest(apiKey))(EntityDecoder.text[F])
+          jwt   <- httpClient.expect[String](exchangeRequest(apiKey))(using EntityDecoder.text[F])
           claim <- jwtReader.decodeClaim(jwt)
           user  <- claim.getUser.liftTo[F] // this really is a server error
           info   = UserInfo(user, claim, authorization(jwt))
