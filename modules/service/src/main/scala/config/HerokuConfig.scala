@@ -69,7 +69,7 @@ object HerokuConfig {
     envOrProp("HEROKU_APP_ID").as[UUID],
     envOrProp("HEROKU_APP_NAME"),
     envOrProp("HEROKU_DYNO_ID").as[UUID],
-    envOrProp("HEROKU_RELEASE_CREATED_AT").as(isoLocalDateTime),
+    envOrProp("HEROKU_RELEASE_CREATED_AT").as(using isoLocalDateTime),
     envOrProp("HEROKU_RELEASE_VERSION"),
     envOrProp("HEROKU_SLUG_COMMIT"),
     envOrProp("HEROKU_SLUG_DESCRIPTION"),
