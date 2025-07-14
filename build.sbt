@@ -11,7 +11,7 @@ val http4sEmberVersion         = "0.23.30"
 val http4sXmlVersion           = "0.23.15"
 val jwtVersion                 = "10.0.4"
 val log4catsVersion            = "2.7.1"
-val lucumaCoreVersion          = "0.136.1"
+val lucumaCoreVersion          = "0.137.0"
 val lucumaGraphQLRoutesVersion = "0.8.18"
 val munitVersion               = "1.1.1"
 val munitScalacheckVersion     = "1.1.0"
@@ -25,7 +25,7 @@ val weaverVersion              = "0.8.4"
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
 
-ThisBuild / tlBaseVersion := "0.8"
+ThisBuild / tlBaseVersion := "0.9"
 ThisBuild / scalaVersion       := "3.7.1"
 ThisBuild / crossScalaVersions := Seq("3.7.1")
 ThisBuild / scalacOptions ++= Seq(
