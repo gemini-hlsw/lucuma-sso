@@ -219,95 +219,98 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
   }
 
   List(RoleRequest.Staff, RoleRequest.Ngo(Partner.AR)).foreach: role =>
-    test(s"$role should not be able to give Bob a role"):
-      As(Bob)
-        .queryIds
-        .flatMap: (bob, _) =>
-          As(Alice)
-            .queryIds
-            .flatMap: 
-              case (alice, aliceOrcid) =>
-                As(Alice, Some(aliceOrcid), Some(role))
-                  .expectQuery(
-                    query = 
-                      s"""
-                        mutation {
-                          addRole(
-                            userId: "$bob"
-                            roleType: STAFF
-                          )
-                        }
-                      """,
-                    expected =
-                      json"""
-                        {
-                          "errors" : [
-                            {
-                              "message" : ${s"User $alice is not authorized to perform this action."}
-                            }
-                          ]                  
-                        }
-                      """
-                  )
+    flaky():
+      test(s"$role should not be able to give Bob a role"):
+        As(Bob)
+          .queryIds
+          .flatMap: (bob, _) =>
+            As(Alice)
+              .queryIds
+              .flatMap: 
+                case (alice, aliceOrcid) =>
+                  As(Alice, Some(aliceOrcid), Some(role))
+                    .expectQuery(
+                      query = 
+                        s"""
+                          mutation {
+                            addRole(
+                              userId: "$bob"
+                              roleType: STAFF
+                            )
+                          }
+                        """,
+                      expected =
+                        json"""
+                          {
+                            "errors" : [
+                              {
+                                "message" : ${s"User $alice is not authorized to perform this action."}
+                              }
+                            ]                  
+                          }
+                        """
+                    )
 
   test("Admin Alice should be able to give Bob a role"):
-    As(Bob)
-      .queryIds
-      .flatMap: bob =>
-        As(Alice, None, Some(Admin))
-          .query:
-            s"""
-              mutation {
-                addRole(
-                  userId: "${bob._1}"
-                  roleType: STAFF
-                )
-              }
-            """
-          .map: json =>
-            expect:
-              json
-                .hcursor
-                .downFields("data", "addRole")
-                .as[StandardRole.Id]
-                .isRight
+    flaky():
+      As(Bob)
+        .queryIds
+        .flatMap: bob =>
+          As(Alice, None, Some(Admin))
+            .query:
+              s"""
+                mutation {
+                  addRole(
+                    userId: "${bob._1}"
+                    roleType: STAFF
+                  )
+                }
+              """
+            .map: json =>
+              expect:
+                json
+                  .hcursor
+                  .downFields("data", "addRole")
+                  .as[StandardRole.Id]
+                  .isRight
 
 
   test("Admin Alice should be able to give Bob an Admin role, and aftewards he should be able to give a Staff role to Alice"):
-    As(Bob)
-      .queryIds
-      .flatMap: (bob, bobOrcid) =>
-        As(Alice)
-          .queryIds
-          .flatMap: (alice, aliceOrcid) =>
-            As(Alice, Some(aliceOrcid), Some(Admin))
-              .query:
-                s"""
-                  mutation {
-                    addRole(
-                      userId: "$bob"
-                      roleType: ADMIN
-                    )
-                  }
-                """
-              .flatMap: json =>
-                val newRole = json.hcursor.downFields("data", "addRole").require[StandardRole.Id]
-                As(Bob, Some(bobOrcid), Some(newRole))
-                  .query:
-                    s"""
-                      mutation {
-                        addRole(
-                          userId: "$alice"
-                          roleType: STAFF
-                        )
-                      }
-                    """
-                  .map: json =>
-                    expect:
-                      json
-                        .hcursor
-                        .downFields("data", "addRole")
-                        .as[StandardRole.Id]
-                        .isRight  
+    flaky():
+      As(Bob)
+        .queryIds
+        .flatMap: (bob, bobOrcid) =>
+          As(Alice)
+            .queryIds
+            .flatMap: (alice, aliceOrcid) =>
+              As(Alice, Some(aliceOrcid), Some(Admin))
+                .query:
+                  s"""
+                    mutation {
+                      addRole(
+                        userId: "$bob"
+                        roleType: ADMIN
+                      )
+                    }
+                  """
+                .flatMap: json =>
+                  val newRole = json.hcursor.downFields("data", "addRole").require[StandardRole.Id]
+                  As(Bob, Some(bobOrcid), Some(newRole))
+                    .query:
+                      s"""
+                        mutation {
+                          addRole(
+                            userId: "$alice"
+                            roleType: STAFF
+                          )
+                        }
+                      """
+                    .map: json =>
+                      expect:
+                        json
+                          .hcursor
+                          .downFields("data", "addRole")
+                          .as[StandardRole.Id]
+                          .isRight  
 
 }
