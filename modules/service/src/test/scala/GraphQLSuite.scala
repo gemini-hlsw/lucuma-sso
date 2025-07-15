@@ -219,8 +219,8 @@ object GraphQLSuite extends SsoSuite with Fixture with FlakyTests with OrcidIdGe
   }
 
   List(RoleRequest.Staff, RoleRequest.Ngo(Partner.AR)).foreach: role =>
-    flaky():
-      test(s"$role should not be able to give Bob a role"):
+    test(s"$role should not be able to give Bob a role"):
+      flaky():
         As(Bob)
           .queryIds
           .flatMap: (bob, _) =>
