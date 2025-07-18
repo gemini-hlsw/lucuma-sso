@@ -53,7 +53,7 @@ trait Codecs {
     enums[RoleType](Enumerated[RoleType].tag(_).toLowerCase, x => Enumerated[RoleType].fromTag(toPrefix(x)), Type("lucuma_role_type"))
 
   val partner: Codec[Partner] =
-    enums[Partner](Enumerated[Partner].tag(_).toLowerCase, x => Enumerated[Partner].fromTag(toPrefix(x)), Type("lucuma_ngo"))
+    enums[Partner](Enumerated[Partner].tag(_).toLowerCase, x => Enumerated[Partner].all.find(_.tag.equalsIgnoreCase(x)), Type("lucuma_ngo"))
 
   val session_token: Codec[SessionToken] =
     uuid.to

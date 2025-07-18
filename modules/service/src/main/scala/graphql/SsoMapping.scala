@@ -15,15 +15,21 @@ import grackle.Predicate.*
 import grackle.Query.*
 import grackle.QueryCompiler.Elab
 import grackle.QueryCompiler.SelectElaborator
+import grackle.Value.AbsentValue
+import grackle.Value.EnumValue
+import grackle.Value.NullValue
+import grackle.Value.StringValue
 import grackle.skunk.SkunkMapping
 import grackle.skunk.SkunkMonitor
 import lucuma.core.enums.Partner
 import lucuma.core.model
+import lucuma.core.model.Access
 import lucuma.core.model.OrcidId
 import lucuma.core.model.StandardRole
 import lucuma.core.model.StandardUser
 import lucuma.core.model.User
 import lucuma.sso.service.database.Database
+import lucuma.sso.service.database.RoleRequest
 import lucuma.sso.service.database.RoleType
 import natchez.Trace
 
@@ -73,6 +79,21 @@ object SsoMapping {
             else
               Result.failure(show"No such role: $roleId").pure[F]
 
+      // Add a role
+      def addRole(env: Env): F[Result[StandardRole.Id]] =
+        if user.role.access < Access.Admin then
+          Result.failure(s"User ${user.id} is not authorized to perform this action.").pure[F]
+        else
+          (
+            env.getR[User.Id]("userId"), 
+            env.getR[RoleRequest]("roleRequest"),
+          ) .parTupled
+            .flatTraverse:
+              case (uid, roleRequest) =>
+                pool.map(Database.fromSession(_)).use: db =>
+                  db.canonicalizeRole(uid, roleRequest)
+                    .map(Result.success)
+
       def deleteApiKey(env: Env): F[Result[Boolean]] =
         env
           .getR[PosLong]("id")
@@ -119,7 +140,8 @@ object SsoMapping {
                 tpe = MutationType,
                 fieldMappings = List(
                   RootEffect.computeEncodable("createApiKey")((_, e) => createApiKey(e)),
-                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e))
+                  RootEffect.computeEncodable("deleteApiKey")((_, e) => deleteApiKey(e)),
+                  RootEffect.computeEncodable("addRole")((_, e) => addRole(e)),
                 )
               ),
               ObjectMapping(
@@ -191,6 +213,40 @@ object SsoMapping {
           case (MutationType, "deleteApiKey", List(Binding("id", Value.StringValue(hexString)))) =>
             val rKeyId = Result.fromOption(lucuma.sso.client.ApiKey.Id.fromString.getOption(hexString), s"Not a valid API key id: $hexString")
             Elab.liftR(rKeyId).flatMap { keyId => Elab.env("id" -> keyId)}
+
+          case (MutationType, "addRole", List(
+            Binding("userId", Value.StringValue(id)), 
+            Binding("roleType", Value.EnumValue(roleType)), 
+            Binding("partner", pValue))
+          ) =>
+            import lucuma.sso.service.database.{ RoleType => RT }
+            Elab
+              .liftR:
+                if user.role.access < Access.Admin then
+                  Result.failure(s"User ${user.id} is not authorized to perform this action.")
+                else (
+                    Result.fromOption(lucuma.core.model.User.Id.parse(id), s"Not a valid user id: $id"),
+                    Result.fromOption(RT.parse(roleType), s"Not a valid role type: $roleType"),
+                    pValue match
+                      case EnumValue(name) => Result.fromOption(Partner.values.find(_.tag.equalsIgnoreCase(id)), s"Not a valid partner: $id").map(_.some)
+                      case AbsentValue | NullValue => Result.success(None)
+                      case _ => Result.internalError("Unpossible; validation should disallow these cases.")                
+                  ) .parTupled
+                    .flatMap:
+                      case (uid, RT.Pi, None)                        => Result.success((uid, RoleRequest.Pi))
+                      case (uid, RT.Staff, None)                     => Result.success((uid, RoleRequest.Staff))
+                      case (uid, RT.Admin, None)                     => Result.success((uid, RoleRequest.Admin))
+                      case (uid, RT.Ngo, Some(p))                    => Result.success((uid, RoleRequest.Ngo(p)))
+                      case (_, RT.Pi | RT.Staff | RT.Admin, Some(_)) => Result.failure("Only NGO roles may specify a partner.")
+                      case (_, RT.Ngo, None)                         => Result.failure("NGO roles must specify a partner.")
+              .flatMap:
+                case (uid, rr) =>
+                  Elab.env("userId" -> uid, "roleRequest" -> rr)
+
+          case (MutationType, x, y) => 
+            println((x, y))
+            ???
+
         }
 
       }

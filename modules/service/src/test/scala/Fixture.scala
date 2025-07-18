@@ -16,6 +16,27 @@ trait Fixture { self: SimpleMutableIOSuite =>
   val SsoRoot     = uri"https://sso.gpp.lucuma.xyz"
   val ExploreRoot = SsoRoot // uri"https://explore.lucuma.xyz"
 
+  val Alice: OrcidPerson =
+    OrcidPerson(
+      name = OrcidName(
+        familyName = Some("Dallas"),
+        givenName  = Some("Alice"),
+        creditName = None
+      ),
+      emails = List(
+        OrcidEmail(
+          email    = "alice@dallas.com",
+          verified = true,
+          primary  = true,
+        ),
+        OrcidEmail(
+          email    = "alice@fnord.com",
+          verified = false,
+          primary  = false,
+        )
+      )
+    )
+
   val Bob: OrcidPerson =
     OrcidPerson(
       name = OrcidName(

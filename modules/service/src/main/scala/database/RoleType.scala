@@ -11,3 +11,7 @@ enum RoleType(private val tag: String) derives Enumerated:
   case Ngo extends RoleType("Ngo")
   case Staff extends RoleType("Staff")
   case Admin extends RoleType("Admin")
+
+object RoleType:
+  def parse(s: String): Option[RoleType] =
+    values.find(_.tag.equalsIgnoreCase(s))

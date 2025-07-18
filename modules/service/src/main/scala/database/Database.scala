@@ -53,6 +53,9 @@ trait Database[F[_]] {
   /** Create (if necessary) and return the specified role. */
   def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id]
 
+  /** Create (if necessary) and return the specified role. Fails if `id` is not a *standard* user id. */
+  def canonicalizeRole(id: User.Id, role: RoleRequest): F[StandardRole.Id]
+
   def promoteGuestUser(
     access:    OrcidAccess,
     person:    OrcidPerson,
@@ -172,7 +175,7 @@ object Database extends Codecs {
               // In this case the user has logged in as someone who already exists in the database.
               case Some(existingUserId) =>
                 for {
-                  rid <- canonicalizeRole(existingUserId, role) // find or create requested role
+                  rid <- canonicalizeRoleImpl(existingUserId, role) // find or create requested role
                   tok <- createStandardUserSessionToken(rid)    // create a session token
                   _   <- deleteUser(gid)                        // guest account is no longer needed (session will cascade-delete)
                 } yield (Some(existingUserId), tok)             // include the existing user's id since we need to chown the guest's old stuff
@@ -211,7 +214,7 @@ object Database extends Codecs {
               // In this case the user has logged in as someone who already exists in the database.
               case Some(existingUserId) =>
                 for {
-                  rid <- canonicalizeRole(existingUserId, role) // find or create requested role
+                  rid <- canonicalizeRoleImpl(existingUserId, role) // find or create requested role
                   tok <- createStandardUserSessionToken(rid)    // create a session token
                 } yield tok     // return the existing user's id if we're promiting a guest user, plus the token
 
@@ -228,10 +231,13 @@ object Database extends Codecs {
         }
 
       def canonicalizeRole(user: StandardUser, role: RoleRequest): F[StandardRole.Id] =
-        s.transaction.use(_ => canonicalizeRole(user.id, role))
+        s.transaction.use(_ => canonicalizeRoleImpl(user.id, role))
+
+      def canonicalizeRole(id: User.Id, role: RoleRequest): F[StandardRole.Id] =
+        s.transaction.use(_ => canonicalizeRoleImpl(id, role))
         
-      private def canonicalizeRole(userId: User.Id, role: RoleRequest): F[StandardRole.Id] =
-        Trace[F].span("canonicalizeRole") {
+      private def canonicalizeRoleImpl(userId: User.Id, role: RoleRequest): F[StandardRole.Id] =
+        Trace[F].span("canonicalizeRoleImpl") {
           // we assume we're in a transction … would be nice if we could put this in the type
           OptionT(findRole(userId, role)).getOrElseF(addRole(userId, role))
         }
@@ -247,7 +253,7 @@ object Database extends Codecs {
               WHERE  user_id = $user_id
               AND    role_type = $role_type
             """.apply(userId, role.tpe) |+|
-            role.partnerOption.fold(AppliedFragment.empty)(sql" AND partner = $partner")
+            role.partnerOption.fold(AppliedFragment.empty)(sql" AND role_ngo = $partner")
 
           // Done
           s.prepareR(af.fragment.query(role_id)).use(pq => pq.option(af.argument))
@@ -495,7 +501,6 @@ object Database extends Codecs {
           case hmm => sys.error(s"welp, we really need emap here, sorry. anyway, invalid: $hmm")
         }
       )
-
 
   val SelectStandardUserByApiKey: Query[ApiKey, (StandardRole.Id, StandardUser, StandardRole)] =
     sql"""
