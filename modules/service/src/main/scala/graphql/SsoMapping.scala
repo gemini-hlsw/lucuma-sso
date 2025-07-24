@@ -243,10 +243,6 @@ object SsoMapping {
                 case (uid, rr) =>
                   Elab.env("userId" -> uid, "roleRequest" -> rr)
 
-          case (MutationType, x, y) => 
-            println((x, y))
-            ???
-
         }
 
       }
