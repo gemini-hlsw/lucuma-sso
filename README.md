@@ -1,3 +1,5 @@
+### ATTENTION! This repository has been merged into [lucuma-odb](https://github.com/gemini-hlsw/lucuma-odb). It is kept in GitHub as readonly to provide access to its history and open issues at the time of merging.
+
 # LUCUMA-SSO
 
 Single sign-on service and support libries for Lucuma.
