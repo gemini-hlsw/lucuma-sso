@@ -20,7 +20,7 @@ val natchezHttp4sVersion       = "0.6.1"
 val postgresVersion            = "42.7.7"
 val skunkVersion               = "0.6.4"
 val slf4jVersion               = "2.0.17"
-val weaverVersion              = "0.8.4"
+val weaverVersion              = "0.9.3"
 
 // If we don't do this we get a spurious warning about an unused key.
 Global / excludeLintKeys += scalaJSLinkerConfig
@@ -108,8 +108,8 @@ lazy val service = project
       "org.typelevel"  %% "grackle-skunk"          % grackleVersion,
       "edu.gemini"     %% "lucuma-graphql-routes"  % lucumaGraphQLRoutesVersion,
       "io.circe"       %% "circe-literal"          % circeVersion       % Test,
-      "com.disneystreaming" %% "weaver-cats"       % weaverVersion % Test,
-      "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test,
+      "org.typelevel" %% "weaver-cats"       % weaverVersion % Test,
+      "org.typelevel" %% "weaver-scalacheck" % weaverVersion % Test,
     ),
     reStart / envVars += "PORT" -> "8082",
     reStartArgs       += "serve"
